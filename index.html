@@ -12,7 +12,7 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Easy POS • Clean MVP • v0.9</p>
+        <p class="eyebrow">Easy POS • Stable MVP • v1.0</p>
         <h1>Khaikhong</h1>
         <p class="subtitle">ขายง่าย • คุมสต็อก • ดูกำไร • จดลูกหนี้</p>
       </div>
@@ -29,6 +29,7 @@
     <button data-tab="customers" class="tab">ลูกค้า</button>
     <button data-tab="dashboard" class="tab">สรุป</button>
     <button data-tab="more" class="tab">เพิ่มเติม</button>
+    <button data-tab="help" class="tab secondary-tab">คู่มือ</button>
 
     <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button>
     <button data-tab="ledger" class="tab secondary-tab">ลูกหนี้</button>
@@ -109,10 +110,17 @@
       <div class="page-head">
         <div>
           <h2>ขายของ</h2>
-          <p>ทำตาม 3 ขั้นตอน: เลือกสินค้า → ใส่บิล → บันทึกขาย</p>
+          <p>ขายแบบง่าย: เลือกสินค้า → เพิ่มลงบิล → บันทึกขาย</p>
         </div>
       </div>
 
+
+
+      <div class="quick-help">
+        <strong>ใช้งานครั้งแรก:</strong>
+        <span>เพิ่มสินค้า → ซื้อเข้า → ขายของ → Backup</span>
+        <button class="mini-link" data-open-tab="help" type="button">ดูคู่มือ</button>
+      </div>
 
       <div class="easy-steps">
         <div><b>1</b><span>เลือกสินค้า</span></div>
@@ -519,6 +527,106 @@
     </section>
 
 
+
+    <section id="help" class="page">
+      <div class="page-head">
+        <div>
+          <h2>คู่มือใช้งาน Khaikhong</h2>
+          <p>คู่มือสั้น ๆ สำหรับเริ่มใช้งานจริง ใช้เวลาอ่านประมาณ 3 นาที</p>
+        </div>
+        <div class="quick-actions">
+          <button class="primary-btn" data-open-tab="sale">เริ่มขายของ</button>
+          <button class="soft-btn" data-open-tab="backup">Backup</button>
+        </div>
+      </div>
+
+      <div class="guide-grid">
+        <article class="guide-card start">
+          <span class="guide-no">1</span>
+          <h3>เริ่มต้นครั้งแรก</h3>
+          <ol>
+            <li>ไปเมนู <strong>สินค้า</strong> แล้วเพิ่มสินค้าก่อน</li>
+            <li>ไป <strong>เพิ่มเติม > ซื้อเข้า</strong> เพื่อเพิ่มสต็อกและต้นทุน</li>
+            <li>กลับมาหน้า <strong>ขายของ</strong> เพื่อเริ่มขาย</li>
+            <li>กด <strong>Backup</strong> หลังกรอกข้อมูลจริง</li>
+          </ol>
+        </article>
+
+        <article class="guide-card">
+          <span class="guide-no">2</span>
+          <h3>วิธีขายของ</h3>
+          <ol>
+            <li>ค้นหาสินค้า แล้วแตะสินค้า</li>
+            <li>ใส่จำนวนและราคาขาย</li>
+            <li>กด <strong>เพิ่มลงบิล</strong></li>
+            <li>ถ้ามีหลายสินค้า ให้เลือกเพิ่มต่อ</li>
+            <li>กด <strong>บันทึกขาย</strong></li>
+          </ol>
+        </article>
+
+        <article class="guide-card">
+          <span class="guide-no">3</span>
+          <h3>ขายเครดิต / ลูกค้าค้างจ่าย</h3>
+          <ol>
+            <li>เพิ่มลูกค้าในเมนู <strong>ลูกค้า</strong></li>
+            <li>ตอนขาย ให้เลือกชำระแบบ <strong>เครดิต/ค้างชำระ</strong></li>
+            <li>เลือกชื่อลูกค้า</li>
+            <li>ดูยอดค้างได้ที่ <strong>เพิ่มเติม > ยอดค้าง</strong></li>
+            <li>รับเงินได้ที่ <strong>เพิ่มเติม > รับเงิน</strong></li>
+          </ol>
+        </article>
+
+        <article class="guide-card">
+          <span class="guide-no">4</span>
+          <h3>แก้ไข / ลบรายการผิด</h3>
+          <ol>
+            <li>ไปที่ประวัติขาย / ซื้อเข้า / รับเงิน</li>
+            <li>กด <strong>แก้ไข</strong> เพื่อปรับข้อมูล</li>
+            <li>กด <strong>ลบ</strong> เมื่อต้องการลบรายการผิด</li>
+            <li>ระบบจะคำนวณสต็อก กำไร และลูกหนี้ใหม่ให้อัตโนมัติ</li>
+          </ol>
+        </article>
+
+        <article class="guide-card important">
+          <span class="guide-no">5</span>
+          <h3>Backup สำคัญมาก</h3>
+          <p>ข้อมูลของแอปนี้เก็บในเครื่อง/Browser ที่ใช้งาน ไม่ได้เก็บบน GitHub</p>
+          <ol>
+            <li>กด <strong>เพิ่มเติม > Backup</strong></li>
+            <li>กด <strong>Export Backup JSON</strong></li>
+            <li>เก็บไฟล์ไว้ใน Google Drive / iCloud / Flash Drive</li>
+            <li>ควร Backup ทุกวันหลังใช้งานจริง</li>
+          </ol>
+        </article>
+
+        <article class="guide-card tips">
+          <span class="guide-no">6</span>
+          <h3>ข้อแนะนำให้ใช้งานลื่น</h3>
+          <ul>
+            <li>อย่าล้างข้อมูล Browser ถ้ายังไม่ได้ Backup</li>
+            <li>ถ้าใช้หลายเครื่อง ข้อมูลจะไม่ sync กันเอง ต้อง Export/Import Backup</li>
+            <li>เริ่มใช้งานจริงจากสินค้า 3–5 รายการก่อน เพื่อทดสอบตัวเลข</li>
+            <li>ถ้าหน้าเว็บไม่อัปเดต ให้กด Ctrl+F5 หรือปิด/เปิด PWA ใหม่</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="panel guide-flow">
+        <h3>Flow ใช้งานประจำวันที่แนะนำ</h3>
+        <div class="flow-row">
+          <div>เปิดแอป</div>
+          <span>→</span>
+          <div>ขายของ</div>
+          <span>→</span>
+          <div>รับเงิน/ดูยอดค้าง</div>
+          <span>→</span>
+          <div>ดูสรุป</div>
+          <span>→</span>
+          <div>Backup</div>
+        </div>
+      </div>
+    </section>
+
     <section id="more" class="page">
       <div class="page-head">
         <div>
@@ -548,6 +656,13 @@
           <strong>รายงาน</strong>
           <small>ดูยอดขาย กำไร และ Export</small>
         </button>
+
+        <button class="more-card help-card" data-open-tab="help" type="button">
+          <span>📘</span>
+          <strong>คู่มือใช้งาน</strong>
+          <small>เริ่มต้นใช้งาน / วิธีขาย / Backup</small>
+        </button>
+
         <button class="more-card" data-open-tab="backup" type="button">
           <span>☁️</span>
           <strong>Backup</strong>
@@ -567,6 +682,7 @@
       <div class="panel backup-panel">
         <h3>สำรองข้อมูล</h3>
         <p><strong>สำคัญ:</strong> ข้อมูล App นี้เก็บใน Browser/เครื่องที่ใช้งาน ถ้าล้าง Browser หรือเปลี่ยนเครื่อง ข้อมูลอาจหายได้</p>
+        <div class="backup-reminder"><strong>แนะนำ:</strong> หลังใช้งานจริงทุกวัน ให้ Export Backup เก็บไว้ 1 ไฟล์</div>
         <div class="form-actions">
           <button class="primary-btn" id="exportBackupBtn">Export Backup JSON</button>
           <label class="file-btn">Import Backup JSON

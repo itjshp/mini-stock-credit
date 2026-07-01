@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong",
   "short_name": "Khaikhong",
-  "description": "Khaikhong แอปขายของแบบ Easy POS Clean MVP สำหรับสต็อก กำไร และลูกหนี้เครดิต",
+  "description": "Khaikhong Easy POS Stable MVP พร้อมคู่มือใช้งาน สำหรับขายของ สต็อก กำไร และลูกหนี้เครดิต",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

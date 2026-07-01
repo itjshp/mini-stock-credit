@@ -12,12 +12,13 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Modern Clean POS • Local-first • v0.4</p>
+        <p class="eyebrow">Modern Clean POS • Demo/Pro • v0.5</p>
         <h1>Mini Stock Credit</h1>
         <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
       </div>
       <div class="hero-actions">
         <button class="hero-btn" data-open-tab="sale">ขายสินค้า</button>
+        <button class="hero-btn upgrade" data-open-tab="plan"><span id="planBadge">DEMO</span></button>
         <button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button>
       </div>
     </div>
@@ -31,6 +32,7 @@
     <button data-tab="customers" class="tab">ลูกค้า</button>
     <button data-tab="payments" class="tab">รับชำระ</button>
     <button data-tab="reports" class="tab">รายงาน</button>
+    <button data-tab="plan" class="tab tab-upgrade">Upgrade</button>
     <button data-tab="backup" class="tab">Backup</button>
   </nav>
 
@@ -148,12 +150,12 @@
             <label>สินค้า<select id="saleProduct" required></select></label>
 
             <div class="form-row">
-              <label>จำนวนขาย<input id="saleQty" type="number" min="0.01" step="0.01" required></label>
-              <label>ราคาขายต่อหน่วย<input id="saleUnitPrice" type="number" min="0" step="0.01" required></label>
+              <label>จำนวนขาย<input id="saleQty" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
+              <label>ราคาขายต่อหน่วย<input id="saleUnitPrice" type="number" min="0" step="0.01" required data-keypad="true"></label>
             </div>
 
             <div class="form-row">
-              <label>รับเงินแล้ว<input id="salePaidAmount" type="number" min="0" step="0.01" value="0"></label>
+              <label>รับเงินแล้ว<input id="salePaidAmount" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
               <label>หมายเหตุ<input id="saleNote" placeholder="ไม่บังคับ"></label>
             </div>
 
@@ -195,9 +197,9 @@
         <div id="purchaseEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการซื้อเข้า</div>
         <label>วันที่<input id="purchaseDate" type="date" required></label>
         <label>สินค้า<select id="purchaseProduct" required></select></label>
-        <label>จำนวนซื้อเข้า<input id="purchaseQty" type="number" min="0.01" step="0.01" required></label>
-        <label>ทุนต่อหน่วย<input id="purchaseUnitCost" type="number" min="0" step="0.01" required></label>
-        <label>ค่าใช้จ่ายเพิ่ม/ค่าส่ง<input id="purchaseExtraCost" type="number" min="0" step="0.01" value="0"></label>
+        <label>จำนวนซื้อเข้า<input id="purchaseQty" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
+        <label>ทุนต่อหน่วย<input id="purchaseUnitCost" type="number" min="0" step="0.01" required data-keypad="true"></label>
+        <label>ค่าใช้จ่ายเพิ่ม/ค่าส่ง<input id="purchaseExtraCost" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
         <label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="purchaseSubmitBtn">บันทึกซื้อเข้า</button>
@@ -223,9 +225,9 @@
         <input type="hidden" id="productId">
         <label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label>
         <label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label>
-        <label>ราคาขายปลีก<input id="productRetailPrice" type="number" min="0" step="0.01" value="0"></label>
-        <label>ราคาขายส่ง<input id="productWholesalePrice" type="number" min="0" step="0.01" value="0"></label>
-        <label>แจ้งเตือนต่ำกว่า<input id="productMinStock" type="number" min="0" step="1" value="0"></label>
+        <label>ราคาขายปลีก<input id="productRetailPrice" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
+        <label>ราคาขายส่ง<input id="productWholesalePrice" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
+        <label>แจ้งเตือนต่ำกว่า<input id="productMinStock" type="number" min="0" step="1" value="0" data-keypad="true"></label>
         <label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button>
@@ -263,8 +265,8 @@
           </select>
         </label>
         <label>เบอร์โทร<input id="customerPhone" placeholder="ไม่บังคับ"></label>
-        <label>วงเงินเครดิต<input id="customerCreditLimit" type="number" min="0" step="0.01" value="0"></label>
-        <label>เครดิตกี่วัน<input id="customerCreditDays" type="number" min="0" step="1" value="0"></label>
+        <label>วงเงินเครดิต<input id="customerCreditLimit" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
+        <label>เครดิตกี่วัน<input id="customerCreditDays" type="number" min="0" step="1" value="0" data-keypad="true"></label>
         <label>หมายเหตุ<input id="customerNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="customerSubmitBtn">บันทึกลูกค้า</button>
@@ -296,7 +298,7 @@
         <div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับชำระ</div>
         <label>วันที่<input id="paymentDate" type="date" required></label>
         <label>ลูกค้า<select id="paymentCustomer" required></select></label>
-        <label>จำนวนเงินที่รับ<input id="paymentAmount" type="number" min="0.01" step="0.01" required></label>
+        <label>จำนวนเงินที่รับ<input id="paymentAmount" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
         <label>ช่องทาง
           <select id="paymentMethod">
             <option value="เงินสด">เงินสด</option>
@@ -336,6 +338,84 @@
       </div>
     </section>
 
+
+    <section id="plan" class="page">
+      <div class="page-head">
+        <div>
+          <h2>แผนการใช้งาน / Upgrade</h2>
+          <p>หน้านี้ทำไว้สำหรับ Demo Product: ทดลองใช้ก่อน และปลดล็อกเป็น Pro ได้ภายหลัง</p>
+        </div>
+      </div>
+
+      <div class="plan-grid">
+        <article class="plan-card current-plan">
+          <div class="plan-title">
+            <span class="plan-chip" id="currentPlanChip">DEMO</span>
+            <h3>สถานะปัจจุบัน</h3>
+          </div>
+          <p id="planDescription">กำลังใช้งานแผน Demo</p>
+          <div class="usage-list">
+            <div><span>สินค้า</span><strong id="usageProducts">0 / 30</strong></div>
+            <div><span>ลูกค้า</span><strong id="usageCustomers">0 / 20</strong></div>
+            <div><span>รายการขาย</span><strong id="usageSales">0 / 100</strong></div>
+          </div>
+        </article>
+
+        <article class="plan-card">
+          <div class="plan-title">
+            <span class="plan-chip demo">FREE</span>
+            <h3>Demo</h3>
+          </div>
+          <ul class="feature-list">
+            <li>เพิ่มสินค้าได้สูงสุด 30 รายการ</li>
+            <li>เพิ่มลูกค้าได้สูงสุด 20 ราย</li>
+            <li>บันทึกขายได้สูงสุด 100 รายการ</li>
+            <li>Backup JSON ได้</li>
+            <li>Export CSV ถูกล็อก</li>
+          </ul>
+        </article>
+
+        <article class="plan-card pro">
+          <div class="plan-title">
+            <span class="plan-chip pro-chip">PRO</span>
+            <h3>Pro</h3>
+          </div>
+          <ul class="feature-list">
+            <li>ไม่จำกัดสินค้า ลูกค้า และรายการขาย</li>
+            <li>Export CSV / รายงานขาย</li>
+            <li>Number Pad แบบ POS</li>
+            <li>เหมาะสำหรับใช้งานจริงทุกวัน</li>
+            <li>พร้อมต่อยอด Cloud Sync / Barcode / ใบเสร็จ</li>
+          </ul>
+          <div class="unlock-box">
+            <label>ใส่รหัสปลดล็อก Pro
+              <input id="licenseKeyInput" placeholder="เช่น PRO2026">
+            </label>
+            <button class="primary-btn" id="unlockProBtn" type="button">ปลดล็อก Pro</button>
+            <button class="soft-btn" id="resetDemoBtn" type="button">กลับเป็น Demo</button>
+            <small>รหัส Demo สำหรับทดสอบ: <strong>PRO2026</strong></small>
+          </div>
+        </article>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>ฟีเจอร์ที่เหมาะจะทำเป็น Pro ในอนาคต</h3>
+          <span class="hint">ใช้เป็นไอเดียเวลาเอาไปทำสินค้า Demo/ขายจริง</span>
+        </div>
+        <div class="pro-feature-grid">
+          <div>📊 รายงานกำไรขั้นสูง</div>
+          <div>📒 สมุดลูกหนี้รายคน</div>
+          <div>📦 ไม่จำกัดสินค้า/ลูกค้า</div>
+          <div>🧾 Export Excel / PDF</div>
+          <div>🔢 POS Number Pad</div>
+          <div>☁️ Cloud Backup / Sync</div>
+          <div>🏷️ Barcode Scan</div>
+          <div>🖨️ พิมพ์/แชร์ใบเสร็จ</div>
+        </div>
+      </div>
+    </section>
+
     <section id="backup" class="page">
       <div class="page-head">
         <div>
@@ -362,6 +442,37 @@
       </div>
     </section>
   </main>
+
+
+  <div id="numberPadOverlay" class="numpad-overlay hidden">
+    <div class="numpad">
+      <div class="numpad-head">
+        <div>
+          <p>POS Number Pad</p>
+          <strong id="numpadTargetLabel">ใส่ตัวเลข</strong>
+        </div>
+        <button id="numpadClose" class="numpad-close" type="button">×</button>
+      </div>
+      <div id="numpadDisplay" class="numpad-display">0</div>
+      <div class="numpad-grid">
+        <button type="button" data-num="7">7</button>
+        <button type="button" data-num="8">8</button>
+        <button type="button" data-num="9">9</button>
+        <button type="button" data-num="4">4</button>
+        <button type="button" data-num="5">5</button>
+        <button type="button" data-num="6">6</button>
+        <button type="button" data-num="1">1</button>
+        <button type="button" data-num="2">2</button>
+        <button type="button" data-num="3">3</button>
+        <button type="button" data-num="0">0</button>
+        <button type="button" data-num="00">00</button>
+        <button type="button" data-num=".">.</button>
+        <button type="button" id="numpadBack">⌫</button>
+        <button type="button" id="numpadClear">C</button>
+        <button type="button" id="numpadOk" class="ok">ตกลง</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast hidden"></div>
   <script src="app.js"></script>

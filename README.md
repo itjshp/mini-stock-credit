@@ -1,15 +1,16 @@
 # Mini Stock Credit PWA
 
-เวอร์ชัน v0.4 — Modern Clean POS UI
+เวอร์ชัน v0.5 — POS Upgrade + Demo/Pro Foundation
 
-ฟีเจอร์หลัก:
-- UI แนว Modern Clean POS
-- หน้า Dashboard ใหม่
-- หน้า "ขาย POS" พร้อมค้นหาสินค้าและปุ่มเลือกสินค้าเร็ว
-- เพิ่ม/แก้ไข/ลบสินค้า ลูกค้า ซื้อเข้า ขาย รับชำระ
-- คำนวณสต็อก ต้นทุนเฉลี่ย กำไร และลูกหนี้ใหม่อัตโนมัติ
-- Backup / Restore เป็น JSON
-- Export รายงานขายเป็น CSV
+ฟีเจอร์ใหม่:
+- POS Number Pad สำหรับช่องตัวเลข
+- Color Refresh ให้สีเด่นขึ้น
+- หน้า Upgrade / Plan
+- สถานะ Demo / Pro
+- Demo จำกัดสินค้า 30 รายการ, ลูกค้า 20 ราย, รายการขาย 100 รายการ
+- Pro ปลดล็อกด้วยรหัสทดสอบ `PRO2026`
+- Export CSV ล็อกไว้เป็นฟีเจอร์ Pro
+- ยังคงข้อมูลเดิมใน IndexedDB ไม่ได้เก็บบน GitHub
 
 ## วิธีอัปเดต GitHub Pages
 
@@ -21,5 +22,5 @@
 
 ## หมายเหตุสำคัญ
 
-ข้อมูลจริงเก็บใน Browser/เครื่องที่ใช้งานด้วย IndexedDB ไม่ได้เก็บบน GitHub
-ควร Export Backup เป็นประจำ
+ระบบ Demo/Pro ใน v0.5 เป็นแบบ Local Demo สำหรับทดลองแนวคิดสินค้า ยังไม่ใช่ระบบ License ป้องกันจริงระดับ Production
+ถ้าจะขายจริงควรทำ Backend ตรวจสอบ License / Email / Device เพิ่มภายหลัง

@@ -519,3 +519,52 @@ input[data-keypad="true"]{
     font-size:26px;
   }
 }
+
+
+/* v0.9: Clean MVP - hide monetization and simplify sales flow */
+.hero-actions .upgrade,
+.tab-upgrade{
+  display:none !important;
+}
+.sale-actions #saleSubmitBtn{
+  display:none !important;
+}
+.sale-actions{
+  grid-template-columns:1fr 1fr;
+}
+.sale-actions #saveCartBtn{
+  grid-column:1 / -1;
+  font-size:18px;
+  padding:18px 14px;
+}
+.sale-actions #addToCartBtn{
+  font-size:16px;
+  padding:15px 14px;
+}
+.sale-actions #clearSaleForm{
+  background:#f3f6f5;
+}
+.easy-steps div{
+  border-top:3px solid transparent;
+}
+.easy-steps div:nth-child(1){border-top-color:#0f766e}
+.easy-steps div:nth-child(2){border-top-color:#2563eb}
+.easy-steps div:nth-child(3){border-top-color:#f97316}
+.pos-left .panel:first-child,
+.pos-card{
+  box-shadow:0 22px 54px rgba(15,118,110,.13);
+}
+.product-tile{
+  border-width:2px;
+}
+.product-tile:active{
+  transform:scale(.99);
+}
+.more-card.premium{
+  display:none !important;
+}
+@media(max-width:720px){
+  .sale-actions{
+    grid-template-columns:1fr;
+  }
+}

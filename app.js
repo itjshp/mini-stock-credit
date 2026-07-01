@@ -36,37 +36,16 @@ function setPlan(plan) {
   renderPlanUI();
 }
 function demoLimitReached(type) {
-  if (isPro()) return false;
-  if (type === "products") return state.products.length >= DEMO_LIMITS.products;
-  if (type === "customers") return state.customers.length >= DEMO_LIMITS.customers;
-  if (type === "sales") return state.sales.length >= DEMO_LIMITS.sales;
   return false;
 }
 function showUpgradeMessage(featureName) {
-  alert(`${featureName} เป็นฟีเจอร์สำหรับ Pro\\n\\nรหัสทดสอบสำหรับปลดล็อก: PRO2026`);
-  switchTab("plan");
+  alert(`${featureName} จะเปิดให้ใช้งานในเวอร์ชัน Pro ภายหลัง`);
 }
 function renderPlanUI() {
-  const pro = isPro();
-  const badge = $("planBadge");
-  if (badge) badge.textContent = pro ? "PRO" : "DEMO";
-  const chip = $("currentPlanChip");
-  if (chip) {
-    chip.textContent = pro ? "PRO" : "DEMO";
-    chip.className = pro ? "plan-chip pro-chip" : "plan-chip";
-  }
-  const desc = $("planDescription");
-  if (desc) desc.textContent = pro ? "ปลดล็อก Pro แล้ว ใช้งานได้ไม่จำกัดในเครื่องนี้" : "กำลังใช้งาน Demo สำหรับทดลอง/นำเสนอ";
-  const up = $("usageProducts");
-  if (up) up.textContent = pro ? `${state.products.length} / ไม่จำกัด` : `${state.products.length} / ${DEMO_LIMITS.products}`;
-  const uc = $("usageCustomers");
-  if (uc) uc.textContent = pro ? `${state.customers.length} / ไม่จำกัด` : `${state.customers.length} / ${DEMO_LIMITS.customers}`;
-  const us = $("usageSales");
-  if (us) us.textContent = pro ? `${state.sales.length} / ไม่จำกัด` : `${state.sales.length} / ${DEMO_LIMITS.sales}`;
   const exportBtn = $("exportCsvBtn");
   if (exportBtn) {
-    exportBtn.classList.toggle("locked", !pro);
-    exportBtn.textContent = pro ? "Export CSV" : "Export CSV (Pro)";
+    exportBtn.classList.remove("locked");
+    exportBtn.textContent = "Export CSV";
   }
 }
 
@@ -568,7 +547,6 @@ function clearSaleCart() {
 }
 async function saveSaleCart() {
   if (!saleCart.length) return alert("ยังไม่มีสินค้าในบิล");
-  if (demoLimitReached("sales") || (!isPro() && state.sales.length + saleCart.length > DEMO_LIMITS.sales)) return showUpgradeMessage("บันทึกรายการขายเกินจำนวน Demo");
   const paymentType = $("salePaymentType").value;
   const customerId = $("saleCustomer").value;
   if (paymentType === "credit" && !customerId) return alert("ขายเครดิตต้องเลือกลูกค้า");
@@ -621,11 +599,11 @@ $("saveCartBtn").addEventListener("click", saveSaleCart);
 $("clearCartBtn").addEventListener("click", clearSaleCart);
 $("cancelPaymentEdit").addEventListener("click", resetPaymentForm);
 
-$("productForm").addEventListener("submit", async (e)=>{e.preventDefault(); const id=$("productId").value||uid(); if(!$("productId").value && demoLimitReached("products")) return showUpgradeMessage("เพิ่มสินค้าเกินจำนวน Demo"); const existing=state.products.find(p=>p.id===id)||{}; await put("products",{...existing,id,name:$("productName").value.trim(),unit:$("productUnit").value.trim(),retailPrice:Number($("productRetailPrice").value||0),wholesalePrice:Number($("productWholesalePrice").value||0),minStock:Number($("productMinStock").value||0),note:$("productNote").value.trim(),stockQty:Number(existing.stockQty||0),avgCost:Number(existing.avgCost||0),updatedAt:new Date().toISOString()}); resetProductForm(); showToast("บันทึกสินค้าแล้ว"); await refreshState();});
+$("productForm").addEventListener("submit", async (e)=>{e.preventDefault(); const id=$("productId").value||uid(); const existing=state.products.find(p=>p.id===id)||{}; await put("products",{...existing,id,name:$("productName").value.trim(),unit:$("productUnit").value.trim(),retailPrice:Number($("productRetailPrice").value||0),wholesalePrice:Number($("productWholesalePrice").value||0),minStock:Number($("productMinStock").value||0),note:$("productNote").value.trim(),stockQty:Number(existing.stockQty||0),avgCost:Number(existing.avgCost||0),updatedAt:new Date().toISOString()}); resetProductForm(); showToast("บันทึกสินค้าแล้ว"); await refreshState();});
 window.editProduct=(id)=>{const p=state.products.find(x=>x.id===id); if(!p)return; $("productId").value=p.id; $("productName").value=p.name||""; $("productUnit").value=p.unit||""; $("productRetailPrice").value=p.retailPrice||0; $("productWholesalePrice").value=p.wholesalePrice||0; $("productMinStock").value=p.minStock||0; $("productNote").value=p.note||""; $("productSubmitBtn").textContent="อัปเดตสินค้า"; switchTab("products");};
 window.deleteProduct=async(id)=>{const used=state.purchases.some(x=>x.productId===id)||state.sales.some(x=>x.productId===id); if(used)return alert("สินค้านี้มีประวัติซื้อ/ขายแล้ว ยังไม่ควรลบ ให้แก้ชื่อแทน"); if(confirm("ลบสินค้านี้ใช่ไหม?")){await remove("products",id); await refreshState();}};
 
-$("customerForm").addEventListener("submit", async (e)=>{e.preventDefault(); const id=$("customerId").value||uid(); if(!$("customerId").value && demoLimitReached("customers")) return showUpgradeMessage("เพิ่มลูกค้าเกินจำนวน Demo"); const existing=state.customers.find(c=>c.id===id)||{}; await put("customers",{...existing,id,name:$("customerName").value.trim(),type:$("customerType").value,phone:$("customerPhone").value.trim(),creditLimit:Number($("customerCreditLimit").value||0),creditDays:Number($("customerCreditDays").value||0),note:$("customerNote").value.trim(),updatedAt:new Date().toISOString()}); resetCustomerForm(); showToast("บันทึกลูกค้าแล้ว"); await refreshState();});
+$("customerForm").addEventListener("submit", async (e)=>{e.preventDefault(); const id=$("customerId").value||uid(); const existing=state.customers.find(c=>c.id===id)||{}; await put("customers",{...existing,id,name:$("customerName").value.trim(),type:$("customerType").value,phone:$("customerPhone").value.trim(),creditLimit:Number($("customerCreditLimit").value||0),creditDays:Number($("customerCreditDays").value||0),note:$("customerNote").value.trim(),updatedAt:new Date().toISOString()}); resetCustomerForm(); showToast("บันทึกลูกค้าแล้ว"); await refreshState();});
 window.editCustomer=(id)=>{const c=state.customers.find(x=>x.id===id); if(!c)return; $("customerId").value=c.id; $("customerName").value=c.name||""; $("customerType").value=c.type||"ทั่วไป"; $("customerPhone").value=c.phone||""; $("customerCreditLimit").value=c.creditLimit||0; $("customerCreditDays").value=c.creditDays||0; $("customerNote").value=c.note||""; $("customerSubmitBtn").textContent="อัปเดตลูกค้า"; switchTab("customers");};
 window.deleteCustomer=async(id)=>{const used=state.sales.some(x=>x.customerId===id)||state.payments.some(x=>x.customerId===id); if(used)return alert("ลูกค้านี้มีประวัติขาย/รับชำระแล้ว ยังไม่ควรลบ ให้แก้ชื่อแทน"); if(confirm("ลบลูกค้านี้ใช่ไหม?")){await remove("customers",id); await refreshState();}};
 
@@ -638,7 +616,7 @@ function updateSalePreview(){const product=state.products.find(p=>p.id===$("sale
 $("saleProduct").addEventListener("change",()=>{const p=state.products.find(x=>x.id===$("saleProduct").value); if(p && !$("saleUnitPrice").value) $("saleUnitPrice").value=p.retailPrice||p.wholesalePrice||0; updateSalePreview();});
 $("salePaymentType").addEventListener("change",()=>{if($("salePaymentType").value==="cash"){$("salePaidAmount").value=Number($("saleQty").value||0)*Number($("saleUnitPrice").value||0)}else{$("salePaidAmount").value=0}});
 
-$("saleForm").addEventListener("submit", async(e)=>{e.preventDefault(); const product=state.products.find(p=>p.id===$("saleProduct").value); if(!product)return alert("กรุณาเลือกสินค้า"); const id=$("saleId").value||uid(); if(!$("saleId").value && demoLimitReached("sales")) return showUpgradeMessage("บันทึกรายการขายเกินจำนวน Demo"); const existing=state.sales.find(s=>s.id===id)||{}; const qty=Number($("saleQty").value||0); const oldQtySameProduct=existing.productId===product.id?Number(existing.qty||0):0; const available=Number(product.stockQty||0)+oldQtySameProduct; if(qty>available)return alert(`สต็อกไม่พอ เหลือที่ขายได้ ${money(available)} ${product.unit||""}`); const paymentType=$("salePaymentType").value; const customerId=$("saleCustomer").value; if(paymentType==="credit"&&!customerId)return alert("ขายเครดิตต้องเลือกลูกค้า"); const unitPrice=Number($("saleUnitPrice").value||0); const revenue=qty*unitPrice; let paidAmount=Number($("salePaidAmount").value||0); if(paymentType==="cash")paidAmount=revenue; if(paidAmount>revenue)return alert("รับเงินแล้วห้ามมากกว่ายอดขาย"); await put("sales",{...existing,id,date:$("saleDate").value,customerId:customerId||"",productId:product.id,qty,unitPrice,revenue,cost:0,profit:0,paymentType,paidAmount,note:$("saleNote").value.trim(),createdAt:existing.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}); await rebuildInventoryFromTransactions(); resetSaleForm(); showToast(existing.id?"อัปเดตรายการขายแล้ว":"บันทึกขายแล้ว"); await refreshState();});
+$("saleForm").addEventListener("submit", async(e)=>{e.preventDefault(); const product=state.products.find(p=>p.id===$("saleProduct").value); if(!product)return alert("กรุณาเลือกสินค้า"); const id=$("saleId").value||uid(); const existing=state.sales.find(s=>s.id===id)||{}; const qty=Number($("saleQty").value||0); const oldQtySameProduct=existing.productId===product.id?Number(existing.qty||0):0; const available=Number(product.stockQty||0)+oldQtySameProduct; if(qty>available)return alert(`สต็อกไม่พอ เหลือที่ขายได้ ${money(available)} ${product.unit||""}`); const paymentType=$("salePaymentType").value; const customerId=$("saleCustomer").value; if(paymentType==="credit"&&!customerId)return alert("ขายเครดิตต้องเลือกลูกค้า"); const unitPrice=Number($("saleUnitPrice").value||0); const revenue=qty*unitPrice; let paidAmount=Number($("salePaidAmount").value||0); if(paymentType==="cash")paidAmount=revenue; if(paidAmount>revenue)return alert("รับเงินแล้วห้ามมากกว่ายอดขาย"); await put("sales",{...existing,id,date:$("saleDate").value,customerId:customerId||"",productId:product.id,qty,unitPrice,revenue,cost:0,profit:0,paymentType,paidAmount,note:$("saleNote").value.trim(),createdAt:existing.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()}); await rebuildInventoryFromTransactions(); resetSaleForm(); showToast(existing.id?"อัปเดตรายการขายแล้ว":"บันทึกขายแล้ว"); await refreshState();});
 window.editSale=(id)=>{const s=state.sales.find(x=>x.id===id); if(!s)return; $("saleId").value=s.id; $("saleDate").value=s.date||today(); $("saleCustomer").value=s.customerId||""; $("saleProduct").value=s.productId||""; $("saleQty").value=s.qty||""; $("saleUnitPrice").value=s.unitPrice||""; $("salePaymentType").value=s.paymentType||"cash"; $("salePaidAmount").value=s.paidAmount||0; $("saleNote").value=s.note||""; $("saleSubmitBtn").textContent="อัปเดตรายการขาย"; $("saleEditBanner").classList.remove("hidden"); $("cancelSaleEdit").classList.remove("hidden"); updateSalePreview(); switchTab("sale");};
 window.deleteSale=async(id)=>{const item=state.sales.find(x=>x.id===id); if(!item)return; if(confirm(`ลบรายการขาย?\n\nสินค้า: ${productName(item.productId)}\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nยอดขาย: ${money(item.revenue)} บาท\n\nระบบจะคืนสต็อกและคำนวณกำไร/ลูกหนี้ใหม่`)){await remove("sales",id); await rebuildInventoryFromTransactions(); await refreshState(); showToast("ลบรายการขายแล้ว");}};
 
@@ -647,9 +625,9 @@ window.editPayment=(id)=>{const p=state.payments.find(x=>x.id===id); if(!p)retur
 window.deletePayment=async(id)=>{const item=state.payments.find(x=>x.id===id); if(!item)return; if(confirm(`ลบรายการรับชำระ?\n\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nจำนวนเงิน: ${money(item.amount)} บาท\n\nยอดลูกหนี้จะถูกคำนวณใหม่`)){await remove("payments",id); await refreshState(); showToast("ลบรายการรับชำระแล้ว");}};
 
 function download(filename, content, type="application/octet-stream"){const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);}
-$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Khaikhong",version:"0.8",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
+$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Khaikhong",version:"0.9",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
 $("importBackupInput").addEventListener("change",async(e)=>{const file=e.target.files[0]; if(!file)return; const text=await file.text(); const data=JSON.parse(text); if(!confirm("นำเข้า Backup จะเขียนข้อมูลทับในเครื่องนี้ ต้องการทำต่อไหม?"))return; for(const store of STORES)await clearStore(store); for(const store of STORES){for(const item of(data[store]||[]))await put(store,item)} await rebuildInventoryFromTransactions(); showToast("นำเข้า Backup แล้ว"); await refreshState();});
-$("exportCsvBtn").addEventListener("click",()=>{if(!isPro()) return showUpgradeMessage("Export CSV"); const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; getFilteredSales().forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
+$("exportCsvBtn").addEventListener("click",()=>{const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; getFilteredSales().forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
 $("clearAllBtn").addEventListener("click",async()=>{if(!confirm("ยืนยันล้างข้อมูลทั้งหมด? แนะนำให้ Export Backup ก่อน"))return; for(const store of STORES)await clearStore(store); resetProductForm(); resetCustomerForm(); resetPurchaseForm(); resetSaleForm(); resetPaymentForm(); await refreshState(); showToast("ล้างข้อมูลแล้ว");});
 
 

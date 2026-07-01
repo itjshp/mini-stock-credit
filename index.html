@@ -12,13 +12,12 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Easy POS • ใช้งานเร็ว • v0.8</p>
+        <p class="eyebrow">Easy POS • Clean MVP • v0.9</p>
         <h1>Khaikhong</h1>
         <p class="subtitle">ขายง่าย • คุมสต็อก • ดูกำไร • จดลูกหนี้</p>
       </div>
       <div class="hero-actions">
         <button class="hero-btn" data-open-tab="sale">ขายของ</button>
-        <button class="hero-btn upgrade" data-open-tab="plan"><span id="planBadge">DEMO</span></button>
         <button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button>
       </div>
     </div>
@@ -35,7 +34,6 @@
     <button data-tab="ledger" class="tab secondary-tab">ลูกหนี้</button>
     <button data-tab="payments" class="tab secondary-tab">รับชำระ</button>
     <button data-tab="reports" class="tab secondary-tab">รายงาน</button>
-    <button data-tab="plan" class="tab tab-upgrade secondary-tab">Upgrade</button>
     <button data-tab="backup" class="tab secondary-tab">Backup</button>
   </nav>
 
@@ -118,7 +116,7 @@
 
       <div class="easy-steps">
         <div><b>1</b><span>เลือกสินค้า</span></div>
-        <div><b>2</b><span>กดใส่บิล</span></div>
+        <div><b>2</b><span>เพิ่มลงบิล</span></div>
         <div><b>3</b><span>บันทึกขาย</span></div>
       </div>
 
@@ -202,9 +200,9 @@
             </div>
 
             <div class="form-actions sale-actions">
-              <button class="soft-btn" type="button" id="addToCartBtn">+ ใส่บิล</button>
-              <button class="primary-btn big" type="button" id="saveCartBtn">3. บันทึกขาย</button>
-              <button class="ghost-btn" type="submit" id="saleSubmitBtn">บันทึกรายการเดียว</button>
+              <button class="soft-btn" type="button" id="addToCartBtn">+ เพิ่มลงบิล</button>
+              <button class="primary-btn big" type="button" id="saveCartBtn">บันทึกขาย</button>
+              <button class="ghost-btn" type="submit" id="saleSubmitBtn">ขายทันที</button>
               <button class="soft-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
               <button class="ghost-btn" type="button" id="clearSaleForm">เริ่มใหม่</button>
             </div>
@@ -446,8 +444,8 @@
     <section id="plan" class="page">
       <div class="page-head">
         <div>
-          <h2>แผนการใช้งาน / Upgrade</h2>
-          <p>หน้านี้ทำไว้สำหรับ Demo Product: ทดลองใช้ก่อน และปลดล็อกเป็น Pro ได้ภายหลัง</p>
+          <h2>ฟีเจอร์พรีเมียม (ซ่อนไว้ก่อน)</h2>
+          <p>ส่วนนี้ซ่อนไว้ก่อน จนกว่าระบบหลักจะสมบูรณ์</p>
         </div>
       </div>
 
@@ -549,11 +547,6 @@
           <span>📊</span>
           <strong>รายงาน</strong>
           <small>ดูยอดขาย กำไร และ Export</small>
-        </button>
-        <button class="more-card premium" data-open-tab="plan" type="button">
-          <span>⭐</span>
-          <strong>Upgrade</strong>
-          <small>Demo / Pro / ฟีเจอร์พรีเมียม</small>
         </button>
         <button class="more-card" data-open-tab="backup" type="button">
           <span>☁️</span>

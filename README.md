@@ -1,26 +1,27 @@
 # Mini Stock Credit PWA
 
-เวอร์ชัน v0.5 — POS Upgrade + Demo/Pro Foundation
+เวอร์ชัน v0.6 — Customer Ledger + Better Reports
 
 ฟีเจอร์ใหม่:
-- POS Number Pad สำหรับช่องตัวเลข
-- Color Refresh ให้สีเด่นขึ้น
-- หน้า Upgrade / Plan
-- สถานะ Demo / Pro
-- Demo จำกัดสินค้า 30 รายการ, ลูกค้า 20 ราย, รายการขาย 100 รายการ
-- Pro ปลดล็อกด้วยรหัสทดสอบ `PRO2026`
-- Export CSV ล็อกไว้เป็นฟีเจอร์ Pro
-- ยังคงข้อมูลเดิมใน IndexedDB ไม่ได้เก็บบน GitHub
+- เพิ่มหน้า ลูกหนี้ / สมุดบัญชีลูกค้า
+- ดูยอดค้าง ยอดขายเครดิต ยอดรับชำระ และวงเงินเครดิตรายลูกค้า
+- ดูรายการเคลื่อนไหวลูกหนี้: ขายเครดิต / รับชำระ
+- เพิ่มปุ่ม "สมุดบัญชี" จากหน้าลูกค้า
+- เพิ่มตัวกรองรายงานขาย: วันที่, ลูกค้า, สินค้า, ประเภทชำระเงิน
+- เพิ่มสรุปรายงานจากตัวกรอง: ยอดขาย, ต้นทุน, กำไร, จำนวนรายการ
+- Export CSV ใช้ข้อมูลตามตัวกรองปัจจุบัน
+- ยังคงระบบ Demo/Pro และ POS Number Pad จาก v0.5
 
 ## วิธีอัปเดต GitHub Pages
 
-1. แตกไฟล์ zip
-2. อัปโหลดไฟล์ทั้งหมดทับของเดิมใน GitHub Repository
-3. Commit changes
-4. รอ GitHub Pages deploy 1-3 นาที
-5. เปิดเว็บแล้วกด Ctrl+F5 หรือปิด/เปิด PWA ใหม่ เพราะมี cache
+1. Export Backup JSON จากแอปเดิมก่อน
+2. แตกไฟล์ zip
+3. อัปโหลดไฟล์ทั้งหมดทับของเดิมใน GitHub Repository
+4. Commit changes
+5. รอ GitHub Pages deploy 1-3 นาที
+6. เปิดเว็บแล้วกด Ctrl+F5 หรือปิด/เปิด PWA ใหม่ เพราะมี cache
 
 ## หมายเหตุสำคัญ
 
-ระบบ Demo/Pro ใน v0.5 เป็นแบบ Local Demo สำหรับทดลองแนวคิดสินค้า ยังไม่ใช่ระบบ License ป้องกันจริงระดับ Production
-ถ้าจะขายจริงควรทำ Backend ตรวจสอบ License / Email / Device เพิ่มภายหลัง
+ข้อมูลจริงเก็บใน Browser/เครื่องที่ใช้งานด้วย IndexedDB ไม่ได้เก็บบน GitHub
+ควร Export Backup เป็นประจำ

@@ -12,7 +12,7 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Modern Clean POS • Demo/Pro • v0.5</p>
+        <p class="eyebrow">Modern Clean POS • Ledger/Reports • v0.6</p>
         <h1>Mini Stock Credit</h1>
         <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
       </div>
@@ -30,6 +30,7 @@
     <button data-tab="purchase" class="tab">ซื้อเข้า</button>
     <button data-tab="products" class="tab">สินค้า</button>
     <button data-tab="customers" class="tab">ลูกค้า</button>
+    <button data-tab="ledger" class="tab">ลูกหนี้</button>
     <button data-tab="payments" class="tab">รับชำระ</button>
     <button data-tab="reports" class="tab">รายงาน</button>
     <button data-tab="plan" class="tab tab-upgrade">Upgrade</button>
@@ -47,6 +48,7 @@
           <button class="primary-btn" data-open-tab="sale">+ ขายสินค้า</button>
           <button class="soft-btn" data-open-tab="purchase">+ ซื้อเข้า</button>
           <button class="soft-btn" data-open-tab="payments">+ รับชำระ</button>
+          <button class="soft-btn" data-open-tab="ledger">ดู ลูกหนี้</button>
         </div>
       </div>
 
@@ -285,6 +287,54 @@
       </div>
     </section>
 
+
+    <section id="ledger" class="page">
+      <div class="page-head">
+        <div>
+          <h2>ลูกหนี้ / สมุดบัญชีลูกค้า</h2>
+          <p>ดูยอดค้าง ประวัติขายเครดิต และประวัติรับชำระของลูกค้าแต่ละราย</p>
+        </div>
+        <div class="quick-actions">
+          <button class="soft-btn" data-open-tab="customers">+ เพิ่มลูกค้า</button>
+          <button class="primary-btn" data-open-tab="payments">+ รับชำระ</button>
+        </div>
+      </div>
+
+      <div class="ledger-layout">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>เลือกลูกค้า</h3>
+            <span class="hint">เรียงลูกค้าที่มียอดค้างไว้ด้านบน</span>
+          </div>
+          <input id="ledgerCustomerSearch" class="search-input" placeholder="ค้นหาลูกค้า">
+          <div id="ledgerCustomerList" class="stack-list"></div>
+        </div>
+
+        <div class="panel ledger-detail">
+          <div class="panel-head">
+            <div>
+              <h3 id="ledgerCustomerName">เลือกชื่อลูกค้า</h3>
+              <span class="hint" id="ledgerCustomerMeta">ดูประวัติลูกหนี้รายคน</span>
+            </div>
+            <button class="soft-btn" id="ledgerClearSelection" type="button">ล้างการเลือก</button>
+          </div>
+
+          <div class="ledger-kpi-grid">
+            <div class="ledger-kpi"><span>ยอดค้างปัจจุบัน</span><strong id="ledgerBalance">0.00</strong></div>
+            <div class="ledger-kpi"><span>ยอดขายเครดิต</span><strong id="ledgerCreditSales">0.00</strong></div>
+            <div class="ledger-kpi"><span>รับชำระแล้ว</span><strong id="ledgerPayments">0.00</strong></div>
+            <div class="ledger-kpi"><span>วงเงินเครดิต</span><strong id="ledgerLimit">0.00</strong></div>
+          </div>
+
+          <div class="panel-head sub-head">
+            <h3>รายการเคลื่อนไหว</h3>
+            <span class="hint">ขายเครดิต = เพิ่มหนี้ / รับชำระ = ลดหนี้</span>
+          </div>
+          <div id="ledgerEntries" class="stack-list"></div>
+        </div>
+      </div>
+    </section>
+
     <section id="payments" class="page">
       <div class="page-head">
         <div>
@@ -326,6 +376,33 @@
           <p>รายการขายทั้งหมด พร้อม Export CSV</p>
         </div>
         <button class="soft-btn" id="exportCsvBtn">Export CSV</button>
+      </div>
+
+
+      <div class="panel report-filter">
+        <div class="panel-head">
+          <h3>ตัวกรองรายงาน</h3>
+          <button class="soft-btn" id="resetReportFilter" type="button">ล้างตัวกรอง</button>
+        </div>
+        <div class="form-grid">
+          <label>วันที่เริ่มต้น<input id="reportDateFrom" type="date"></label>
+          <label>วันที่สิ้นสุด<input id="reportDateTo" type="date"></label>
+          <label>ลูกค้า<select id="reportCustomer"></select></label>
+          <label>สินค้า<select id="reportProduct"></select></label>
+          <label>ประเภทชำระเงิน
+            <select id="reportPaymentType">
+              <option value="">ทั้งหมด</option>
+              <option value="cash">เงินสด/โอนแล้ว</option>
+              <option value="credit">เครดิต/ค้างชำระ</option>
+            </select>
+          </label>
+        </div>
+        <div class="report-summary">
+          <div><span>ยอดขาย</span><strong id="reportSumSales">0.00</strong></div>
+          <div><span>ต้นทุน</span><strong id="reportSumCost">0.00</strong></div>
+          <div><span>กำไร</span><strong id="reportSumProfit">0.00</strong></div>
+          <div><span>จำนวนรายการ</span><strong id="reportSumCount">0</strong></div>
+        </div>
       </div>
 
       <div class="panel">

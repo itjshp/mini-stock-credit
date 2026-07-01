@@ -9,6 +9,7 @@ const DEMO_LIMITS = { products: 30, customers: 20, sales: 100 };
 const PRO_KEYS = ["PRO2026", "MINI-PRO", "STOCK-PRO"];
 let currentNumberInput = null;
 let numberPadValue = "";
+let selectedLedgerCustomerId = "";
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -196,6 +197,8 @@ function renderAll() {
   renderCustomers();
   renderHistories();
   renderReports();
+  renderLedger();
+  renderReportFilters();
   renderProductQuickGrid();
   renderPlanUI();
   updateSalePreview();
@@ -205,6 +208,8 @@ function renderSelects() {
   setOptions("saleProduct", state.products, "เลือกสินค้า", p => `${p.name} | เหลือ ${money(p.stockQty)} ${p.unit || ""}`);
   setOptions("saleCustomer", state.customers, "เงินสดทั่วไป / ไม่ระบุลูกค้า", c => `${c.name} (${c.type || "ทั่วไป"})`);
   setOptions("paymentCustomer", state.customers, "เลือกลูกค้า", c => `${c.name} | ค้าง ${money(customerBalance(c.id))}`);
+  if ($("reportCustomer")) setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
+  if ($("reportProduct")) setOptions("reportProduct", state.products, "สินค้าทั้งหมด", p => p.name);
 }
 
 function renderDashboard() {
@@ -257,6 +262,7 @@ function renderCustomers() {
       <td class="${bal > 0 ? "negative" : ""}">${money(bal)}</td>
       <td>${money(c.creditLimit)} / ${Number(c.creditDays || 0)} วัน</td>
       <td><div class="row-actions">
+        <button class="small-btn" onclick="openCustomerLedger('${c.id}')">สมุดบัญชี</button>
         <button class="small-btn small-edit" onclick="editCustomer('${c.id}')">แก้ไข</button>
         <button class="small-btn small-danger" onclick="deleteCustomer('${c.id}')">ลบ</button>
       </div></td>
@@ -291,15 +297,155 @@ function renderHistories() {
   `).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติรับชำระ</strong></div></div>`;
 }
 
+
+function getCustomerLedgerEntries(customerId) {
+  const salesEntries = state.sales
+    .filter(s => s.customerId === customerId && s.paymentType === "credit")
+    .map(s => ({
+      type: "sale",
+      date: s.date,
+      createdAt: s.createdAt || "",
+      title: `ขายเครดิต: ${productName(s.productId)}`,
+      detail: `จำนวน ${money(s.qty)} • ราคา ${money(s.unitPrice)} • กำไร ${money(s.profit)}`,
+      amount: Number(s.revenue || 0),
+      id: s.id
+    }));
+
+  const paymentEntries = state.payments
+    .filter(p => p.customerId === customerId)
+    .map(p => ({
+      type: "payment",
+      date: p.date,
+      createdAt: p.createdAt || "",
+      title: `รับชำระ (${p.method || "-"})`,
+      detail: p.note || "รับชำระลูกหนี้",
+      amount: -Number(p.amount || 0),
+      id: p.id
+    }));
+
+  return [...salesEntries, ...paymentEntries]
+    .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function renderLedger() {
+  if (!$("ledgerCustomerList")) return;
+  const q = ($("ledgerCustomerSearch")?.value || "").trim().toLowerCase();
+  const list = state.customers
+    .map(c => ({ ...c, balance: customerBalance(c.id) }))
+    .filter(c => !q || `${c.name} ${c.phone || ""} ${c.type || ""}`.toLowerCase().includes(q))
+    .sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0));
+
+  $("ledgerCustomerList").innerHTML = list.map(c => `
+    <div class="list-item ledger-customer-card ${selectedLedgerCustomerId === c.id ? "active" : ""}" onclick="openCustomerLedger('${c.id}')">
+      <div>
+        <strong>${c.name}</strong>
+        <small>${c.type || "ทั่วไป"} ${c.phone ? "• " + c.phone : ""}</small>
+      </div>
+      <div class="${c.balance > 0 ? "negative" : "positive"} money">${money(c.balance)}</div>
+    </div>
+  `).join("") || `<div class="list-item"><div><strong>ยังไม่มีลูกค้า</strong><small>เพิ่มลูกค้าได้จากเมนูลูกค้า</small></div></div>`;
+
+  const customer = state.customers.find(c => c.id === selectedLedgerCustomerId);
+  if (!customer) {
+    $("ledgerCustomerName").textContent = "เลือกชื่อลูกค้า";
+    $("ledgerCustomerMeta").textContent = "ดูประวัติลูกหนี้รายคน";
+    $("ledgerBalance").textContent = money(0);
+    $("ledgerCreditSales").textContent = money(0);
+    $("ledgerPayments").textContent = money(0);
+    $("ledgerLimit").textContent = money(0);
+    $("ledgerEntries").innerHTML = `<div class="list-item"><div><strong>กรุณาเลือกลูกค้า</strong><small>เลือกลูกค้าด้านซ้ายเพื่อดูสมุดบัญชี</small></div></div>`;
+    return;
+  }
+
+  const entries = getCustomerLedgerEntries(customer.id);
+  const creditSales = state.sales
+    .filter(s => s.customerId === customer.id && s.paymentType === "credit")
+    .reduce((sum, s) => sum + Number(s.revenue || 0), 0);
+  const paid = state.payments
+    .filter(p => p.customerId === customer.id)
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  $("ledgerCustomerName").textContent = customer.name;
+  $("ledgerCustomerMeta").textContent = `${customer.type || "ทั่วไป"} ${customer.phone ? "• " + customer.phone : ""}`;
+  $("ledgerBalance").textContent = money(customerBalance(customer.id));
+  $("ledgerCreditSales").textContent = money(creditSales);
+  $("ledgerPayments").textContent = money(paid);
+  $("ledgerLimit").textContent = money(customer.creditLimit || 0);
+
+  let running = 0;
+  const chronological = [...entries].reverse();
+  const balances = new Map();
+  chronological.forEach(e => {
+    running += Number(e.amount || 0);
+    balances.set(`${e.type}-${e.id}`, running);
+  });
+
+  $("ledgerEntries").innerHTML = entries.map(e => {
+    const amountClass = e.type === "sale" ? "entry-amount-plus" : "entry-amount-minus";
+    const amountText = `${e.type === "sale" ? "+" : "-"}${money(Math.abs(e.amount))}`;
+    const entryClass = e.type === "sale" ? "sale-entry" : "payment-entry";
+    const bal = balances.get(`${e.type}-${e.id}`) || 0;
+    return `
+      <div class="list-item ledger-entry ${entryClass}">
+        <div>
+          <strong>${e.title}</strong>
+          <small>${e.date} • ${e.detail}</small>
+          <small>ยอดคงเหลือหลังรายการนี้: ${money(Math.max(0, bal))}</small>
+        </div>
+        <div class="${amountClass}">${amountText}</div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติเครดิต</strong><small>รายการขายเครดิตและรับชำระจะแสดงที่นี่</small></div></div>`;
+}
+
+window.openCustomerLedger = (customerId) => {
+  selectedLedgerCustomerId = customerId;
+  renderLedger();
+  switchTab("ledger");
+};
+
+function getFilteredSales() {
+  const from = $("reportDateFrom")?.value || "";
+  const to = $("reportDateTo")?.value || "";
+  const customerId = $("reportCustomer")?.value || "";
+  const productId = $("reportProduct")?.value || "";
+  const paymentType = $("reportPaymentType")?.value || "";
+
+  return state.sales.filter(s => {
+    if (from && String(s.date || "") < from) return false;
+    if (to && String(s.date || "") > to) return false;
+    if (customerId && s.customerId !== customerId) return false;
+    if (productId && s.productId !== productId) return false;
+    if (paymentType && s.paymentType !== paymentType) return false;
+    return true;
+  });
+}
+
 function renderReports() {
-  $("reportSalesTable").innerHTML = state.sales.map(s => {
+  if (!$("reportSalesTable")) return;
+  const filtered = getFilteredSales();
+  const sumSales = filtered.reduce((sum, s) => sum + Number(s.revenue || 0), 0);
+  const sumCost = filtered.reduce((sum, s) => sum + Number(s.cost || 0), 0);
+  const sumProfit = filtered.reduce((sum, s) => sum + Number(s.profit || 0), 0);
+
+  if ($("reportSumSales")) $("reportSumSales").textContent = money(sumSales);
+  if ($("reportSumCost")) $("reportSumCost").textContent = money(sumCost);
+  if ($("reportSumProfit")) $("reportSumProfit").textContent = money(sumProfit);
+  if ($("reportSumCount")) $("reportSumCount").textContent = filtered.length.toLocaleString("th-TH");
+
+  $("reportSalesTable").innerHTML = filtered.map(s => {
     const paid = s.paymentType === "cash" ? "ชำระแล้ว" : (Number(s.paidAmount || 0) >= Number(s.revenue || 0) ? "ชำระแล้ว" : "เครดิต");
     return `<tr>
       <td>${s.date}</td><td>${customerName(s.customerId)}</td><td>${productName(s.productId)}</td><td>${money(s.qty)}</td>
       <td>${money(s.revenue)}</td><td>${money(s.cost)}</td><td class="${Number(s.profit) >= 0 ? "positive" : "negative"}">${money(s.profit)}</td><td>${paid}</td>
       <td><div class="row-actions"><button class="small-btn small-edit" onclick="editSale('${s.id}')">แก้ไข</button><button class="small-btn small-danger" onclick="deleteSale('${s.id}')">ลบ</button></div></td>
     </tr>`;
-  }).join("") || `<tr><td colspan="9">ยังไม่มีรายการขาย</td></tr>`;
+  }).join("") || `<tr><td colspan="9">ไม่พบรายการขายตามตัวกรอง</td></tr>`;
+}
+
+function renderReportFilters() {
+  if (!$("reportCustomer")) return;
+  // select options are handled by renderSelects; this function keeps report summary live
 }
 
 function renderProductQuickGrid() {
@@ -376,9 +522,9 @@ window.editPayment=(id)=>{const p=state.payments.find(x=>x.id===id); if(!p)retur
 window.deletePayment=async(id)=>{const item=state.payments.find(x=>x.id===id); if(!item)return; if(confirm(`ลบรายการรับชำระ?\n\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nจำนวนเงิน: ${money(item.amount)} บาท\n\nยอดลูกหนี้จะถูกคำนวณใหม่`)){await remove("payments",id); await refreshState(); showToast("ลบรายการรับชำระแล้ว");}};
 
 function download(filename, content, type="application/octet-stream"){const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);}
-$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Mini Stock Credit",version:"0.5",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
+$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Mini Stock Credit",version:"0.6",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
 $("importBackupInput").addEventListener("change",async(e)=>{const file=e.target.files[0]; if(!file)return; const text=await file.text(); const data=JSON.parse(text); if(!confirm("นำเข้า Backup จะเขียนข้อมูลทับในเครื่องนี้ ต้องการทำต่อไหม?"))return; for(const store of STORES)await clearStore(store); for(const store of STORES){for(const item of(data[store]||[]))await put(store,item)} await rebuildInventoryFromTransactions(); showToast("นำเข้า Backup แล้ว"); await refreshState();});
-$("exportCsvBtn").addEventListener("click",()=>{if(!isPro()) return showUpgradeMessage("Export CSV"); const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; state.sales.forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
+$("exportCsvBtn").addEventListener("click",()=>{if(!isPro()) return showUpgradeMessage("Export CSV"); const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; getFilteredSales().forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
 $("clearAllBtn").addEventListener("click",async()=>{if(!confirm("ยืนยันล้างข้อมูลทั้งหมด? แนะนำให้ Export Backup ก่อน"))return; for(const store of STORES)await clearStore(store); resetProductForm(); resetCustomerForm(); resetPurchaseForm(); resetSaleForm(); resetPaymentForm(); await refreshState(); showToast("ล้างข้อมูลแล้ว");});
 
 
@@ -443,6 +589,27 @@ $("resetDemoBtn").addEventListener("click", () => {
   }
 });
 
+
+
+["reportDateFrom","reportDateTo","reportCustomer","reportProduct","reportPaymentType"].forEach(id => {
+  const el = $(id);
+  if (el) el.addEventListener("input", renderReports);
+  if (el) el.addEventListener("change", renderReports);
+});
+if ($("resetReportFilter")) {
+  $("resetReportFilter").addEventListener("click", () => {
+    ["reportDateFrom","reportDateTo","reportCustomer","reportProduct","reportPaymentType"].forEach(id => {
+      const el = $(id);
+      if (el) el.value = "";
+    });
+    renderReports();
+  });
+}
+if ($("ledgerCustomerSearch")) $("ledgerCustomerSearch").addEventListener("input", renderLedger);
+if ($("ledgerClearSelection")) $("ledgerClearSelection").addEventListener("click", () => {
+  selectedLedgerCustomerId = "";
+  renderLedger();
+});
 
 window.addEventListener("beforeinstallprompt",(e)=>{e.preventDefault(); deferredPrompt=e; $("installBtn").classList.remove("hidden");});
 $("installBtn").addEventListener("click",async()=>{if(!deferredPrompt)return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; $("installBtn").classList.add("hidden");});

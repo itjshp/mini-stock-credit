@@ -119,6 +119,28 @@ function customerBalance(customerId) {
   return Math.max(0, creditSales - payments);
 }
 
+function isSameDate(dateText, compareDate = today()) {
+  return String(dateText || "") === compareDate;
+}
+function currentMonthPrefix() {
+  return today().slice(0, 7);
+}
+function formatShortDateTime(iso) {
+  if (!iso) return "ยังไม่เคย";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("th-TH", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "ยังไม่เคย";
+  }
+}
+function getProductSearchText(p) {
+  return `${p.name || ""} ${p.unit || ""} ${p.note || ""}`.toLowerCase();
+}
+function getCustomerSearchText(c) {
+  return `${c.name || ""} ${c.phone || ""} ${c.type || ""} ${c.note || ""}`.toLowerCase();
+}
+
 function setOptions(selectId, items, placeholder, labelFn) {
   const el = $(selectId);
   const current = el.value;
@@ -198,10 +220,20 @@ function renderDashboard() {
   const totalProfit = state.sales.reduce((s, x) => s + Number(x.profit || 0), 0);
   const totalCredit = state.customers.reduce((s, c) => s + customerBalance(c.id), 0);
   const stockValue = state.products.reduce((s, p) => s + Number(p.stockQty || 0) * Number(p.avgCost || 0), 0);
+  const todaySalesList = state.sales.filter(s => isSameDate(s.date));
+  const monthSalesList = state.sales.filter(s => String(s.date || "").startsWith(currentMonthPrefix()));
+  const todaySales = todaySalesList.reduce((sum, s) => sum + Number(s.revenue || 0), 0);
+  const todayProfit = todaySalesList.reduce((sum, s) => sum + Number(s.profit || 0), 0);
+  const monthSales = monthSalesList.reduce((sum, s) => sum + Number(s.revenue || 0), 0);
+
   $("kpiSales").textContent = money(totalSales);
   $("kpiProfit").textContent = money(totalProfit);
   $("kpiCredit").textContent = money(totalCredit);
   $("kpiStockValue").textContent = money(stockValue);
+  if ($("todaySales")) $("todaySales").textContent = money(todaySales);
+  if ($("todayProfit")) $("todayProfit").textContent = money(todayProfit);
+  if ($("monthSales")) $("monthSales").textContent = money(monthSales);
+  if ($("lastBackupText")) $("lastBackupText").textContent = formatShortDateTime(localStorage.getItem("khaikhongLastBackup"));
 
   const low = state.products.filter(p => Number(p.minStock || 0) > 0 && Number(p.stockQty || 0) <= Number(p.minStock || 0));
   $("lowStockList").innerHTML = low.length ? low.map(p => `
@@ -219,7 +251,10 @@ function renderDashboard() {
 }
 
 function renderProducts() {
-  $("productsTable").innerHTML = state.products.map(p => `
+  const q = ($("productSearch")?.value || "").trim().toLowerCase();
+  const filtered = state.products.filter(p => !q || getProductSearchText(p).includes(q));
+
+  $("productsTable").innerHTML = filtered.map(p => `
     <tr>
       <td><strong>${p.name}</strong><br><small>${p.unit || ""} ${p.note ? "• " + p.note : ""}</small></td>
       <td>${money(p.stockQty)} ${p.unit || ""}</td>
@@ -231,11 +266,14 @@ function renderProducts() {
         <button class="small-btn small-danger" onclick="deleteProduct('${p.id}')">ลบ</button>
       </div></td>
     </tr>
-  `).join("") || `<tr><td colspan="6">ยังไม่มีสินค้า</td></tr>`;
+  `).join("") || `<tr><td colspan="6"><span class="empty-hint">${q ? "ไม่พบสินค้าที่ค้นหา" : "ยังไม่มีสินค้า"}</span></td></tr>`;
 }
 
 function renderCustomers() {
-  $("customersTable").innerHTML = state.customers.map(c => {
+  const q = ($("customerSearch")?.value || "").trim().toLowerCase();
+  const filtered = state.customers.filter(c => !q || getCustomerSearchText(c).includes(q));
+
+  $("customersTable").innerHTML = filtered.map(c => {
     const bal = customerBalance(c.id);
     return `<tr>
       <td><strong>${c.name}</strong><br><small>${c.phone || ""} ${c.note ? "• " + c.note : ""}</small></td>
@@ -248,7 +286,7 @@ function renderCustomers() {
         <button class="small-btn small-danger" onclick="deleteCustomer('${c.id}')">ลบ</button>
       </div></td>
     </tr>`;
-  }).join("") || `<tr><td colspan="5">ยังไม่มีลูกค้า</td></tr>`;
+  }).join("") || `<tr><td colspan="5"><span class="empty-hint">${q ? "ไม่พบลูกค้าที่ค้นหา" : "ยังไม่มีลูกค้า"}</span></td></tr>`;
 }
 
 function paymentBadge(type) {
@@ -429,14 +467,18 @@ function renderReportFilters() {
   // select options are handled by renderSelects; this function keeps report summary live
 }
 
-function renderProductQuickGrid() {
+function getQuickProductList() {
   const q = ($("saleProductSearch")?.value || "").trim().toLowerCase();
-  const list = state.products.filter(p => !q || `${p.name} ${p.note || ""}`.toLowerCase().includes(q)).slice(0, 24);
-  $("productQuickGrid").innerHTML = list.map(p => `
-    <button class="product-tile" type="button" onclick="quickSelectProduct('${p.id}')">
+  return state.products.filter(p => !q || getProductSearchText(p).includes(q)).slice(0, 24);
+}
+
+function renderProductQuickGrid() {
+  const list = getQuickProductList();
+  $("productQuickGrid").innerHTML = list.map((p, index) => `
+    <button class="product-tile ${index === 0 ? "quick-selected" : ""}" type="button" onclick="quickSelectProduct('${p.id}')">
       <strong>${p.name}</strong>
       <small>คงเหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small>
-      <div class="tile-price"><span>ปลีก ${money(p.retailPrice)}</span><span>ส่ง ${money(p.wholesalePrice)}</span></div><span class="tile-hint">แตะเพื่อเลือก</span>
+      <div class="tile-price"><span>ปลีก ${money(p.retailPrice)}</span><span>ส่ง ${money(p.wholesalePrice)}</span></div>
     </button>
   `).join("") || `<div class="list-item"><div><strong>ไม่พบสินค้า</strong><small>เพิ่มสินค้าได้ที่เมนูสินค้า</small></div></div>`;
 }
@@ -571,6 +613,13 @@ async function saveSaleCart() {
 }
 
 $("saleProductSearch").addEventListener("input", renderProductQuickGrid);
+$("saleProductSearch").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    const first = getQuickProductList()[0];
+    if (first) quickSelectProduct(first.id);
+  }
+});
 
 function switchTab(tabId) {
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === tabId));
@@ -625,7 +674,7 @@ window.editPayment=(id)=>{const p=state.payments.find(x=>x.id===id); if(!p)retur
 window.deletePayment=async(id)=>{const item=state.payments.find(x=>x.id===id); if(!item)return; if(confirm(`ลบรายการรับชำระ?\n\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nจำนวนเงิน: ${money(item.amount)} บาท\n\nยอดลูกหนี้จะถูกคำนวณใหม่`)){await remove("payments",id); await refreshState(); showToast("ลบรายการรับชำระแล้ว");}};
 
 function download(filename, content, type="application/octet-stream"){const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);}
-$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Khaikhong",version:"1.0",exportedAt:new Date().toISOString(),...state}; localStorage.setItem("khaikhongLastBackup", new Date().toISOString()); download(`khaikhong-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json"); showToast("สร้างไฟล์ Backup แล้ว");});
+$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Khaikhong",version:"1.1",exportedAt:new Date().toISOString(),...state}; localStorage.setItem("khaikhongLastBackup", new Date().toISOString()); download(`khaikhong-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json"); showToast("สร้างไฟล์ Backup แล้ว");});
 $("importBackupInput").addEventListener("change",async(e)=>{const file=e.target.files[0]; if(!file)return; const text=await file.text(); const data=JSON.parse(text); if(!confirm("นำเข้า Backup จะเขียนข้อมูลทับในเครื่องนี้ ต้องการทำต่อไหม?"))return; for(const store of STORES)await clearStore(store); for(const store of STORES){for(const item of(data[store]||[]))await put(store,item)} await rebuildInventoryFromTransactions(); showToast("นำเข้า Backup แล้ว"); await refreshState();});
 $("exportCsvBtn").addEventListener("click",()=>{const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; getFilteredSales().forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
 $("clearAllBtn").addEventListener("click",async()=>{if(!confirm("ยืนยันล้างข้อมูลทั้งหมด? แนะนำให้ Export Backup ก่อน"))return; for(const store of STORES)await clearStore(store); resetProductForm(); resetCustomerForm(); resetPurchaseForm(); resetSaleForm(); resetPaymentForm(); await refreshState(); showToast("ล้างข้อมูลแล้ว");});
@@ -712,6 +761,23 @@ if ($("ledgerCustomerSearch")) $("ledgerCustomerSearch").addEventListener("input
 if ($("ledgerClearSelection")) $("ledgerClearSelection").addEventListener("click", () => {
   selectedLedgerCustomerId = "";
   renderLedger();
+});
+
+
+if ($("productSearch")) $("productSearch").addEventListener("input", renderProducts);
+if ($("customerSearch")) $("customerSearch").addEventListener("input", renderCustomers);
+if ($("filterTodayBtn")) $("filterTodayBtn").addEventListener("click", () => {
+  const d = today();
+  $("reportDateFrom").value = d;
+  $("reportDateTo").value = d;
+  renderReports();
+});
+if ($("filterMonthBtn")) $("filterMonthBtn").addEventListener("click", () => {
+  const prefix = currentMonthPrefix();
+  $("reportDateFrom").value = `${prefix}-01`;
+  const last = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  $("reportDateTo").value = `${prefix}-${String(last).padStart(2, "0")}`;
+  renderReports();
 });
 
 window.addEventListener("beforeinstallprompt",(e)=>{e.preventDefault(); deferredPrompt=e; $("installBtn").classList.remove("hidden");});

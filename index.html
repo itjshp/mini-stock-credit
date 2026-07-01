@@ -12,7 +12,7 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Easy POS • Stable MVP • v1.0</p>
+        <p class="eyebrow">Easy POS • Fast Search • v1.1</p>
         <h1>Khaikhong</h1>
         <p class="subtitle">ขายง่าย • คุมสต็อก • ดูกำไร • จดลูกหนี้</p>
       </div>
@@ -50,6 +50,30 @@
           <button class="soft-btn" data-open-tab="purchase">+ ซื้อเข้า</button>
           <button class="soft-btn" data-open-tab="payments">+ รับชำระ</button>
           <button class="soft-btn" data-open-tab="ledger">ดู ลูกหนี้</button>
+        </div>
+      </div>
+
+
+      <div class="today-summary">
+        <div class="today-card sales">
+          <span>ยอดขายวันนี้</span>
+          <strong id="todaySales">0.00</strong>
+          <small>บาท</small>
+        </div>
+        <div class="today-card profit">
+          <span>กำไรวันนี้</span>
+          <strong id="todayProfit">0.00</strong>
+          <small>บาท</small>
+        </div>
+        <div class="today-card month">
+          <span>ยอดขายเดือนนี้</span>
+          <strong id="monthSales">0.00</strong>
+          <small>บาท</small>
+        </div>
+        <div class="today-card backup">
+          <span>Backup ล่าสุด</span>
+          <strong id="lastBackupText">ยังไม่เคย</strong>
+          <small>ควร Backup ทุกวัน</small>
         </div>
       </div>
 
@@ -135,7 +159,7 @@
               <h3>1. เลือกสินค้า</h3>
               <span class="hint">ค้นหาแล้วแตะสินค้า</span>
             </div>
-            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเลือก">
+            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเลือก หรือกด Enter เลือกรายการแรก">
             <div id="productQuickGrid" class="product-grid"></div>
           </div>
 
@@ -271,7 +295,8 @@
       </form>
 
       <div class="panel">
-        <div class="panel-head"><h3>รายการสินค้า</h3><span class="hint">สินค้าที่มีประวัติซื้อ/ขายแล้วจะไม่ให้ลบ เพื่อป้องกันข้อมูลเพี้ยน</span></div>
+        <div class="panel-head"><h3>รายการสินค้า</h3><span class="hint">ค้นหาเร็วขึ้น เหมาะกับสินค้าจำนวนมาก</span></div>
+        <input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า เช่น ชื่อสินค้า / หน่วย / หมายเหตุ">
         <div class="table-wrap">
           <table>
             <thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาปลีก</th><th>ราคาส่ง</th><th></th></tr></thead>
@@ -310,7 +335,8 @@
       </form>
 
       <div class="panel">
-        <div class="panel-head"><h3>รายการลูกค้า</h3><span class="hint">ยอดค้างคำนวณจากขายเครดิตและรับชำระ</span></div>
+        <div class="panel-head"><h3>รายการลูกค้า</h3><span class="hint">ค้นหาลูกค้าและเปิดสมุดบัญชีได้เร็วขึ้น</span></div>
+        <input id="customerSearch" class="search-input" placeholder="ค้นหาลูกค้า เช่น ชื่อ / เบอร์โทร / ประเภท">
         <div class="table-wrap">
           <table>
             <thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>ยอดค้าง</th><th>วงเงิน</th><th></th></tr></thead>
@@ -415,7 +441,7 @@
       <div class="panel report-filter">
         <div class="panel-head">
           <h3>ตัวกรองรายงาน</h3>
-          <button class="soft-btn" id="resetReportFilter" type="button">ล้างตัวกรอง</button>
+          <div class="filter-actions"><button class="soft-btn" id="filterTodayBtn" type="button">วันนี้</button><button class="soft-btn" id="filterMonthBtn" type="button">เดือนนี้</button><button class="soft-btn" id="resetReportFilter" type="button">ล้างตัวกรอง</button></div>
         </div>
         <div class="form-grid">
           <label>วันที่เริ่มต้น<input id="reportDateFrom" type="date"></label>

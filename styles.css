@@ -694,3 +694,72 @@ input[data-keypad="true"]{
     display:none;
   }
 }
+
+
+/* v1.1: Fast search + today/month dashboard */
+.today-summary{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+  margin-bottom:16px;
+}
+.today-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 14px 34px rgba(15,118,110,.08);
+  border-top:5px solid var(--primary);
+}
+.today-card.sales{border-top-color:#2563eb}
+.today-card.profit{border-top-color:#16a34a}
+.today-card.month{border-top-color:#7c3aed}
+.today-card.backup{border-top-color:#f97316}
+.today-card span{
+  display:block;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:900;
+}
+.today-card strong{
+  display:block;
+  margin-top:8px;
+  font-size:24px;
+  font-weight:1000;
+}
+.today-card small{
+  color:var(--muted);
+  font-weight:800;
+}
+.filter-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.search-input{
+  margin-bottom:12px;
+}
+.empty-hint{
+  color:var(--muted);
+  font-weight:800;
+}
+.quick-selected{
+  outline:3px solid #99f6e4;
+  border-color:var(--primary) !important;
+}
+@media(max-width:980px){
+  .today-summary{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .today-summary{
+    grid-template-columns:1fr;
+  }
+  .filter-actions{
+    width:100%;
+  }
+  .filter-actions .soft-btn{
+    flex:1;
+  }
+}

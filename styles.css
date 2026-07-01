@@ -40,3 +40,9 @@ input:focus,select:focus{outline:2px solid #99f6e4;border-color:var(--primary)}
   .sale-preview{grid-template-columns:1fr}
   main{padding:12px}
 }
+
+
+/* v0.3 UX improvements */
+.section-desc{color:var(--muted);margin:3px 0 0;font-size:14px}.quick-actions{display:flex;gap:8px;flex-wrap:wrap}.dashboard-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.edit-banner{grid-column:1/-1;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:14px;padding:10px 12px;font-weight:900}.small-edit{background:#dbeafe;color:#1d4ed8}.badge{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:900;background:#eef4f2;color:var(--muted);margin-left:4px}.badge-credit{background:#fff7ed;color:#c2410c}.badge-cash{background:#ecfdf5;color:#047857}.list-item{align-items:center}.row-actions{align-items:center;justify-content:flex-end;flex-wrap:wrap}.hidden{display:none!important}
+@media(max-width:900px){.dashboard-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.section-title{display:block}.quick-actions{margin-top:10px}.list-item{display:grid;grid-template-columns:1fr}.row-actions{justify-content:flex-start}.primary-btn,.ghost-btn,.danger-btn,.file-btn{width:100%}}

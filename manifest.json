@@ -1,7 +1,7 @@
 {
   "name": "Mini Stock Credit",
   "short_name": "StockCredit",
-  "description": "แอปสต็อก ต้นทุน กำไร และลูกหนี้เครดิต ใช้เองแบบ Local-first",
+  "description": "Modern Clean POS สำหรับสต็อก ต้นทุน กำไร และลูกหนี้เครดิต",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

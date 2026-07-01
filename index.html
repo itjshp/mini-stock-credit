@@ -9,21 +9,26 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="app-header">
-    <div>
-      <p class="eyebrow">PWA ใช้เอง • เก็บข้อมูลในเครื่อง • v0.3</p>
-      <h1>Mini Stock Credit</h1>
-      <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
+  <header class="hero">
+    <div class="hero-inner">
+      <div>
+        <p class="eyebrow">Modern Clean POS • Local-first • v0.4</p>
+        <h1>Mini Stock Credit</h1>
+        <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
+      </div>
+      <div class="hero-actions">
+        <button class="hero-btn" data-open-tab="sale">ขายสินค้า</button>
+        <button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button>
+      </div>
     </div>
-    <button id="installBtn" class="ghost-btn hidden">ติดตั้งแอป</button>
   </header>
 
   <nav class="tabs" aria-label="เมนูหลัก">
     <button data-tab="dashboard" class="tab active">หน้าแรก</button>
+    <button data-tab="sale" class="tab tab-sale">ขาย POS</button>
+    <button data-tab="purchase" class="tab">ซื้อเข้า</button>
     <button data-tab="products" class="tab">สินค้า</button>
     <button data-tab="customers" class="tab">ลูกค้า</button>
-    <button data-tab="purchase" class="tab">ซื้อเข้า</button>
-    <button data-tab="sale" class="tab">ขาย</button>
     <button data-tab="payments" class="tab">รับชำระ</button>
     <button data-tab="reports" class="tab">รายงาน</button>
     <button data-tab="backup" class="tab">Backup</button>
@@ -31,31 +36,190 @@
 
   <main>
     <section id="dashboard" class="page active">
-      <div class="section-title">
-        <div><h2>ภาพรวม</h2><p class="section-desc">ดูยอดขาย กำไร ลูกหนี้ และสต็อกต่ำได้ทันที</p></div>
-        <div class="quick-actions"><button class="primary-btn" data-open-tab="sale">+ ขายสินค้า</button><button class="ghost-btn" data-open-tab="purchase">+ ซื้อเข้า</button></div>
+      <div class="page-head">
+        <div>
+          <h2>Dashboard</h2>
+          <p>เปิดมาหน้าแรก เห็นยอดขาย กำไร ลูกหนี้ และมูลค่าสต็อกทันที</p>
+        </div>
+        <div class="quick-actions">
+          <button class="primary-btn" data-open-tab="sale">+ ขายสินค้า</button>
+          <button class="soft-btn" data-open-tab="purchase">+ ซื้อเข้า</button>
+          <button class="soft-btn" data-open-tab="payments">+ รับชำระ</button>
+        </div>
       </div>
+
       <div class="kpi-grid">
-        <article class="kpi"><span>ยอดขายรวม</span><strong id="kpiSales">0</strong><small>บาท</small></article>
-        <article class="kpi"><span>กำไรรวม</span><strong id="kpiProfit">0</strong><small>บาท</small></article>
-        <article class="kpi warning"><span>ลูกหนี้ค้างชำระ</span><strong id="kpiCredit">0</strong><small>บาท</small></article>
-        <article class="kpi"><span>มูลค่าสต็อก</span><strong id="kpiStockValue">0</strong><small>บาท</small></article>
+        <article class="kpi-card">
+          <div class="kpi-icon">฿</div>
+          <span>ยอดขายรวม</span>
+          <strong id="kpiSales">0.00</strong>
+          <small>บาท</small>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-icon profit">↗</div>
+          <span>กำไรรวม</span>
+          <strong id="kpiProfit">0.00</strong>
+          <small>บาท</small>
+        </article>
+        <article class="kpi-card warn">
+          <div class="kpi-icon credit">!</div>
+          <span>ลูกหนี้ค้างชำระ</span>
+          <strong id="kpiCredit">0.00</strong>
+          <small>บาท</small>
+        </article>
+        <article class="kpi-card">
+          <div class="kpi-icon stock">▦</div>
+          <span>มูลค่าสต็อก</span>
+          <strong id="kpiStockValue">0.00</strong>
+          <small>บาท</small>
+        </article>
       </div>
-      <div class="card">
-        <h3>สินค้าสต็อกต่ำ</h3>
-        <div id="lowStockList" class="list"></div>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>สินค้าสต็อกต่ำ</h3>
+            <button class="mini-link" data-open-tab="products">ดูสินค้า</button>
+          </div>
+          <div id="lowStockList" class="stack-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>ลูกหนี้ค้างชำระ</h3>
+            <button class="mini-link" data-open-tab="customers">ดูลูกค้า</button>
+          </div>
+          <div id="creditList" class="stack-list"></div>
+        </div>
       </div>
-      <div class="card">
-        <h3>ลูกหนี้ค้างชำระ</h3>
-        <div id="creditList" class="list"></div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>ขายล่าสุด</h3>
+          <button class="mini-link" data-open-tab="reports">ดูรายงาน</button>
+        </div>
+        <div id="dashboardRecentSales" class="stack-list"></div>
+      </div>
+    </section>
+
+    <section id="sale" class="page">
+      <div class="page-head">
+        <div>
+          <h2>ขายสินค้า POS</h2>
+          <p>ค้นหาสินค้า เลือกลูกค้า แล้วบันทึกขายสดหรือเครดิตได้เร็วขึ้น</p>
+        </div>
+      </div>
+
+      <div class="pos-layout">
+        <div class="pos-left">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>เลือกสินค้าเร็ว</h3>
+              <span class="hint">แตะสินค้าเพื่อใส่ลงฟอร์มขาย</span>
+            </div>
+            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า เช่น ปูอัด / รหัส / ชื่อสินค้า">
+            <div id="productQuickGrid" class="product-grid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h3>ประวัติขายล่าสุด</h3>
+              <span class="hint">แก้ไข/ลบได้</span>
+            </div>
+            <div id="saleHistory" class="stack-list"></div>
+          </div>
+        </div>
+
+        <div class="pos-right">
+          <form id="saleForm" class="pos-card">
+            <input type="hidden" id="saleId">
+            <div id="saleEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการขาย</div>
+
+            <div class="form-row">
+              <label>วันที่<input id="saleDate" type="date" required></label>
+              <label>ประเภทชำระเงิน
+                <select id="salePaymentType">
+                  <option value="cash">เงินสด/โอนแล้ว</option>
+                  <option value="credit">เครดิต/ค้างชำระ</option>
+                </select>
+              </label>
+            </div>
+
+            <label>ลูกค้า<select id="saleCustomer"></select></label>
+            <label>สินค้า<select id="saleProduct" required></select></label>
+
+            <div class="form-row">
+              <label>จำนวนขาย<input id="saleQty" type="number" min="0.01" step="0.01" required></label>
+              <label>ราคาขายต่อหน่วย<input id="saleUnitPrice" type="number" min="0" step="0.01" required></label>
+            </div>
+
+            <div class="form-row">
+              <label>รับเงินแล้ว<input id="salePaidAmount" type="number" min="0" step="0.01" value="0"></label>
+              <label>หมายเหตุ<input id="saleNote" placeholder="ไม่บังคับ"></label>
+            </div>
+
+            <div class="checkout-box">
+              <div>
+                <span>ยอดขาย</span>
+                <strong id="salePreviewRevenue">0.00</strong>
+              </div>
+              <div>
+                <span>ต้นทุน</span>
+                <strong id="salePreviewCost">0.00</strong>
+              </div>
+              <div class="checkout-profit">
+                <span>กำไร</span>
+                <strong id="salePreviewProfit">0.00</strong>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="primary-btn big" type="submit" id="saleSubmitBtn">บันทึกขาย</button>
+              <button class="soft-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
+              <button class="ghost-btn" type="button" id="clearSaleForm">ล้างฟอร์ม</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="purchase" class="page">
+      <div class="page-head">
+        <div>
+          <h2>ซื้อสินค้าเข้า</h2>
+          <p>บันทึกต้นทุนเข้า คำนวณต้นทุนเฉลี่ยและมูลค่าสต็อกใหม่อัตโนมัติ</p>
+        </div>
+      </div>
+
+      <form id="purchaseForm" class="panel form-grid">
+        <input type="hidden" id="purchaseId">
+        <div id="purchaseEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการซื้อเข้า</div>
+        <label>วันที่<input id="purchaseDate" type="date" required></label>
+        <label>สินค้า<select id="purchaseProduct" required></select></label>
+        <label>จำนวนซื้อเข้า<input id="purchaseQty" type="number" min="0.01" step="0.01" required></label>
+        <label>ทุนต่อหน่วย<input id="purchaseUnitCost" type="number" min="0" step="0.01" required></label>
+        <label>ค่าใช้จ่ายเพิ่ม/ค่าส่ง<input id="purchaseExtraCost" type="number" min="0" step="0.01" value="0"></label>
+        <label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label>
+        <div class="form-actions">
+          <button class="primary-btn" type="submit" id="purchaseSubmitBtn">บันทึกซื้อเข้า</button>
+          <button class="soft-btn hidden" type="button" id="cancelPurchaseEdit">ยกเลิกแก้ไข</button>
+        </div>
+      </form>
+
+      <div class="panel">
+        <div class="panel-head"><h3>ประวัติซื้อเข้า</h3><span class="hint">แก้ไข/ลบได้</span></div>
+        <div id="purchaseHistory" class="stack-list"></div>
       </div>
     </section>
 
     <section id="products" class="page">
-      <div class="section-title">
-        <h2>สินค้า</h2>
+      <div class="page-head">
+        <div>
+          <h2>สินค้า</h2>
+          <p>จัดการสินค้า ราคา และจุดแจ้งเตือนสต็อกต่ำ</p>
+        </div>
       </div>
-      <form id="productForm" class="card form-grid">
+
+      <form id="productForm" class="panel form-grid">
         <input type="hidden" id="productId">
         <label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label>
         <label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label>
@@ -65,11 +229,12 @@
         <label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button>
-          <button class="ghost-btn" type="button" id="resetProductForm">ล้างฟอร์ม</button>
+          <button class="soft-btn" type="button" id="resetProductForm">ล้างฟอร์ม</button>
         </div>
       </form>
-      <div class="card">
-        <h3>รายการสินค้า</h3>
+
+      <div class="panel">
+        <div class="panel-head"><h3>รายการสินค้า</h3><span class="hint">สินค้าที่มีประวัติซื้อ/ขายแล้วจะไม่ให้ลบ เพื่อป้องกันข้อมูลเพี้ยน</span></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาปลีก</th><th>ราคาส่ง</th><th></th></tr></thead>
@@ -80,8 +245,14 @@
     </section>
 
     <section id="customers" class="page">
-      <div class="section-title"><h2>ลูกค้า</h2></div>
-      <form id="customerForm" class="card form-grid">
+      <div class="page-head">
+        <div>
+          <h2>ลูกค้า</h2>
+          <p>เก็บข้อมูลลูกค้า เครดิต และยอดค้างชำระ</p>
+        </div>
+      </div>
+
+      <form id="customerForm" class="panel form-grid">
         <input type="hidden" id="customerId">
         <label>ชื่อลูกค้า<input id="customerName" required placeholder="เช่น แนน / พี่ออย"></label>
         <label>ประเภทลูกค้า
@@ -97,11 +268,12 @@
         <label>หมายเหตุ<input id="customerNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="customerSubmitBtn">บันทึกลูกค้า</button>
-          <button class="ghost-btn" type="button" id="resetCustomerForm">ล้างฟอร์ม</button>
+          <button class="soft-btn" type="button" id="resetCustomerForm">ล้างฟอร์ม</button>
         </div>
       </form>
-      <div class="card">
-        <h3>รายการลูกค้า</h3>
+
+      <div class="panel">
+        <div class="panel-head"><h3>รายการลูกค้า</h3><span class="hint">ยอดค้างคำนวณจากขายเครดิตและรับชำระ</span></div>
         <div class="table-wrap">
           <table>
             <thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>ยอดค้าง</th><th>วงเงิน</th><th></th></tr></thead>
@@ -111,65 +283,15 @@
       </div>
     </section>
 
-    <section id="purchase" class="page">
-      <div class="section-title"><div><h2>ซื้อสินค้าเข้า</h2><p class="section-desc">บันทึกซื้อเข้า แก้ไขย้อนหลังได้ และคำนวณต้นทุนใหม่อัตโนมัติ</p></div></div>
-      <form id="purchaseForm" class="card form-grid">
-        <input type="hidden" id="purchaseId">
-        <div id="purchaseEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการซื้อเข้า</div>
-        <label>วันที่<input id="purchaseDate" type="date" required></label>
-        <label>สินค้า<select id="purchaseProduct" required></select></label>
-        <label>จำนวนซื้อเข้า<input id="purchaseQty" type="number" min="0.01" step="0.01" required></label>
-        <label>ทุนต่อหน่วย<input id="purchaseUnitCost" type="number" min="0" step="0.01" required></label>
-        <label>ค่าใช้จ่ายเพิ่ม/ค่าส่ง<input id="purchaseExtraCost" type="number" min="0" step="0.01" value="0"></label>
-        <label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="purchaseSubmitBtn">บันทึกซื้อเข้า</button>
-          <button class="ghost-btn hidden" type="button" id="cancelPurchaseEdit">ยกเลิกแก้ไข</button>
-        </div>
-      </form>
-      <div class="card">
-        <h3>ประวัติซื้อเข้า</h3>
-        <div id="purchaseHistory" class="list"></div>
-      </div>
-    </section>
-
-    <section id="sale" class="page">
-      <div class="section-title"><div><h2>ขายสินค้า</h2><p class="section-desc">ขายเงินสดหรือเครดิต พร้อมคำนวณกำไรทันที</p></div></div>
-      <form id="saleForm" class="card form-grid">
-        <input type="hidden" id="saleId">
-        <div id="saleEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการขาย</div>
-        <label>วันที่<input id="saleDate" type="date" required></label>
-        <label>ลูกค้า<select id="saleCustomer"></select></label>
-        <label>สินค้า<select id="saleProduct" required></select></label>
-        <label>จำนวนขาย<input id="saleQty" type="number" min="0.01" step="0.01" required></label>
-        <label>ราคาขายต่อหน่วย<input id="saleUnitPrice" type="number" min="0" step="0.01" required></label>
-        <label>ประเภทชำระเงิน
-          <select id="salePaymentType">
-            <option value="cash">เงินสด/โอนแล้ว</option>
-            <option value="credit">เครดิต/ค้างชำระ</option>
-          </select>
-        </label>
-        <label>รับเงินแล้ว<input id="salePaidAmount" type="number" min="0" step="0.01" value="0"></label>
-        <label>หมายเหตุ<input id="saleNote" placeholder="ไม่บังคับ"></label>
-        <div class="sale-preview">
-          <div>ยอดขาย: <strong id="salePreviewRevenue">0</strong></div>
-          <div>ต้นทุน: <strong id="salePreviewCost">0</strong></div>
-          <div>กำไร: <strong id="salePreviewProfit">0</strong></div>
-        </div>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="saleSubmitBtn">บันทึกขาย</button>
-          <button class="ghost-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
-        </div>
-      </form>
-      <div class="card">
-        <h3>ประวัติขายล่าสุด</h3>
-        <div id="saleHistory" class="list"></div>
-      </div>
-    </section>
-
     <section id="payments" class="page">
-      <div class="section-title"><div><h2>รับชำระลูกหนี้</h2><p class="section-desc">รับเงินจากลูกค้าเครดิต แก้ไขหรือลบได้</p></div></div>
-      <form id="paymentForm" class="card form-grid">
+      <div class="page-head">
+        <div>
+          <h2>รับชำระลูกหนี้</h2>
+          <p>บันทึกรับเงินจากลูกค้าเครดิต และคำนวณยอดค้างใหม่</p>
+        </div>
+      </div>
+
+      <form id="paymentForm" class="panel form-grid">
         <input type="hidden" id="paymentId">
         <div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับชำระ</div>
         <label>วันที่<input id="paymentDate" type="date" required></label>
@@ -185,22 +307,26 @@
         <label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="paymentSubmitBtn">บันทึกรับชำระ</button>
-          <button class="ghost-btn hidden" type="button" id="cancelPaymentEdit">ยกเลิกแก้ไข</button>
+          <button class="soft-btn hidden" type="button" id="cancelPaymentEdit">ยกเลิกแก้ไข</button>
         </div>
       </form>
-      <div class="card">
-        <h3>ประวัติรับชำระ</h3>
-        <div id="paymentHistory" class="list"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>ประวัติรับชำระ</h3><span class="hint">แก้ไข/ลบได้</span></div>
+        <div id="paymentHistory" class="stack-list"></div>
       </div>
     </section>
 
     <section id="reports" class="page">
-      <div class="section-title">
-        <h2>รายงาน</h2>
-        <button class="ghost-btn" id="exportCsvBtn">Export CSV</button>
+      <div class="page-head">
+        <div>
+          <h2>รายงานขาย</h2>
+          <p>รายการขายทั้งหมด พร้อม Export CSV</p>
+        </div>
+        <button class="soft-btn" id="exportCsvBtn">Export CSV</button>
       </div>
-      <div class="card">
-        <h3>รายการขายทั้งหมด</h3>
+
+      <div class="panel">
         <div class="table-wrap">
           <table>
             <thead><tr><th>วันที่</th><th>ลูกค้า</th><th>สินค้า</th><th>จำนวน</th><th>ยอดขาย</th><th>ต้นทุน</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead>
@@ -211,9 +337,16 @@
     </section>
 
     <section id="backup" class="page">
-      <div class="section-title"><h2>Backup / Restore</h2></div>
-      <div class="card">
-        <p><strong>สำคัญ:</strong> ข้อมูล App นี้เก็บในเครื่องที่ใช้งาน ถ้าล้าง Browser หรือเปลี่ยนเครื่อง ข้อมูลอาจหายได้ ควร Export Backup เก็บไว้เป็นประจำ</p>
+      <div class="page-head">
+        <div>
+          <h2>Backup / Restore</h2>
+          <p>ข้อมูลอยู่ในเครื่อง ควร Backup เป็นประจำ</p>
+        </div>
+      </div>
+
+      <div class="panel backup-panel">
+        <h3>สำรองข้อมูล</h3>
+        <p><strong>สำคัญ:</strong> ข้อมูล App นี้เก็บใน Browser/เครื่องที่ใช้งาน ถ้าล้าง Browser หรือเปลี่ยนเครื่อง ข้อมูลอาจหายได้</p>
         <div class="form-actions">
           <button class="primary-btn" id="exportBackupBtn">Export Backup JSON</button>
           <label class="file-btn">Import Backup JSON
@@ -221,16 +354,16 @@
           </label>
         </div>
       </div>
-      <div class="card danger-zone">
+
+      <div class="panel danger-zone">
         <h3>ล้างข้อมูลทั้งหมด</h3>
-        <p>ใช้เฉพาะตอนต้องการเริ่มใหม่ ข้อมูลจะถูกลบจากเครื่องนี้</p>
+        <p>ใช้เฉพาะตอนต้องการเริ่มใหม่ แนะนำให้ Export Backup ก่อน</p>
         <button class="danger-btn" id="clearAllBtn">ล้างข้อมูลทั้งหมด</button>
       </div>
     </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
-
   <script src="app.js"></script>
 </body>
 </html>

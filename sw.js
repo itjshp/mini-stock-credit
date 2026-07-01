@@ -1,4 +1,4 @@
-const CACHE_NAME = "mini-stock-credit-v7";
+const CACHE_NAME = "khaikhong-v8";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.json", "./icons/icon-192.svg", "./icons/icon-512.svg"];
 
 self.addEventListener("install", (event) => {

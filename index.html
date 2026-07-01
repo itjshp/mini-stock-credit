@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
-  <title>Mini Stock Credit</title>
+  <title>Khaikhong</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,40 +12,42 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Modern Clean POS • Multi-item Bill • v0.7</p>
-        <h1>Mini Stock Credit</h1>
-        <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
+        <p class="eyebrow">Easy POS • ใช้งานเร็ว • v0.8</p>
+        <h1>Khaikhong</h1>
+        <p class="subtitle">ขายง่าย • คุมสต็อก • ดูกำไร • จดลูกหนี้</p>
       </div>
       <div class="hero-actions">
-        <button class="hero-btn" data-open-tab="sale">ขายสินค้า</button>
+        <button class="hero-btn" data-open-tab="sale">ขายของ</button>
         <button class="hero-btn upgrade" data-open-tab="plan"><span id="planBadge">DEMO</span></button>
         <button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button>
       </div>
     </div>
   </header>
 
-  <nav class="tabs" aria-label="เมนูหลัก">
-    <button data-tab="dashboard" class="tab active">หน้าแรก</button>
-    <button data-tab="sale" class="tab tab-sale">ขาย POS</button>
-    <button data-tab="purchase" class="tab">ซื้อเข้า</button>
+  <nav class="tabs easy-tabs" aria-label="เมนูหลัก">
+    <button data-tab="sale" class="tab tab-sale active">ขายของ</button>
     <button data-tab="products" class="tab">สินค้า</button>
     <button data-tab="customers" class="tab">ลูกค้า</button>
-    <button data-tab="ledger" class="tab">ลูกหนี้</button>
-    <button data-tab="payments" class="tab">รับชำระ</button>
-    <button data-tab="reports" class="tab">รายงาน</button>
-    <button data-tab="plan" class="tab tab-upgrade">Upgrade</button>
-    <button data-tab="backup" class="tab">Backup</button>
+    <button data-tab="dashboard" class="tab">สรุป</button>
+    <button data-tab="more" class="tab">เพิ่มเติม</button>
+
+    <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button>
+    <button data-tab="ledger" class="tab secondary-tab">ลูกหนี้</button>
+    <button data-tab="payments" class="tab secondary-tab">รับชำระ</button>
+    <button data-tab="reports" class="tab secondary-tab">รายงาน</button>
+    <button data-tab="plan" class="tab tab-upgrade secondary-tab">Upgrade</button>
+    <button data-tab="backup" class="tab secondary-tab">Backup</button>
   </nav>
 
   <main>
-    <section id="dashboard" class="page active">
+    <section id="dashboard" class="page">
       <div class="page-head">
         <div>
-          <h2>Dashboard</h2>
-          <p>เปิดมาหน้าแรก เห็นยอดขาย กำไร ลูกหนี้ และมูลค่าสต็อกทันที</p>
+          <h2>สรุปยอด</h2>
+          <p>ดูยอดขาย กำไร ลูกหนี้ และสต็อกแบบง่าย ๆ</p>
         </div>
         <div class="quick-actions">
-          <button class="primary-btn" data-open-tab="sale">+ ขายสินค้า</button>
+          <button class="primary-btn" data-open-tab="sale">+ ขายของ</button>
           <button class="soft-btn" data-open-tab="purchase">+ ซื้อเข้า</button>
           <button class="soft-btn" data-open-tab="payments">+ รับชำระ</button>
           <button class="soft-btn" data-open-tab="ledger">ดู ลูกหนี้</button>
@@ -105,29 +107,36 @@
       </div>
     </section>
 
-    <section id="sale" class="page">
+    <section id="sale" class="page active">
       <div class="page-head">
         <div>
-          <h2>ขายสินค้า POS</h2>
-          <p>ค้นหาสินค้า เลือกลูกค้า แล้วบันทึกขายสดหรือเครดิตได้เร็วขึ้น</p>
+          <h2>ขายของ</h2>
+          <p>ทำตาม 3 ขั้นตอน: เลือกสินค้า → ใส่บิล → บันทึกขาย</p>
         </div>
+      </div>
+
+
+      <div class="easy-steps">
+        <div><b>1</b><span>เลือกสินค้า</span></div>
+        <div><b>2</b><span>กดใส่บิล</span></div>
+        <div><b>3</b><span>บันทึกขาย</span></div>
       </div>
 
       <div class="pos-layout">
         <div class="pos-left">
           <div class="panel">
             <div class="panel-head">
-              <h3>เลือกสินค้าเร็ว</h3>
-              <span class="hint">แตะสินค้าเพื่อใส่ลงฟอร์มขาย</span>
+              <h3>1. เลือกสินค้า</h3>
+              <span class="hint">ค้นหาแล้วแตะสินค้า</span>
             </div>
-            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า เช่น ปูอัด / รหัส / ชื่อสินค้า">
+            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเลือก">
             <div id="productQuickGrid" class="product-grid"></div>
           </div>
 
           <div class="panel">
             <div class="panel-head">
-              <h3>ประวัติขายล่าสุด</h3>
-              <span class="hint">แก้ไข/ลบได้</span>
+              <h3>ขายล่าสุด</h3>
+              <span class="hint">แตะเพื่อแก้ไข/ลบได้</span>
             </div>
             <div id="saleHistory" class="stack-list"></div>
           </div>
@@ -140,7 +149,7 @@
 
             <div class="form-row">
               <label>วันที่<input id="saleDate" type="date" required></label>
-              <label>ประเภทชำระเงิน
+              <label>ชำระแบบ
                 <select id="salePaymentType">
                   <option value="cash">เงินสด/โอนแล้ว</option>
                   <option value="credit">เครดิต/ค้างชำระ</option>
@@ -157,7 +166,7 @@
             </div>
 
             <div class="form-row">
-              <label>รับเงินแล้ว<input id="salePaidAmount" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
+              <label>รับเงิน<input id="salePaidAmount" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
               <label>หมายเหตุ<input id="saleNote" placeholder="ไม่บังคับ"></label>
             </div>
 
@@ -179,8 +188,8 @@
             <div class="cart-box">
               <div class="cart-head">
                 <div>
-                  <h3>บิลปัจจุบัน</h3>
-                  <small>เพิ่มหลายสินค้าในบิลเดียว เหมาะกับโหมด POS</small>
+                  <h3>2. บิลปัจจุบัน</h3>
+                  <small>ตรวจรายการก่อนบันทึกขาย</small>
                 </div>
                 <button class="soft-btn mini" type="button" id="clearCartBtn">ล้างบิล</button>
               </div>
@@ -193,11 +202,11 @@
             </div>
 
             <div class="form-actions sale-actions">
-              <button class="soft-btn" type="button" id="addToCartBtn">+ เพิ่มเข้าบิล</button>
-              <button class="primary-btn big" type="button" id="saveCartBtn">บันทึกทั้งบิล</button>
-              <button class="ghost-btn" type="submit" id="saleSubmitBtn">บันทึกขายรายการเดียว</button>
+              <button class="soft-btn" type="button" id="addToCartBtn">+ ใส่บิล</button>
+              <button class="primary-btn big" type="button" id="saveCartBtn">3. บันทึกขาย</button>
+              <button class="ghost-btn" type="submit" id="saleSubmitBtn">บันทึกรายการเดียว</button>
               <button class="soft-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
-              <button class="ghost-btn" type="button" id="clearSaleForm">ล้างฟอร์ม</button>
+              <button class="ghost-btn" type="button" id="clearSaleForm">เริ่มใหม่</button>
             </div>
           </form>
         </div>
@@ -207,8 +216,8 @@
     <section id="purchase" class="page">
       <div class="page-head">
         <div>
-          <h2>ซื้อสินค้าเข้า</h2>
-          <p>บันทึกต้นทุนเข้า คำนวณต้นทุนเฉลี่ยและมูลค่าสต็อกใหม่อัตโนมัติ</p>
+          <h2>ซื้อเข้า</h2>
+          <p>เพิ่มของเข้าสต็อกและบันทึกต้นทุน</p>
         </div>
       </div>
 
@@ -237,7 +246,7 @@
       <div class="page-head">
         <div>
           <h2>สินค้า</h2>
-          <p>จัดการสินค้า ราคา และจุดแจ้งเตือนสต็อกต่ำ</p>
+          <p>เพิ่ม/แก้ไขสินค้า ราคา และสต็อกขั้นต่ำ</p>
         </div>
       </div>
 
@@ -251,7 +260,7 @@
         <label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button>
-          <button class="soft-btn" type="button" id="resetProductForm">ล้างฟอร์ม</button>
+          <button class="soft-btn" type="button" id="resetProductForm">เริ่มใหม่</button>
         </div>
       </form>
 
@@ -270,7 +279,7 @@
       <div class="page-head">
         <div>
           <h2>ลูกค้า</h2>
-          <p>เก็บข้อมูลลูกค้า เครดิต และยอดค้างชำระ</p>
+          <p>เพิ่มลูกค้าและดูยอดค้างแบบง่าย</p>
         </div>
       </div>
 
@@ -290,7 +299,7 @@
         <label>หมายเหตุ<input id="customerNote" placeholder="ไม่บังคับ"></label>
         <div class="form-actions">
           <button class="primary-btn" type="submit" id="customerSubmitBtn">บันทึกลูกค้า</button>
-          <button class="soft-btn" type="button" id="resetCustomerForm">ล้างฟอร์ม</button>
+          <button class="soft-btn" type="button" id="resetCustomerForm">เริ่มใหม่</button>
         </div>
       </form>
 
@@ -309,8 +318,8 @@
     <section id="ledger" class="page">
       <div class="page-head">
         <div>
-          <h2>ลูกหนี้ / สมุดบัญชีลูกค้า</h2>
-          <p>ดูยอดค้าง ประวัติขายเครดิต และประวัติรับชำระของลูกค้าแต่ละราย</p>
+          <h2>ยอดค้างชำระ</h2>
+          <p>ดูว่าใครค้างเงินเท่าไร และค้างจากรายการไหน</p>
         </div>
         <div class="quick-actions">
           <button class="soft-btn" data-open-tab="customers">+ เพิ่มลูกค้า</button>
@@ -356,8 +365,8 @@
     <section id="payments" class="page">
       <div class="page-head">
         <div>
-          <h2>รับชำระลูกหนี้</h2>
-          <p>บันทึกรับเงินจากลูกค้าเครดิต และคำนวณยอดค้างใหม่</p>
+          <h2>รับเงิน</h2>
+          <p>รับเงินจากลูกค้าที่ค้างชำระ</p>
         </div>
       </div>
 
@@ -390,8 +399,8 @@
     <section id="reports" class="page">
       <div class="page-head">
         <div>
-          <h2>รายงานขาย</h2>
-          <p>รายการขายทั้งหมด พร้อม Export CSV</p>
+          <h2>รายงาน</h2>
+          <p>กรองยอดขาย ต้นทุน และกำไร</p>
         </div>
         <button class="soft-btn" id="exportCsvBtn">Export CSV</button>
       </div>
@@ -407,7 +416,7 @@
           <label>วันที่สิ้นสุด<input id="reportDateTo" type="date"></label>
           <label>ลูกค้า<select id="reportCustomer"></select></label>
           <label>สินค้า<select id="reportProduct"></select></label>
-          <label>ประเภทชำระเงิน
+          <label>ชำระแบบ
             <select id="reportPaymentType">
               <option value="">ทั้งหมด</option>
               <option value="cash">เงินสด/โอนแล้ว</option>
@@ -508,6 +517,49 @@
           <div>🏷️ Barcode Scan</div>
           <div>🖨️ พิมพ์/แชร์ใบเสร็จ</div>
         </div>
+      </div>
+    </section>
+
+
+    <section id="more" class="page">
+      <div class="page-head">
+        <div>
+          <h2>เพิ่มเติม</h2>
+          <p>รวมเมนูที่ไม่ได้ใช้บ่อย เพื่อให้หน้าหลักใช้งานง่ายขึ้น</p>
+        </div>
+      </div>
+
+      <div class="more-grid">
+        <button class="more-card" data-open-tab="purchase" type="button">
+          <span>📦</span>
+          <strong>ซื้อเข้า</strong>
+          <small>เพิ่มของเข้าสต็อก / บันทึกทุน</small>
+        </button>
+        <button class="more-card" data-open-tab="payments" type="button">
+          <span>💵</span>
+          <strong>รับเงิน</strong>
+          <small>รับชำระลูกหนี้เครดิต</small>
+        </button>
+        <button class="more-card" data-open-tab="ledger" type="button">
+          <span>📒</span>
+          <strong>ยอดค้าง</strong>
+          <small>ดูสมุดบัญชีลูกค้า</small>
+        </button>
+        <button class="more-card" data-open-tab="reports" type="button">
+          <span>📊</span>
+          <strong>รายงาน</strong>
+          <small>ดูยอดขาย กำไร และ Export</small>
+        </button>
+        <button class="more-card premium" data-open-tab="plan" type="button">
+          <span>⭐</span>
+          <strong>Upgrade</strong>
+          <small>Demo / Pro / ฟีเจอร์พรีเมียม</small>
+        </button>
+        <button class="more-card" data-open-tab="backup" type="button">
+          <span>☁️</span>
+          <strong>Backup</strong>
+          <small>สำรอง/กู้คืนข้อมูล</small>
+        </button>
       </div>
     </section>
 

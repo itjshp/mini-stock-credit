@@ -177,15 +177,45 @@ function renderCustomers() {
 
 function renderHistories() {
   $("purchaseHistory").innerHTML = state.purchases.slice(0, 20).map(p => `
-    <div class="list-item"><div><strong>${productName(p.productId)}</strong><small>${p.date} • ${money(p.qty)} × ${money(p.unitCost)} ${p.note ? "• " + p.note : ""}</small></div><div class="money">${money(p.totalCost)}</div></div>
+    <div class="list-item">
+      <div>
+        <strong>${productName(p.productId)}</strong>
+        <small>${p.date} • ${money(p.qty)} × ${money(p.unitCost)} ${p.note ? "• " + p.note : ""}</small>
+      </div>
+      <div class="row-actions">
+        <div class="money">${money(p.totalCost)}</div>
+        <button class="small-btn small-danger" onclick="deletePurchase('${p.id}')">ลบ</button>
+      </div>
+    </div>
   `).join("") || `<div class="list-item">ยังไม่มีประวัติซื้อเข้า</div>`;
 
   $("saleHistory").innerHTML = state.sales.slice(0, 20).map(s => `
-    <div class="list-item"><div><strong>${productName(s.productId)}</strong><small>${s.date} • ${customerName(s.customerId)} • ${s.paymentType === "credit" ? "เครดิต" : "เงินสด"} • ${money(s.qty)} ชิ้น</small></div><div><div class="money">${money(s.revenue)}</div><small class="${Number(s.profit) >= 0 ? "positive" : "negative"}">กำไร ${money(s.profit)}</small></div></div>
+    <div class="list-item">
+      <div>
+        <strong>${productName(s.productId)}</strong>
+        <small>${s.date} • ${customerName(s.customerId)} • ${s.paymentType === "credit" ? "เครดิต" : "เงินสด"} • ${money(s.qty)} ชิ้น</small>
+      </div>
+      <div class="row-actions">
+        <div>
+          <div class="money">${money(s.revenue)}</div>
+          <small class="${Number(s.profit) >= 0 ? "positive" : "negative"}">กำไร ${money(s.profit)}</small>
+        </div>
+        <button class="small-btn small-danger" onclick="deleteSale('${s.id}')">ลบ</button>
+      </div>
+    </div>
   `).join("") || `<div class="list-item">ยังไม่มีประวัติขาย</div>`;
 
   $("paymentHistory").innerHTML = state.payments.slice(0, 20).map(p => `
-    <div class="list-item"><div><strong>${customerName(p.customerId)}</strong><small>${p.date} • ${p.method || ""} ${p.note ? "• " + p.note : ""}</small></div><div class="money positive">${money(p.amount)}</div></div>
+    <div class="list-item">
+      <div>
+        <strong>${customerName(p.customerId)}</strong>
+        <small>${p.date} • ${p.method || ""} ${p.note ? "• " + p.note : ""}</small>
+      </div>
+      <div class="row-actions">
+        <div class="money positive">${money(p.amount)}</div>
+        <button class="small-btn small-danger" onclick="deletePayment('${p.id}')">ลบ</button>
+      </div>
+    </div>
   `).join("") || `<div class="list-item">ยังไม่มีประวัติรับชำระ</div>`;
 }
 
@@ -195,6 +225,7 @@ function renderReports() {
     return `<tr>
       <td>${s.date}</td><td>${customerName(s.customerId)}</td><td>${productName(s.productId)}</td><td>${money(s.qty)}</td>
       <td>${money(s.revenue)}</td><td>${money(s.cost)}</td><td class="${Number(s.profit) >= 0 ? "positive" : "negative"}">${money(s.profit)}</td><td>${paid}</td>
+      <td><button class="small-btn small-danger" onclick="deleteSale('${s.id}')">ลบ</button></td>
     </tr>`;
   }).join("");
 }
@@ -408,6 +439,105 @@ $("paymentForm").addEventListener("submit", async (e) => {
   showToast("บันทึกรับชำระแล้ว");
   await refreshState();
 });
+
+
+async function rebuildInventoryFromTransactions() {
+  const products = await getAll("products");
+  const purchases = await getAll("purchases");
+  const sales = await getAll("sales");
+
+  const productMap = new Map();
+  products.forEach(p => {
+    productMap.set(p.id, { ...p, stockQty: 0, avgCost: 0 });
+  });
+
+  const events = [
+    ...purchases.map(p => ({ ...p, eventType: "purchase", sortKey: `${p.date || ""} ${p.createdAt || ""}` })),
+    ...sales.map(s => ({ ...s, eventType: "sale", sortKey: `${s.date || ""} ${s.createdAt || ""}` }))
+  ].sort((a, b) => String(a.sortKey).localeCompare(String(b.sortKey)));
+
+  const updatedSales = [];
+
+  for (const event of events) {
+    const product = productMap.get(event.productId);
+    if (!product) continue;
+
+    if (event.eventType === "purchase") {
+      const qty = Number(event.qty || 0);
+      const totalCost = Number(event.totalCost || 0);
+      const oldQty = Number(product.stockQty || 0);
+      const oldValue = oldQty * Number(product.avgCost || 0);
+      const newQty = oldQty + qty;
+      product.avgCost = newQty > 0 ? (oldValue + totalCost) / newQty : 0;
+      product.stockQty = newQty;
+    }
+
+    if (event.eventType === "sale") {
+      const qty = Number(event.qty || 0);
+      const revenue = Number(event.revenue || 0);
+      const cost = qty * Number(product.avgCost || 0);
+      const profit = revenue - cost;
+      product.stockQty = Number(product.stockQty || 0) - qty;
+
+      const { eventType, sortKey, ...cleanSale } = event;
+      updatedSales.push({
+        ...cleanSale,
+        cost,
+        profit,
+        recalculatedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  for (const product of productMap.values()) {
+    await put("products", {
+      ...product,
+      stockQty: Number(product.stockQty || 0),
+      avgCost: Number(product.avgCost || 0),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  for (const sale of updatedSales) {
+    await put("sales", sale);
+  }
+}
+
+window.deletePurchase = async (id) => {
+  const item = state.purchases.find(x => x.id === id);
+  if (!item) return;
+  const ok = confirm(`ลบรายการซื้อเข้า?\n\nสินค้า: ${productName(item.productId)}\nวันที่: ${item.date}\nจำนวน: ${money(item.qty)}\n\nระบบจะคำนวณสต็อกและต้นทุนใหม่`);
+  if (!ok) return;
+
+  await remove("purchases", id);
+  await rebuildInventoryFromTransactions();
+  await refreshState();
+  showToast("ลบรายการซื้อเข้าแล้ว");
+};
+
+window.deleteSale = async (id) => {
+  const item = state.sales.find(x => x.id === id);
+  if (!item) return;
+  const ok = confirm(`ลบรายการขาย?\n\nสินค้า: ${productName(item.productId)}\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nยอดขาย: ${money(item.revenue)} บาท\n\nระบบจะคืนสต็อกและคำนวณกำไร/ลูกหนี้ใหม่`);
+  if (!ok) return;
+
+  await remove("sales", id);
+  await rebuildInventoryFromTransactions();
+  await refreshState();
+  showToast("ลบรายการขายแล้ว");
+};
+
+window.deletePayment = async (id) => {
+  const item = state.payments.find(x => x.id === id);
+  if (!item) return;
+  const ok = confirm(`ลบรายการรับชำระ?\n\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nจำนวนเงิน: ${money(item.amount)} บาท\n\nยอดลูกหนี้จะถูกคำนวณใหม่`);
+  if (!ok) return;
+
+  await remove("payments", id);
+  await refreshState();
+  showToast("ลบรายการรับชำระแล้ว");
+};
+
 
 function download(filename, content, type="application/octet-stream") {
   const blob = new Blob([content], { type });

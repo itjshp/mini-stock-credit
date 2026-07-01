@@ -12,7 +12,7 @@
   <header class="hero">
     <div class="hero-inner">
       <div>
-        <p class="eyebrow">Modern Clean POS • Ledger/Reports • v0.6</p>
+        <p class="eyebrow">Modern Clean POS • Multi-item Bill • v0.7</p>
         <h1>Mini Stock Credit</h1>
         <p class="subtitle">สต็อก • ต้นทุน • กำไร • ลูกหนี้เครดิต</p>
       </div>
@@ -176,8 +176,26 @@
               </div>
             </div>
 
-            <div class="form-actions">
-              <button class="primary-btn big" type="submit" id="saleSubmitBtn">บันทึกขาย</button>
+            <div class="cart-box">
+              <div class="cart-head">
+                <div>
+                  <h3>บิลปัจจุบัน</h3>
+                  <small>เพิ่มหลายสินค้าในบิลเดียว เหมาะกับโหมด POS</small>
+                </div>
+                <button class="soft-btn mini" type="button" id="clearCartBtn">ล้างบิล</button>
+              </div>
+              <div id="saleCartList" class="cart-list"></div>
+              <div class="cart-total">
+                <div><span>รายการ</span><strong id="cartCount">0</strong></div>
+                <div><span>ยอดรวม</span><strong id="cartRevenue">0.00</strong></div>
+                <div><span>กำไรประมาณ</span><strong id="cartProfit">0.00</strong></div>
+              </div>
+            </div>
+
+            <div class="form-actions sale-actions">
+              <button class="soft-btn" type="button" id="addToCartBtn">+ เพิ่มเข้าบิล</button>
+              <button class="primary-btn big" type="button" id="saveCartBtn">บันทึกทั้งบิล</button>
+              <button class="ghost-btn" type="submit" id="saleSubmitBtn">บันทึกขายรายการเดียว</button>
               <button class="soft-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
               <button class="ghost-btn" type="button" id="clearSaleForm">ล้างฟอร์ม</button>
             </div>

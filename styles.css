@@ -330,3 +330,22 @@ input[data-keypad="true"]{
 @media(max-width:720px){
   .ledger-kpi-grid,.report-summary{grid-template-columns:1fr}
 }
+
+
+/* v0.7: Multi-item bill / POS cart */
+.cart-box{
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,#fff,#f8fbfa);
+  border-radius:22px;
+  padding:14px;
+  margin:12px 0;
+}
+.cart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.cart-head h3{margin:0;font-size:17px}.cart-head small{color:var(--muted);font-weight:800}.soft-btn.mini{padding:8px 10px;border-radius:12px;width:auto}
+.cart-list{display:grid;gap:8px;max-height:280px;overflow:auto;padding-right:2px}
+.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:16px;background:#fff;padding:11px}
+.cart-item strong{display:block}.cart-item small{display:block;color:var(--muted);font-weight:800;margin-top:3px}
+.cart-controls{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.qty-btn{border:0;border-radius:10px;background:#eef4f2;color:var(--primary);font-weight:1000;min-width:34px;height:34px;cursor:pointer}.qty-pill{min-width:46px;text-align:center;font-weight:1000}.cart-remove{border:0;border-radius:10px;background:var(--dangerSoft);color:#991b1b;font-weight:1000;height:34px;padding:0 10px;cursor:pointer}
+.cart-total{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.cart-total div{background:#0f172a;color:#fff;border-radius:16px;padding:12px}.cart-total span{display:block;font-size:12px;opacity:.78;font-weight:900}.cart-total strong{font-size:20px}.sale-actions .primary-btn.big{width:auto;flex:1}.sale-actions .soft-btn,.sale-actions .ghost-btn{flex:1}
+.product-tile .tile-hint{display:block;margin-top:8px;background:var(--soft);color:var(--primary);border-radius:999px;padding:5px 8px;text-align:center;font-weight:950;font-size:12px}
+@media(max-width:720px){.cart-total{grid-template-columns:1fr}.cart-item{grid-template-columns:1fr}.cart-controls{justify-content:flex-start}.sale-actions .primary-btn.big,.sale-actions .soft-btn,.sale-actions .ghost-btn{width:100%;flex:auto}}

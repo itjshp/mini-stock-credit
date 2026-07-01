@@ -10,6 +10,7 @@ const PRO_KEYS = ["PRO2026", "MINI-PRO", "STOCK-PRO"];
 let currentNumberInput = null;
 let numberPadValue = "";
 let selectedLedgerCustomerId = "";
+let saleCart = [];
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -200,6 +201,7 @@ function renderAll() {
   renderLedger();
   renderReportFilters();
   renderProductQuickGrid();
+  renderSaleCart();
   renderPlanUI();
   updateSalePreview();
 }
@@ -455,7 +457,7 @@ function renderProductQuickGrid() {
     <button class="product-tile" type="button" onclick="quickSelectProduct('${p.id}')">
       <strong>${p.name}</strong>
       <small>คงเหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small>
-      <div class="tile-price"><span>ปลีก ${money(p.retailPrice)}</span><span>ส่ง ${money(p.wholesalePrice)}</span></div>
+      <div class="tile-price"><span>ปลีก ${money(p.retailPrice)}</span><span>ส่ง ${money(p.wholesalePrice)}</span></div><span class="tile-hint">แตะเพื่อเลือก</span>
     </button>
   `).join("") || `<div class="list-item"><div><strong>ไม่พบสินค้า</strong><small>เพิ่มสินค้าได้ที่เมนูสินค้า</small></div></div>`;
 }
@@ -469,6 +471,126 @@ window.quickSelectProduct = (id) => {
   updateSalePreview();
   showToast(`เลือกสินค้า ${p.name}`);
 };
+
+
+function currentCartQty(productId) {
+  return saleCart.filter(x => x.productId === productId).reduce((sum, x) => sum + Number(x.qty || 0), 0);
+}
+function getSaleLineFromForm() {
+  const product = state.products.find(p => p.id === $("saleProduct").value);
+  if (!product) { alert("กรุณาเลือกสินค้า"); return null; }
+  const qty = Number($("saleQty").value || 0);
+  const unitPrice = Number($("saleUnitPrice").value || 0);
+  if (qty <= 0) { alert("กรุณาระบุจำนวนขาย"); return null; }
+  if (unitPrice < 0) { alert("ราคาขายไม่ถูกต้อง"); return null; }
+  const inCart = currentCartQty(product.id);
+  const editingSaleId = $("saleId").value;
+  const editingSale = state.sales.find(s => s.id === editingSaleId);
+  const oldQtySameProduct = editingSale && editingSale.productId === product.id ? Number(editingSale.qty || 0) : 0;
+  const available = Number(product.stockQty || 0) + oldQtySameProduct;
+  if (!editingSaleId && inCart + qty > available) {
+    alert(`สต็อกไม่พอ เหลือที่เพิ่มเข้าบิลได้ ${money(Math.max(0, available - inCart))} ${product.unit || ""}`);
+    return null;
+  }
+  const revenue = qty * unitPrice;
+  const cost = qty * Number(product.avgCost || 0);
+  return {
+    lineId: uid(), productId: product.id, productName: product.name, unit: product.unit || "",
+    qty, unitPrice, avgCost: Number(product.avgCost || 0), revenue, cost, profit: revenue - cost,
+    note: $("saleNote").value.trim()
+  };
+}
+function addCurrentLineToCart() {
+  if ($("saleId").value) return alert("กำลังแก้ไขรายการขายเดิมอยู่ ไม่สามารถเพิ่มเข้าบิลได้ กรุณายกเลิกแก้ไขก่อน");
+  const line = getSaleLineFromForm();
+  if (!line) return;
+  const existing = saleCart.find(x => x.productId === line.productId && Number(x.unitPrice) === Number(line.unitPrice));
+  if (existing) {
+    const product = state.products.find(p => p.id === line.productId);
+    const newQty = Number(existing.qty || 0) + line.qty;
+    if (newQty > Number(product?.stockQty || 0)) return alert("จำนวนรวมในบิลมากกว่าสต็อกคงเหลือ");
+    existing.qty = newQty;
+    existing.revenue = existing.qty * existing.unitPrice;
+    existing.cost = existing.qty * existing.avgCost;
+    existing.profit = existing.revenue - existing.cost;
+  } else {
+    saleCart.push(line);
+  }
+  $("saleQty").value = 1;
+  renderSaleCart();
+  updateSalePreview();
+  showToast("เพิ่มสินค้าเข้าบิลแล้ว");
+}
+function renderSaleCart() {
+  if (!$("saleCartList")) return;
+  $("saleCartList").innerHTML = saleCart.length ? saleCart.map(line => `
+    <div class="cart-item">
+      <div>
+        <strong>${line.productName}</strong>
+        <small>${money(line.qty)} ${line.unit} × ${money(line.unitPrice)} = ${money(line.revenue)}</small>
+        <small class="${line.profit >= 0 ? "positive" : "negative"}">กำไรประมาณ ${money(line.profit)}</small>
+      </div>
+      <div class="cart-controls">
+        <button class="qty-btn" type="button" onclick="changeCartQty('${line.lineId}', -1)">−</button>
+        <span class="qty-pill">${money(line.qty)}</span>
+        <button class="qty-btn" type="button" onclick="changeCartQty('${line.lineId}', 1)">+</button>
+        <button class="cart-remove" type="button" onclick="removeCartLine('${line.lineId}')">ลบ</button>
+      </div>
+    </div>
+  `).join("") : `<div class="list-item"><div><strong>ยังไม่มีสินค้าในบิล</strong><small>เลือกสินค้า แล้วกด + เพิ่มเข้าบิล</small></div></div>`;
+  const revenue = saleCart.reduce((s, x) => s + Number(x.revenue || 0), 0);
+  const profit = saleCart.reduce((s, x) => s + Number(x.profit || 0), 0);
+  $("cartCount").textContent = saleCart.length.toLocaleString("th-TH");
+  $("cartRevenue").textContent = money(revenue);
+  $("cartProfit").textContent = money(profit);
+}
+window.changeCartQty = (lineId, delta) => {
+  const line = saleCart.find(x => x.lineId === lineId);
+  if (!line) return;
+  const product = state.products.find(p => p.id === line.productId);
+  const newQty = Number(line.qty || 0) + delta;
+  if (newQty <= 0) return removeCartLine(lineId);
+  const otherQty = saleCart.filter(x => x.productId === line.productId && x.lineId !== lineId).reduce((s,x)=>s+Number(x.qty||0),0);
+  if (newQty + otherQty > Number(product?.stockQty || 0)) return alert("จำนวนในบิลมากกว่าสต็อกคงเหลือ");
+  line.qty = newQty;
+  line.revenue = line.qty * line.unitPrice;
+  line.cost = line.qty * line.avgCost;
+  line.profit = line.revenue - line.cost;
+  renderSaleCart();
+};
+window.removeCartLine = (lineId) => {
+  saleCart = saleCart.filter(x => x.lineId !== lineId);
+  renderSaleCart();
+};
+function clearSaleCart() {
+  saleCart = [];
+  renderSaleCart();
+}
+async function saveSaleCart() {
+  if (!saleCart.length) return alert("ยังไม่มีสินค้าในบิล");
+  if (demoLimitReached("sales") || (!isPro() && state.sales.length + saleCart.length > DEMO_LIMITS.sales)) return showUpgradeMessage("บันทึกรายการขายเกินจำนวน Demo");
+  const paymentType = $("salePaymentType").value;
+  const customerId = $("saleCustomer").value;
+  if (paymentType === "credit" && !customerId) return alert("ขายเครดิตต้องเลือกลูกค้า");
+  const totalRevenue = saleCart.reduce((s,x)=>s+Number(x.revenue||0),0);
+  let remainingPaid = paymentType === "cash" ? totalRevenue : Number($("salePaidAmount").value || 0);
+  if (remainingPaid > totalRevenue) return alert("รับเงินแล้วห้ามมากกว่ายอดขายรวม");
+  const invoiceNo = `INV-${Date.now()}`;
+  for (const line of saleCart) {
+    const paidAmount = paymentType === "cash" ? line.revenue : Math.min(remainingPaid, line.revenue);
+    remainingPaid = Math.max(0, remainingPaid - paidAmount);
+    await put("sales", {
+      id: uid(), invoiceNo, date: $("saleDate").value, customerId: customerId || "", productId: line.productId,
+      qty: line.qty, unitPrice: line.unitPrice, revenue: line.revenue, cost: 0, profit: 0,
+      paymentType, paidAmount, note: $("saleNote").value.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+    });
+  }
+  await rebuildInventoryFromTransactions();
+  clearSaleCart();
+  resetSaleForm();
+  showToast("บันทึกทั้งบิลแล้ว");
+  await refreshState();
+}
 
 $("saleProductSearch").addEventListener("input", renderProductQuickGrid);
 
@@ -494,6 +616,9 @@ $("resetCustomerForm").addEventListener("click", resetCustomerForm);
 $("cancelPurchaseEdit").addEventListener("click", resetPurchaseForm);
 $("cancelSaleEdit").addEventListener("click", resetSaleForm);
 $("clearSaleForm").addEventListener("click", resetSaleForm);
+$("addToCartBtn").addEventListener("click", addCurrentLineToCart);
+$("saveCartBtn").addEventListener("click", saveSaleCart);
+$("clearCartBtn").addEventListener("click", clearSaleCart);
 $("cancelPaymentEdit").addEventListener("click", resetPaymentForm);
 
 $("productForm").addEventListener("submit", async (e)=>{e.preventDefault(); const id=$("productId").value||uid(); if(!$("productId").value && demoLimitReached("products")) return showUpgradeMessage("เพิ่มสินค้าเกินจำนวน Demo"); const existing=state.products.find(p=>p.id===id)||{}; await put("products",{...existing,id,name:$("productName").value.trim(),unit:$("productUnit").value.trim(),retailPrice:Number($("productRetailPrice").value||0),wholesalePrice:Number($("productWholesalePrice").value||0),minStock:Number($("productMinStock").value||0),note:$("productNote").value.trim(),stockQty:Number(existing.stockQty||0),avgCost:Number(existing.avgCost||0),updatedAt:new Date().toISOString()}); resetProductForm(); showToast("บันทึกสินค้าแล้ว"); await refreshState();});
@@ -522,7 +647,7 @@ window.editPayment=(id)=>{const p=state.payments.find(x=>x.id===id); if(!p)retur
 window.deletePayment=async(id)=>{const item=state.payments.find(x=>x.id===id); if(!item)return; if(confirm(`ลบรายการรับชำระ?\n\nลูกค้า: ${customerName(item.customerId)}\nวันที่: ${item.date}\nจำนวนเงิน: ${money(item.amount)} บาท\n\nยอดลูกหนี้จะถูกคำนวณใหม่`)){await remove("payments",id); await refreshState(); showToast("ลบรายการรับชำระแล้ว");}};
 
 function download(filename, content, type="application/octet-stream"){const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);}
-$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Mini Stock Credit",version:"0.6",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
+$("exportBackupBtn").addEventListener("click",()=>{const data={app:"Mini Stock Credit",version:"0.7",exportedAt:new Date().toISOString(),...state}; download(`mini-stock-credit-backup-${today()}.json`,JSON.stringify(data,null,2),"application/json");});
 $("importBackupInput").addEventListener("change",async(e)=>{const file=e.target.files[0]; if(!file)return; const text=await file.text(); const data=JSON.parse(text); if(!confirm("นำเข้า Backup จะเขียนข้อมูลทับในเครื่องนี้ ต้องการทำต่อไหม?"))return; for(const store of STORES)await clearStore(store); for(const store of STORES){for(const item of(data[store]||[]))await put(store,item)} await rebuildInventoryFromTransactions(); showToast("นำเข้า Backup แล้ว"); await refreshState();});
 $("exportCsvBtn").addEventListener("click",()=>{if(!isPro()) return showUpgradeMessage("Export CSV"); const rows=[["วันที่","ลูกค้า","สินค้า","จำนวน","ราคาต่อหน่วย","ยอดขาย","ต้นทุน","กำไร","ประเภทชำระ","รับแล้ว"]]; getFilteredSales().forEach(s=>rows.push([s.date,customerName(s.customerId),productName(s.productId),s.qty,s.unitPrice,s.revenue,s.cost,s.profit,s.paymentType==="credit"?"เครดิต":"เงินสด",s.paidAmount])); const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n"); download(`sales-report-${today()}.csv`,"\ufeff"+csv,"text/csv;charset=utf-8");});
 $("clearAllBtn").addEventListener("click",async()=>{if(!confirm("ยืนยันล้างข้อมูลทั้งหมด? แนะนำให้ Export Backup ก่อน"))return; for(const store of STORES)await clearStore(store); resetProductForm(); resetCustomerForm(); resetPurchaseForm(); resetSaleForm(); resetPaymentForm(); await refreshState(); showToast("ล้างข้อมูลแล้ว");});

@@ -1,7 +1,7 @@
 {
-  "name": "Khaikhong",
+  "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong Easy POS v1.1 พร้อมค้นหาเร็ว สรุปวันนี้/เดือนนี้ และ Backup Reminder",
+  "description": "Khaikhong v2 Easy POS with Bills, Stock Movements, Credit Ledger",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

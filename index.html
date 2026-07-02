@@ -2,761 +2,110 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
-  <title>Khaikhong</title>
+  <title>Khaikhong v2</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner">
-      <div>
-        <p class="eyebrow">Easy POS • Fast Search • v1.1</p>
-        <h1>Khaikhong</h1>
-        <p class="subtitle">ขายง่าย • คุมสต็อก • ดูกำไร • จดลูกหนี้</p>
-      </div>
-      <div class="hero-actions">
-        <button class="hero-btn" data-open-tab="sale">ขายของ</button>
-        <button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button>
-      </div>
+<header class="hero">
+  <div class="hero-inner">
+    <div><p class="eyebrow">Khaikhong v2.0 • Bill System • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="more" class="tab">เพิ่มเติม</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button>
+</nav>
+
+<main>
+<section id="sale" class="page active">
+  <div class="page-head"><div><h2>ขายของ</h2><p>เลือกสินค้า → เพิ่มลงบิล → บันทึกขาย เป็นเงินสดหรือเครดิต</p></div></div>
+  <div class="steps"><div><b>1</b><span>เลือกสินค้า</span></div><div><b>2</b><span>ตรวจบิล</span></div><div><b>3</b><span>บันทึกขาย</span></div></div>
+  <div class="pos-layout">
+    <div class="left-col">
+      <div class="panel product-picker"><div class="panel-head"><h3>เลือกสินค้า</h3><button class="link-btn" data-open-tab="products">+ เพิ่มสินค้า</button></div><input id="saleSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเพิ่มลงบิล"><div id="quickProducts" class="product-grid"></div></div>
+      <div class="panel"><div class="panel-head"><h3>บิลล่าสุด</h3><button class="link-btn" data-open-tab="reports">ดูทั้งหมด</button></div><div id="recentBills" class="stack-list"></div></div>
     </div>
-  </header>
-
-  <nav class="tabs easy-tabs" aria-label="เมนูหลัก">
-    <button data-tab="sale" class="tab tab-sale active">ขายของ</button>
-    <button data-tab="products" class="tab">สินค้า</button>
-    <button data-tab="customers" class="tab">ลูกค้า</button>
-    <button data-tab="dashboard" class="tab">สรุป</button>
-    <button data-tab="more" class="tab">เพิ่มเติม</button>
-    <button data-tab="help" class="tab secondary-tab">คู่มือ</button>
-
-    <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button>
-    <button data-tab="ledger" class="tab secondary-tab">ลูกหนี้</button>
-    <button data-tab="payments" class="tab secondary-tab">รับชำระ</button>
-    <button data-tab="reports" class="tab secondary-tab">รายงาน</button>
-    <button data-tab="backup" class="tab secondary-tab">Backup</button>
-  </nav>
-
-  <main>
-    <section id="dashboard" class="page">
-      <div class="page-head">
-        <div>
-          <h2>สรุปยอด</h2>
-          <p>ดูยอดขาย กำไร ลูกหนี้ และสต็อกแบบง่าย ๆ</p>
-        </div>
-        <div class="quick-actions">
-          <button class="primary-btn" data-open-tab="sale">+ ขายของ</button>
-          <button class="soft-btn" data-open-tab="purchase">+ ซื้อเข้า</button>
-          <button class="soft-btn" data-open-tab="payments">+ รับชำระ</button>
-          <button class="soft-btn" data-open-tab="ledger">ดู ลูกหนี้</button>
-        </div>
-      </div>
-
-
-      <div class="today-summary">
-        <div class="today-card sales">
-          <span>ยอดขายวันนี้</span>
-          <strong id="todaySales">0.00</strong>
-          <small>บาท</small>
-        </div>
-        <div class="today-card profit">
-          <span>กำไรวันนี้</span>
-          <strong id="todayProfit">0.00</strong>
-          <small>บาท</small>
-        </div>
-        <div class="today-card month">
-          <span>ยอดขายเดือนนี้</span>
-          <strong id="monthSales">0.00</strong>
-          <small>บาท</small>
-        </div>
-        <div class="today-card backup">
-          <span>Backup ล่าสุด</span>
-          <strong id="lastBackupText">ยังไม่เคย</strong>
-          <small>ควร Backup ทุกวัน</small>
-        </div>
-      </div>
-
-      <div class="kpi-grid">
-        <article class="kpi-card">
-          <div class="kpi-icon">฿</div>
-          <span>ยอดขายรวม</span>
-          <strong id="kpiSales">0.00</strong>
-          <small>บาท</small>
-        </article>
-        <article class="kpi-card">
-          <div class="kpi-icon profit">↗</div>
-          <span>กำไรรวม</span>
-          <strong id="kpiProfit">0.00</strong>
-          <small>บาท</small>
-        </article>
-        <article class="kpi-card warn">
-          <div class="kpi-icon credit">!</div>
-          <span>ลูกหนี้ค้างชำระ</span>
-          <strong id="kpiCredit">0.00</strong>
-          <small>บาท</small>
-        </article>
-        <article class="kpi-card">
-          <div class="kpi-icon stock">▦</div>
-          <span>มูลค่าสต็อก</span>
-          <strong id="kpiStockValue">0.00</strong>
-          <small>บาท</small>
-        </article>
-      </div>
-
-      <div class="dashboard-grid">
-        <div class="panel">
-          <div class="panel-head">
-            <h3>สินค้าสต็อกต่ำ</h3>
-            <button class="mini-link" data-open-tab="products">ดูสินค้า</button>
-          </div>
-          <div id="lowStockList" class="stack-list"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-head">
-            <h3>ลูกหนี้ค้างชำระ</h3>
-            <button class="mini-link" data-open-tab="customers">ดูลูกค้า</button>
-          </div>
-          <div id="creditList" class="stack-list"></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h3>ขายล่าสุด</h3>
-          <button class="mini-link" data-open-tab="reports">ดูรายงาน</button>
-        </div>
-        <div id="dashboardRecentSales" class="stack-list"></div>
-      </div>
-    </section>
-
-    <section id="sale" class="page active">
-      <div class="page-head">
-        <div>
-          <h2>ขายของ</h2>
-          <p>ขายแบบง่าย: เลือกสินค้า → เพิ่มลงบิล → บันทึกขาย</p>
-        </div>
-      </div>
-
-
-
-      <div class="quick-help">
-        <strong>ใช้งานครั้งแรก:</strong>
-        <span>เพิ่มสินค้า → ซื้อเข้า → ขายของ → Backup</span>
-        <button class="mini-link" data-open-tab="help" type="button">ดูคู่มือ</button>
-      </div>
-
-      <div class="easy-steps">
-        <div><b>1</b><span>เลือกสินค้า</span></div>
-        <div><b>2</b><span>เพิ่มลงบิล</span></div>
-        <div><b>3</b><span>บันทึกขาย</span></div>
-      </div>
-
-      <div class="pos-layout">
-        <div class="pos-left">
-          <div class="panel">
-            <div class="panel-head">
-              <h3>1. เลือกสินค้า</h3>
-              <span class="hint">ค้นหาแล้วแตะสินค้า</span>
-            </div>
-            <input id="saleProductSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเลือก หรือกด Enter เลือกรายการแรก">
-            <div id="productQuickGrid" class="product-grid"></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <h3>ขายล่าสุด</h3>
-              <span class="hint">แตะเพื่อแก้ไข/ลบได้</span>
-            </div>
-            <div id="saleHistory" class="stack-list"></div>
-          </div>
-        </div>
-
-        <div class="pos-right">
-          <form id="saleForm" class="pos-card">
-            <input type="hidden" id="saleId">
-            <div id="saleEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการขาย</div>
-
-            <div class="form-row">
-              <label>วันที่<input id="saleDate" type="date" required></label>
-              <label>ชำระแบบ
-                <select id="salePaymentType">
-                  <option value="cash">เงินสด/โอนแล้ว</option>
-                  <option value="credit">เครดิต/ค้างชำระ</option>
-                </select>
-              </label>
-            </div>
-
-            <label>ลูกค้า<select id="saleCustomer"></select></label>
-            <label>สินค้า<select id="saleProduct" required></select></label>
-
-            <div class="form-row">
-              <label>จำนวนขาย<input id="saleQty" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
-              <label>ราคาขายต่อหน่วย<input id="saleUnitPrice" type="number" min="0" step="0.01" required data-keypad="true"></label>
-            </div>
-
-            <div class="form-row">
-              <label>รับเงิน<input id="salePaidAmount" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
-              <label>หมายเหตุ<input id="saleNote" placeholder="ไม่บังคับ"></label>
-            </div>
-
-            <div class="checkout-box">
-              <div>
-                <span>ยอดขาย</span>
-                <strong id="salePreviewRevenue">0.00</strong>
-              </div>
-              <div>
-                <span>ต้นทุน</span>
-                <strong id="salePreviewCost">0.00</strong>
-              </div>
-              <div class="checkout-profit">
-                <span>กำไร</span>
-                <strong id="salePreviewProfit">0.00</strong>
-              </div>
-            </div>
-
-            <div class="cart-box">
-              <div class="cart-head">
-                <div>
-                  <h3>2. บิลปัจจุบัน</h3>
-                  <small>ตรวจรายการก่อนบันทึกขาย</small>
-                </div>
-                <button class="soft-btn mini" type="button" id="clearCartBtn">ล้างบิล</button>
-              </div>
-              <div id="saleCartList" class="cart-list"></div>
-              <div class="cart-total">
-                <div><span>รายการ</span><strong id="cartCount">0</strong></div>
-                <div><span>ยอดรวม</span><strong id="cartRevenue">0.00</strong></div>
-                <div><span>กำไรประมาณ</span><strong id="cartProfit">0.00</strong></div>
-              </div>
-            </div>
-
-            <div class="form-actions sale-actions">
-              <button class="soft-btn" type="button" id="addToCartBtn">+ เพิ่มลงบิล</button>
-              <button class="primary-btn big" type="button" id="saveCartBtn">บันทึกขาย</button>
-              <button class="ghost-btn" type="submit" id="saleSubmitBtn">ขายทันที</button>
-              <button class="soft-btn hidden" type="button" id="cancelSaleEdit">ยกเลิกแก้ไข</button>
-              <button class="ghost-btn" type="button" id="clearSaleForm">เริ่มใหม่</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </section>
-
-    <section id="purchase" class="page">
-      <div class="page-head">
-        <div>
-          <h2>ซื้อเข้า</h2>
-          <p>เพิ่มของเข้าสต็อกและบันทึกต้นทุน</p>
-        </div>
-      </div>
-
-      <form id="purchaseForm" class="panel form-grid">
-        <input type="hidden" id="purchaseId">
-        <div id="purchaseEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการซื้อเข้า</div>
-        <label>วันที่<input id="purchaseDate" type="date" required></label>
-        <label>สินค้า<select id="purchaseProduct" required></select></label>
-        <label>จำนวนซื้อเข้า<input id="purchaseQty" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
-        <label>ทุนต่อหน่วย<input id="purchaseUnitCost" type="number" min="0" step="0.01" required data-keypad="true"></label>
-        <label>ค่าใช้จ่ายเพิ่ม/ค่าส่ง<input id="purchaseExtraCost" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
-        <label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="purchaseSubmitBtn">บันทึกซื้อเข้า</button>
-          <button class="soft-btn hidden" type="button" id="cancelPurchaseEdit">ยกเลิกแก้ไข</button>
-        </div>
-      </form>
-
-      <div class="panel">
-        <div class="panel-head"><h3>ประวัติซื้อเข้า</h3><span class="hint">แก้ไข/ลบได้</span></div>
-        <div id="purchaseHistory" class="stack-list"></div>
-      </div>
-    </section>
-
-    <section id="products" class="page">
-      <div class="page-head">
-        <div>
-          <h2>สินค้า</h2>
-          <p>เพิ่ม/แก้ไขสินค้า ราคา และสต็อกขั้นต่ำ</p>
-        </div>
-      </div>
-
-      <form id="productForm" class="panel form-grid">
-        <input type="hidden" id="productId">
-        <label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label>
-        <label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label>
-        <label>ราคาขายปลีก<input id="productRetailPrice" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
-        <label>ราคาขายส่ง<input id="productWholesalePrice" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
-        <label>แจ้งเตือนต่ำกว่า<input id="productMinStock" type="number" min="0" step="1" value="0" data-keypad="true"></label>
-        <label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button>
-          <button class="soft-btn" type="button" id="resetProductForm">เริ่มใหม่</button>
-        </div>
-      </form>
-
-      <div class="panel">
-        <div class="panel-head"><h3>รายการสินค้า</h3><span class="hint">ค้นหาเร็วขึ้น เหมาะกับสินค้าจำนวนมาก</span></div>
-        <input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า เช่น ชื่อสินค้า / หน่วย / หมายเหตุ">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาปลีก</th><th>ราคาส่ง</th><th></th></tr></thead>
-            <tbody id="productsTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="customers" class="page">
-      <div class="page-head">
-        <div>
-          <h2>ลูกค้า</h2>
-          <p>เพิ่มลูกค้าและดูยอดค้างแบบง่าย</p>
-        </div>
-      </div>
-
-      <form id="customerForm" class="panel form-grid">
-        <input type="hidden" id="customerId">
-        <label>ชื่อลูกค้า<input id="customerName" required placeholder="เช่น แนน / พี่ออย"></label>
-        <label>ประเภทลูกค้า
-          <select id="customerType">
-            <option value="ขายปลีก">ขายปลีก</option>
-            <option value="ขายส่ง">ขายส่ง</option>
-            <option value="ทั่วไป">ทั่วไป</option>
-          </select>
-        </label>
-        <label>เบอร์โทร<input id="customerPhone" placeholder="ไม่บังคับ"></label>
-        <label>วงเงินเครดิต<input id="customerCreditLimit" type="number" min="0" step="0.01" value="0" data-keypad="true"></label>
-        <label>เครดิตกี่วัน<input id="customerCreditDays" type="number" min="0" step="1" value="0" data-keypad="true"></label>
-        <label>หมายเหตุ<input id="customerNote" placeholder="ไม่บังคับ"></label>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="customerSubmitBtn">บันทึกลูกค้า</button>
-          <button class="soft-btn" type="button" id="resetCustomerForm">เริ่มใหม่</button>
-        </div>
-      </form>
-
-      <div class="panel">
-        <div class="panel-head"><h3>รายการลูกค้า</h3><span class="hint">ค้นหาลูกค้าและเปิดสมุดบัญชีได้เร็วขึ้น</span></div>
-        <input id="customerSearch" class="search-input" placeholder="ค้นหาลูกค้า เช่น ชื่อ / เบอร์โทร / ประเภท">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>ยอดค้าง</th><th>วงเงิน</th><th></th></tr></thead>
-            <tbody id="customersTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-
-    <section id="ledger" class="page">
-      <div class="page-head">
-        <div>
-          <h2>ยอดค้างชำระ</h2>
-          <p>ดูว่าใครค้างเงินเท่าไร และค้างจากรายการไหน</p>
-        </div>
-        <div class="quick-actions">
-          <button class="soft-btn" data-open-tab="customers">+ เพิ่มลูกค้า</button>
-          <button class="primary-btn" data-open-tab="payments">+ รับชำระ</button>
-        </div>
-      </div>
-
-      <div class="ledger-layout">
-        <div class="panel">
-          <div class="panel-head">
-            <h3>เลือกลูกค้า</h3>
-            <span class="hint">เรียงลูกค้าที่มียอดค้างไว้ด้านบน</span>
-          </div>
-          <input id="ledgerCustomerSearch" class="search-input" placeholder="ค้นหาลูกค้า">
-          <div id="ledgerCustomerList" class="stack-list"></div>
-        </div>
-
-        <div class="panel ledger-detail">
-          <div class="panel-head">
-            <div>
-              <h3 id="ledgerCustomerName">เลือกชื่อลูกค้า</h3>
-              <span class="hint" id="ledgerCustomerMeta">ดูประวัติลูกหนี้รายคน</span>
-            </div>
-            <button class="soft-btn" id="ledgerClearSelection" type="button">ล้างการเลือก</button>
-          </div>
-
-          <div class="ledger-kpi-grid">
-            <div class="ledger-kpi"><span>ยอดค้างปัจจุบัน</span><strong id="ledgerBalance">0.00</strong></div>
-            <div class="ledger-kpi"><span>ยอดขายเครดิต</span><strong id="ledgerCreditSales">0.00</strong></div>
-            <div class="ledger-kpi"><span>รับชำระแล้ว</span><strong id="ledgerPayments">0.00</strong></div>
-            <div class="ledger-kpi"><span>วงเงินเครดิต</span><strong id="ledgerLimit">0.00</strong></div>
-          </div>
-
-          <div class="panel-head sub-head">
-            <h3>รายการเคลื่อนไหว</h3>
-            <span class="hint">ขายเครดิต = เพิ่มหนี้ / รับชำระ = ลดหนี้</span>
-          </div>
-          <div id="ledgerEntries" class="stack-list"></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="payments" class="page">
-      <div class="page-head">
-        <div>
-          <h2>รับเงิน</h2>
-          <p>รับเงินจากลูกค้าที่ค้างชำระ</p>
-        </div>
-      </div>
-
-      <form id="paymentForm" class="panel form-grid">
-        <input type="hidden" id="paymentId">
-        <div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับชำระ</div>
-        <label>วันที่<input id="paymentDate" type="date" required></label>
-        <label>ลูกค้า<select id="paymentCustomer" required></select></label>
-        <label>จำนวนเงินที่รับ<input id="paymentAmount" type="number" min="0.01" step="0.01" required data-keypad="true"></label>
-        <label>ช่องทาง
-          <select id="paymentMethod">
-            <option value="เงินสด">เงินสด</option>
-            <option value="โอน">โอน</option>
-            <option value="อื่น ๆ">อื่น ๆ</option>
-          </select>
-        </label>
-        <label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label>
-        <div class="form-actions">
-          <button class="primary-btn" type="submit" id="paymentSubmitBtn">บันทึกรับชำระ</button>
-          <button class="soft-btn hidden" type="button" id="cancelPaymentEdit">ยกเลิกแก้ไข</button>
-        </div>
-      </form>
-
-      <div class="panel">
-        <div class="panel-head"><h3>ประวัติรับชำระ</h3><span class="hint">แก้ไข/ลบได้</span></div>
-        <div id="paymentHistory" class="stack-list"></div>
-      </div>
-    </section>
-
-    <section id="reports" class="page">
-      <div class="page-head">
-        <div>
-          <h2>รายงาน</h2>
-          <p>กรองยอดขาย ต้นทุน และกำไร</p>
-        </div>
-        <button class="soft-btn" id="exportCsvBtn">Export CSV</button>
-      </div>
-
-
-      <div class="panel report-filter">
-        <div class="panel-head">
-          <h3>ตัวกรองรายงาน</h3>
-          <div class="filter-actions"><button class="soft-btn" id="filterTodayBtn" type="button">วันนี้</button><button class="soft-btn" id="filterMonthBtn" type="button">เดือนนี้</button><button class="soft-btn" id="resetReportFilter" type="button">ล้างตัวกรอง</button></div>
-        </div>
-        <div class="form-grid">
-          <label>วันที่เริ่มต้น<input id="reportDateFrom" type="date"></label>
-          <label>วันที่สิ้นสุด<input id="reportDateTo" type="date"></label>
-          <label>ลูกค้า<select id="reportCustomer"></select></label>
-          <label>สินค้า<select id="reportProduct"></select></label>
-          <label>ชำระแบบ
-            <select id="reportPaymentType">
-              <option value="">ทั้งหมด</option>
-              <option value="cash">เงินสด/โอนแล้ว</option>
-              <option value="credit">เครดิต/ค้างชำระ</option>
-            </select>
-          </label>
-        </div>
-        <div class="report-summary">
-          <div><span>ยอดขาย</span><strong id="reportSumSales">0.00</strong></div>
-          <div><span>ต้นทุน</span><strong id="reportSumCost">0.00</strong></div>
-          <div><span>กำไร</span><strong id="reportSumProfit">0.00</strong></div>
-          <div><span>จำนวนรายการ</span><strong id="reportSumCount">0</strong></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>วันที่</th><th>ลูกค้า</th><th>สินค้า</th><th>จำนวน</th><th>ยอดขาย</th><th>ต้นทุน</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead>
-            <tbody id="reportSalesTable"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-
-    <section id="plan" class="page">
-      <div class="page-head">
-        <div>
-          <h2>ฟีเจอร์พรีเมียม (ซ่อนไว้ก่อน)</h2>
-          <p>ส่วนนี้ซ่อนไว้ก่อน จนกว่าระบบหลักจะสมบูรณ์</p>
-        </div>
-      </div>
-
-      <div class="plan-grid">
-        <article class="plan-card current-plan">
-          <div class="plan-title">
-            <span class="plan-chip" id="currentPlanChip">DEMO</span>
-            <h3>สถานะปัจจุบัน</h3>
-          </div>
-          <p id="planDescription">กำลังใช้งานแผน Demo</p>
-          <div class="usage-list">
-            <div><span>สินค้า</span><strong id="usageProducts">0 / 30</strong></div>
-            <div><span>ลูกค้า</span><strong id="usageCustomers">0 / 20</strong></div>
-            <div><span>รายการขาย</span><strong id="usageSales">0 / 100</strong></div>
-          </div>
-        </article>
-
-        <article class="plan-card">
-          <div class="plan-title">
-            <span class="plan-chip demo">FREE</span>
-            <h3>Demo</h3>
-          </div>
-          <ul class="feature-list">
-            <li>เพิ่มสินค้าได้สูงสุด 30 รายการ</li>
-            <li>เพิ่มลูกค้าได้สูงสุด 20 ราย</li>
-            <li>บันทึกขายได้สูงสุด 100 รายการ</li>
-            <li>Backup JSON ได้</li>
-            <li>Export CSV ถูกล็อก</li>
-          </ul>
-        </article>
-
-        <article class="plan-card pro">
-          <div class="plan-title">
-            <span class="plan-chip pro-chip">PRO</span>
-            <h3>Pro</h3>
-          </div>
-          <ul class="feature-list">
-            <li>ไม่จำกัดสินค้า ลูกค้า และรายการขาย</li>
-            <li>Export CSV / รายงานขาย</li>
-            <li>Number Pad แบบ POS</li>
-            <li>เหมาะสำหรับใช้งานจริงทุกวัน</li>
-            <li>พร้อมต่อยอด Cloud Sync / Barcode / ใบเสร็จ</li>
-          </ul>
-          <div class="unlock-box">
-            <label>ใส่รหัสปลดล็อก Pro
-              <input id="licenseKeyInput" placeholder="เช่น PRO2026">
-            </label>
-            <button class="primary-btn" id="unlockProBtn" type="button">ปลดล็อก Pro</button>
-            <button class="soft-btn" id="resetDemoBtn" type="button">กลับเป็น Demo</button>
-            <small>รหัส Demo สำหรับทดสอบ: <strong>PRO2026</strong></small>
-          </div>
-        </article>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h3>ฟีเจอร์ที่เหมาะจะทำเป็น Pro ในอนาคต</h3>
-          <span class="hint">ใช้เป็นไอเดียเวลาเอาไปทำสินค้า Demo/ขายจริง</span>
-        </div>
-        <div class="pro-feature-grid">
-          <div>📊 รายงานกำไรขั้นสูง</div>
-          <div>📒 สมุดลูกหนี้รายคน</div>
-          <div>📦 ไม่จำกัดสินค้า/ลูกค้า</div>
-          <div>🧾 Export Excel / PDF</div>
-          <div>🔢 POS Number Pad</div>
-          <div>☁️ Cloud Backup / Sync</div>
-          <div>🏷️ Barcode Scan</div>
-          <div>🖨️ พิมพ์/แชร์ใบเสร็จ</div>
-        </div>
-      </div>
-    </section>
-
-
-
-    <section id="help" class="page">
-      <div class="page-head">
-        <div>
-          <h2>คู่มือใช้งาน Khaikhong</h2>
-          <p>คู่มือสั้น ๆ สำหรับเริ่มใช้งานจริง ใช้เวลาอ่านประมาณ 3 นาที</p>
-        </div>
-        <div class="quick-actions">
-          <button class="primary-btn" data-open-tab="sale">เริ่มขายของ</button>
-          <button class="soft-btn" data-open-tab="backup">Backup</button>
-        </div>
-      </div>
-
-      <div class="guide-grid">
-        <article class="guide-card start">
-          <span class="guide-no">1</span>
-          <h3>เริ่มต้นครั้งแรก</h3>
-          <ol>
-            <li>ไปเมนู <strong>สินค้า</strong> แล้วเพิ่มสินค้าก่อน</li>
-            <li>ไป <strong>เพิ่มเติม > ซื้อเข้า</strong> เพื่อเพิ่มสต็อกและต้นทุน</li>
-            <li>กลับมาหน้า <strong>ขายของ</strong> เพื่อเริ่มขาย</li>
-            <li>กด <strong>Backup</strong> หลังกรอกข้อมูลจริง</li>
-          </ol>
-        </article>
-
-        <article class="guide-card">
-          <span class="guide-no">2</span>
-          <h3>วิธีขายของ</h3>
-          <ol>
-            <li>ค้นหาสินค้า แล้วแตะสินค้า</li>
-            <li>ใส่จำนวนและราคาขาย</li>
-            <li>กด <strong>เพิ่มลงบิล</strong></li>
-            <li>ถ้ามีหลายสินค้า ให้เลือกเพิ่มต่อ</li>
-            <li>กด <strong>บันทึกขาย</strong></li>
-          </ol>
-        </article>
-
-        <article class="guide-card">
-          <span class="guide-no">3</span>
-          <h3>ขายเครดิต / ลูกค้าค้างจ่าย</h3>
-          <ol>
-            <li>เพิ่มลูกค้าในเมนู <strong>ลูกค้า</strong></li>
-            <li>ตอนขาย ให้เลือกชำระแบบ <strong>เครดิต/ค้างชำระ</strong></li>
-            <li>เลือกชื่อลูกค้า</li>
-            <li>ดูยอดค้างได้ที่ <strong>เพิ่มเติม > ยอดค้าง</strong></li>
-            <li>รับเงินได้ที่ <strong>เพิ่มเติม > รับเงิน</strong></li>
-          </ol>
-        </article>
-
-        <article class="guide-card">
-          <span class="guide-no">4</span>
-          <h3>แก้ไข / ลบรายการผิด</h3>
-          <ol>
-            <li>ไปที่ประวัติขาย / ซื้อเข้า / รับเงิน</li>
-            <li>กด <strong>แก้ไข</strong> เพื่อปรับข้อมูล</li>
-            <li>กด <strong>ลบ</strong> เมื่อต้องการลบรายการผิด</li>
-            <li>ระบบจะคำนวณสต็อก กำไร และลูกหนี้ใหม่ให้อัตโนมัติ</li>
-          </ol>
-        </article>
-
-        <article class="guide-card important">
-          <span class="guide-no">5</span>
-          <h3>Backup สำคัญมาก</h3>
-          <p>ข้อมูลของแอปนี้เก็บในเครื่อง/Browser ที่ใช้งาน ไม่ได้เก็บบน GitHub</p>
-          <ol>
-            <li>กด <strong>เพิ่มเติม > Backup</strong></li>
-            <li>กด <strong>Export Backup JSON</strong></li>
-            <li>เก็บไฟล์ไว้ใน Google Drive / iCloud / Flash Drive</li>
-            <li>ควร Backup ทุกวันหลังใช้งานจริง</li>
-          </ol>
-        </article>
-
-        <article class="guide-card tips">
-          <span class="guide-no">6</span>
-          <h3>ข้อแนะนำให้ใช้งานลื่น</h3>
-          <ul>
-            <li>อย่าล้างข้อมูล Browser ถ้ายังไม่ได้ Backup</li>
-            <li>ถ้าใช้หลายเครื่อง ข้อมูลจะไม่ sync กันเอง ต้อง Export/Import Backup</li>
-            <li>เริ่มใช้งานจริงจากสินค้า 3–5 รายการก่อน เพื่อทดสอบตัวเลข</li>
-            <li>ถ้าหน้าเว็บไม่อัปเดต ให้กด Ctrl+F5 หรือปิด/เปิด PWA ใหม่</li>
-          </ul>
-        </article>
-      </div>
-
-      <div class="panel guide-flow">
-        <h3>Flow ใช้งานประจำวันที่แนะนำ</h3>
-        <div class="flow-row">
-          <div>เปิดแอป</div>
-          <span>→</span>
-          <div>ขายของ</div>
-          <span>→</span>
-          <div>รับเงิน/ดูยอดค้าง</div>
-          <span>→</span>
-          <div>ดูสรุป</div>
-          <span>→</span>
-          <div>Backup</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="more" class="page">
-      <div class="page-head">
-        <div>
-          <h2>เพิ่มเติม</h2>
-          <p>รวมเมนูที่ไม่ได้ใช้บ่อย เพื่อให้หน้าหลักใช้งานง่ายขึ้น</p>
-        </div>
-      </div>
-
-      <div class="more-grid">
-        <button class="more-card" data-open-tab="purchase" type="button">
-          <span>📦</span>
-          <strong>ซื้อเข้า</strong>
-          <small>เพิ่มของเข้าสต็อก / บันทึกทุน</small>
-        </button>
-        <button class="more-card" data-open-tab="payments" type="button">
-          <span>💵</span>
-          <strong>รับเงิน</strong>
-          <small>รับชำระลูกหนี้เครดิต</small>
-        </button>
-        <button class="more-card" data-open-tab="ledger" type="button">
-          <span>📒</span>
-          <strong>ยอดค้าง</strong>
-          <small>ดูสมุดบัญชีลูกค้า</small>
-        </button>
-        <button class="more-card" data-open-tab="reports" type="button">
-          <span>📊</span>
-          <strong>รายงาน</strong>
-          <small>ดูยอดขาย กำไร และ Export</small>
-        </button>
-
-        <button class="more-card help-card" data-open-tab="help" type="button">
-          <span>📘</span>
-          <strong>คู่มือใช้งาน</strong>
-          <small>เริ่มต้นใช้งาน / วิธีขาย / Backup</small>
-        </button>
-
-        <button class="more-card" data-open-tab="backup" type="button">
-          <span>☁️</span>
-          <strong>Backup</strong>
-          <small>สำรอง/กู้คืนข้อมูล</small>
-        </button>
-      </div>
-    </section>
-
-    <section id="backup" class="page">
-      <div class="page-head">
-        <div>
-          <h2>Backup / Restore</h2>
-          <p>ข้อมูลอยู่ในเครื่อง ควร Backup เป็นประจำ</p>
-        </div>
-      </div>
-
-      <div class="panel backup-panel">
-        <h3>สำรองข้อมูล</h3>
-        <p><strong>สำคัญ:</strong> ข้อมูล App นี้เก็บใน Browser/เครื่องที่ใช้งาน ถ้าล้าง Browser หรือเปลี่ยนเครื่อง ข้อมูลอาจหายได้</p>
-        <div class="backup-reminder"><strong>แนะนำ:</strong> หลังใช้งานจริงทุกวัน ให้ Export Backup เก็บไว้ 1 ไฟล์</div>
-        <div class="form-actions">
-          <button class="primary-btn" id="exportBackupBtn">Export Backup JSON</button>
-          <label class="file-btn">Import Backup JSON
-            <input type="file" id="importBackupInput" accept="application/json">
-          </label>
-        </div>
-      </div>
-
-      <div class="panel danger-zone">
-        <h3>ล้างข้อมูลทั้งหมด</h3>
-        <p>ใช้เฉพาะตอนต้องการเริ่มใหม่ แนะนำให้ Export Backup ก่อน</p>
-        <button class="danger-btn" id="clearAllBtn">ล้างข้อมูลทั้งหมด</button>
-      </div>
-    </section>
-  </main>
-
-
-  <div id="numberPadOverlay" class="numpad-overlay hidden">
-    <div class="numpad">
-      <div class="numpad-head">
-        <div>
-          <p>POS Number Pad</p>
-          <strong id="numpadTargetLabel">ใส่ตัวเลข</strong>
-        </div>
-        <button id="numpadClose" class="numpad-close" type="button">×</button>
-      </div>
-      <div id="numpadDisplay" class="numpad-display">0</div>
-      <div class="numpad-grid">
-        <button type="button" data-num="7">7</button>
-        <button type="button" data-num="8">8</button>
-        <button type="button" data-num="9">9</button>
-        <button type="button" data-num="4">4</button>
-        <button type="button" data-num="5">5</button>
-        <button type="button" data-num="6">6</button>
-        <button type="button" data-num="1">1</button>
-        <button type="button" data-num="2">2</button>
-        <button type="button" data-num="3">3</button>
-        <button type="button" data-num="0">0</button>
-        <button type="button" data-num="00">00</button>
-        <button type="button" data-num=".">.</button>
-        <button type="button" id="numpadBack">⌫</button>
-        <button type="button" id="numpadClear">C</button>
-        <button type="button" id="numpadOk" class="ok">ตกลง</button>
+    <div class="right-col">
+      <div class="bill-card">
+        <div class="bill-top"><div><h3>บิลปัจจุบัน</h3><p id="currentBillMeta">ยังไม่ได้บันทึก</p></div><button id="clearCartBtn" class="soft-btn">ล้างบิล</button></div>
+        <div class="form-row"><label>วันที่<input id="billDate" type="date"></label><label>ชำระแบบ<select id="paymentType"><option value="cash">เงินสด/โอนแล้ว</option><option value="credit">เครดิต/ค้างชำระ</option></select></label></div>
+        <label id="customerField" class="hidden-field">ลูกค้า<select id="billCustomer"></select></label>
+        <div id="cartItems" class="cart-items"></div>
+        <div class="bill-summary"><div><span>รายการ</span><strong id="cartCount">0</strong></div><div><span>ยอดรวม</span><strong id="cartTotal">0.00</strong></div><div><span>กำไร</span><strong id="cartProfit">0.00</strong></div></div>
+        <label>รับเงินแล้ว<input id="paidAmount" data-keypad="true" type="number" min="0" step="0.01" value="0"></label>
+        <label>หมายเหตุ<input id="billNote" placeholder="ไม่บังคับ"></label>
+        <button id="saveBillBtn" class="save-btn">บันทึกขาย</button>
       </div>
     </div>
   </div>
+</section>
 
-  <div id="toast" class="toast hidden"></div>
-  <script src="app.js"></script>
+<section id="products" class="page">
+  <div class="page-head"><div><h2>สินค้า</h2><p>เพิ่มสินค้า ค้นหา ดูสต็อก ทุนเฉลี่ย และซื้อเข้า</p></div></div>
+  <form id="productForm" class="panel form-grid"><input type="hidden" id="productId"><label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label><label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label><label>ราคาขาย<input id="productPrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>สต็อกขั้นต่ำ<input id="productMin" data-keypad="true" type="number" min="0" step="1" value="0"></label><label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button><button class="soft-btn" type="button" id="resetProductBtn">ล้างฟอร์ม</button></div></form>
+  <div class="panel"><div class="panel-head"><h3>รายการสินค้า</h3><button class="link-btn" data-open-tab="purchase">ซื้อเข้า</button></div><input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า"><div class="table-wrap"><table><thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาขาย</th><th>สถานะ</th><th></th></tr></thead><tbody id="productsTable"></tbody></table></div></div>
+</section>
+
+<section id="customers" class="page">
+  <div class="page-head"><div><h2>ลูกค้า</h2><p>จัดการลูกค้า เครดิต และเปิดสมุดบัญชีลูกค้า</p></div></div>
+  <form id="customerForm" class="panel form-grid"><input type="hidden" id="customerId"><label>ชื่อลูกค้า<input id="customerName" required placeholder="เช่น แนน / พี่ออย"></label><label>ประเภทลูกค้า<select id="customerType"><option value="ทั่วไป">ทั่วไป</option><option value="ขายปลีก">ขายปลีก</option><option value="ขายส่ง">ขายส่ง</option></select></label><label>เบอร์โทร<input id="customerPhone" placeholder="ไม่บังคับ"></label><label>วงเงินเครดิต<input id="customerLimit" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>เครดิตกี่วัน<input id="customerDays" data-keypad="true" type="number" min="0" step="1" value="0"></label><label>หมายเหตุ<input id="customerNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="customerSubmitBtn">บันทึกลูกค้า</button><button class="soft-btn" type="button" id="resetCustomerBtn">ล้างฟอร์ม</button></div></form>
+  <div class="panel"><div class="panel-head"><h3>รายการลูกค้า</h3><button class="link-btn" data-open-tab="ledger">ยอดค้าง</button></div><input id="customerSearch" class="search-input" placeholder="ค้นหาลูกค้า"><div class="table-wrap"><table><thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>ยอดค้าง</th><th>วงเงิน</th><th></th></tr></thead><tbody id="customersTable"></tbody></table></div></div>
+</section>
+
+<section id="summary" class="page">
+  <div class="page-head"><div><h2>สรุป</h2><p>ดูยอดขาย กำไร ลูกหนี้ และสต็อกแบบเร็ว</p></div></div>
+  <div class="kpi-grid"><article class="kpi blue"><span>ยอดขายวันนี้</span><strong id="todaySales">0.00</strong><small>บาท</small></article><article class="kpi green"><span>กำไรวันนี้</span><strong id="todayProfit">0.00</strong><small>บาท</small></article><article class="kpi purple"><span>ยอดขายเดือนนี้</span><strong id="monthSales">0.00</strong><small>บาท</small></article><article class="kpi orange"><span>ลูกหนี้ค้างชำระ</span><strong id="totalCredit">0.00</strong><small>บาท</small></article></div>
+  <div class="dashboard-grid"><div class="panel"><div class="panel-head"><h3>สินค้าใกล้หมด</h3><button class="link-btn" data-open-tab="products">ดูสินค้า</button></div><div id="lowStockList" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3>ลูกหนี้สูงสุด</h3><button class="link-btn" data-open-tab="ledger">ดูยอดค้าง</button></div><div id="topDebtors" class="stack-list"></div></div></div>
+  <div class="panel"><div class="panel-head"><h3>บิลล่าสุด</h3><span id="backupStatus" class="hint">Backup: -</span></div><div id="summaryRecentBills" class="stack-list"></div></div>
+</section>
+
+<section id="purchase" class="page">
+  <div class="page-head"><div><h2>ซื้อเข้า</h2><p>เพิ่มของเข้าสต็อกและบันทึกต้นทุน</p></div></div>
+  <form id="purchaseForm" class="panel form-grid"><label>วันที่<input id="purchaseDate" type="date"></label><label>สินค้า<select id="purchaseProduct"></select></label><label>จำนวน<input id="purchaseQty" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ทุนต่อหน่วย<input id="purchaseCost" data-keypad="true" type="number" min="0" step="0.01"></label><label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit">บันทึกซื้อเข้า</button></div></form>
+  <div class="panel"><div class="panel-head"><h3>ประวัติซื้อเข้า / เคลื่อนไหวสต็อก</h3></div><div id="movementList" class="stack-list"></div></div>
+</section>
+
+<section id="ledger" class="page">
+  <div class="page-head"><div><h2>ยอดค้าง</h2><p>ดูว่าใครค้างเงินเท่าไร และมาจากบิลไหน</p></div><button class="primary-btn" data-open-tab="payments">+ รับเงิน</button></div>
+  <div class="ledger-layout"><div class="panel"><div class="panel-head"><h3>เลือกลูกค้า</h3></div><input id="ledgerSearch" class="search-input" placeholder="ค้นหาลูกค้า"><div id="ledgerCustomers" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3 id="ledgerTitle">สมุดบัญชี</h3><button id="clearLedgerBtn" class="soft-btn">ล้างเลือก</button></div><div class="ledger-kpis"><div><span>ยอดค้าง</span><strong id="ledgerBalance">0.00</strong></div><div><span>ขายเครดิต</span><strong id="ledgerCreditSales">0.00</strong></div><div><span>รับเงินแล้ว</span><strong id="ledgerPaid">0.00</strong></div></div><div id="ledgerEntries" class="stack-list"></div></div></div>
+</section>
+
+<section id="payments" class="page">
+  <div class="page-head"><div><h2>รับเงิน</h2><p>รับชำระลูกหนี้เครดิต</p></div></div>
+  <form id="paymentForm" class="panel form-grid"><label>วันที่<input id="paymentDate" type="date"></label><label>ลูกค้า<select id="paymentCustomer"></select></label><label>จำนวนเงิน<input id="paymentAmount" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ช่องทาง<select id="paymentMethod"><option value="เงินสด">เงินสด</option><option value="โอน">โอน</option><option value="อื่น ๆ">อื่น ๆ</option></select></label><label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit">บันทึกรับเงิน</button></div></form>
+  <div class="panel"><div class="panel-head"><h3>ประวัติรับเงิน</h3></div><div id="paymentList" class="stack-list"></div></div>
+</section>
+
+<section id="reports" class="page">
+  <div class="page-head"><div><h2>รายงาน</h2><p>รายงานจากบิลขายจริง ไม่รวมบิลที่ยกเลิก</p></div><button id="exportCsvBtn" class="soft-btn">Export CSV</button></div>
+  <div class="panel"><div class="panel-head"><h3>ตัวกรอง</h3><div class="filter-actions"><button id="filterTodayBtn" class="soft-btn">วันนี้</button><button id="filterMonthBtn" class="soft-btn">เดือนนี้</button><button id="resetFilterBtn" class="soft-btn">ล้าง</button></div></div><div class="form-grid"><label>วันที่เริ่ม<input id="reportFrom" type="date"></label><label>วันที่สิ้นสุด<input id="reportTo" type="date"></label><label>ลูกค้า<select id="reportCustomer"></select></label><label>ประเภท<select id="reportPaymentType"><option value="">ทั้งหมด</option><option value="cash">เงินสด/โอนแล้ว</option><option value="credit">เครดิต</option></select></label></div><div class="report-summary"><div><span>ยอดขาย</span><strong id="reportSales">0.00</strong></div><div><span>ต้นทุน</span><strong id="reportCost">0.00</strong></div><div><span>กำไร</span><strong id="reportProfit">0.00</strong></div><div><span>จำนวนบิล</span><strong id="reportCount">0</strong></div></div></div>
+  <div class="panel"><div class="table-wrap"><table><thead><tr><th>บิล</th><th>วันที่</th><th>ลูกค้า</th><th>ยอดขาย</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead><tbody id="reportBills"></tbody></table></div></div>
+</section>
+
+<section id="backup" class="page">
+  <div class="page-head"><div><h2>Backup</h2><p>ข้อมูลอยู่ในเครื่อง ควรสำรองข้อมูลเป็นประจำ</p></div></div>
+  <div class="panel"><div class="backup-warning"><strong>สำคัญ:</strong> ข้อมูลเก็บใน Browser/เครื่องที่ใช้งาน ไม่ได้อยู่บน GitHub</div><div class="form-actions"><button id="exportBackupBtn" class="primary-btn">Export Backup JSON</button><label class="file-btn">Import Backup JSON<input id="importBackupInput" type="file" accept="application/json"></label></div></div>
+  <div class="panel danger-zone"><h3>ล้างข้อมูลทั้งหมด</h3><p>ใช้เฉพาะตอนเริ่มใหม่ แนะนำให้ Backup ก่อน</p><button id="clearAllBtn" class="danger-btn">ล้างข้อมูลทั้งหมด</button></div>
+</section>
+
+<section id="guide" class="page">
+  <div class="page-head"><div><h2>คู่มือใช้งาน</h2><p>วิธีใช้งาน Khaikhong v2 แบบสั้นและตรงไปตรงมา</p></div></div>
+  <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
+</section>
+
+<section id="more" class="page">
+  <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
+  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button></div>
+</section>
+</main>
+
+<div id="numberPadOverlay" class="numpad-overlay hidden"><div class="numpad"><div class="numpad-head"><div><p>POS Number Pad</p><strong id="numpadTargetLabel">ใส่ตัวเลข</strong></div><button id="numpadClose" class="numpad-close">×</button></div><div id="numpadDisplay" class="numpad-display">0</div><div class="numpad-grid"><button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-num="0">0</button><button data-num="00">00</button><button data-num=".">.</button><button id="numpadBack">⌫</button><button id="numpadClear">C</button><button id="numpadOk" class="ok">ตกลง</button></div></div></div>
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
 </body>
 </html>

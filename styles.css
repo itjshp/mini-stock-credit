@@ -340,3 +340,32 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.0.9: Settings */
+.toggle-label{
+  justify-content:flex-start;
+  gap:10px;
+}
+.toggle-label input[type="checkbox"]{
+  width:24px;
+  height:24px;
+  accent-color:var(--primary);
+}
+.settings-preview{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  border-radius:18px;
+  padding:14px;
+}
+.settings-preview span{
+  display:block;
+  color:#9a3412;
+  font-weight:900;
+  font-size:12px;
+}
+.settings-preview strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}

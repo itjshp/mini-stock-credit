@@ -17,6 +17,27 @@ const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDig
 const today = () => new Date().toISOString().slice(0, 10);
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 
+function mainSettings() {
+  return state.settings.find(s => s.id === "main") || {
+    id: "main",
+    shopName: "Khaikhong",
+    subtitle: "ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก",
+    billPrefix: "KH",
+    nextBillNo: 1,
+    useNumberPad: true
+  };
+}
+
+function isNumberPadEnabled() {
+  return mainSettings().useNumberPad !== false;
+}
+
+function formatBillNo(prefix, nextNo) {
+  const cleanPrefix = String(prefix || "KH").trim() || "KH";
+  return `${cleanPrefix}-${String(Number(nextNo || 1)).padStart(6, "0")}`;
+}
+
+
 function showToast(msg) {
   const el = $("toast");
   el.textContent = msg;
@@ -132,9 +153,9 @@ function billBadge(b) {
 }
 
 function nextBillNo() {
-  const setting = state.settings.find(s => s.id === "main") || {};
+  const setting = mainSettings();
   const next = Number(setting.nextBillNo || 1);
-  return `KH-${String(next).padStart(6, "0")}`;
+  return formatBillNo(setting.billPrefix || "KH", next);
 }
 
 async function incrementBillNo() {
@@ -233,6 +254,7 @@ function renderAll() {
   renderReports();
   renderBillDetail();
   renderBackupStatus();
+  renderSettingsUI();
 }
 
 function renderSelects() {
@@ -1159,6 +1181,29 @@ window.openBillDetail = (id) => {
   switchTab("billDetail");
 };
 
+
+function renderSettingsUI() {
+  const s = mainSettings();
+
+  if ($("appTitleText")) $("appTitleText").textContent = s.shopName || "Khaikhong";
+  if ($("appSubtitleText")) $("appSubtitleText").textContent = s.subtitle || "ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก";
+  document.title = s.shopName || "Khaikhong";
+
+  if (!$("settingsForm")) return;
+
+  $("settingShopName").value = s.shopName || "Khaikhong";
+  $("settingSubtitle").value = s.subtitle || "ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก";
+  $("settingBillPrefix").value = s.billPrefix || "KH";
+  $("settingNextBillNo").value = Number(s.nextBillNo || 1);
+  $("settingUseNumberPad").checked = s.useNumberPad !== false;
+  updateSettingsPreview();
+}
+
+function updateSettingsPreview() {
+  if (!$("settingBillPreview")) return;
+  $("settingBillPreview").textContent = formatBillNo($("settingBillPrefix").value || "KH", $("settingNextBillNo").value || 1);
+}
+
 function renderBackupStatus() {
   const t = localStorage.getItem("khaikhongV2LastBackup");
   const text = t ? new Date(t).toLocaleString("th-TH") : "ยังไม่เคย";
@@ -1573,7 +1618,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.8", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.9", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -1627,7 +1672,7 @@ function setPad(v) {
 }
 
 document.addEventListener("focusin", (e) => {
-  if (e.target?.matches?.('input[data-keypad="true"]')) {
+  if (e.target?.matches?.('input[data-keypad="true"]') && isNumberPadEnabled()) {
     e.target.blur();
     openNumberPad(e.target);
   }
@@ -1768,6 +1813,37 @@ $("importCustomersCsvInput")?.addEventListener("change", async (e) => {
   showToast(`นำเข้าลูกค้า ${valid.length} รายการแล้ว`);
   e.target.value = "";
 });
+
+
+["settingBillPrefix", "settingNextBillNo"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", updateSettingsPreview);
+});
+
+if ($("settingsForm")) {
+  $("settingsForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const old = mainSettings();
+    const nextNo = Math.max(1, Number($("settingNextBillNo").value || 1));
+    const billPrefix = ($("settingBillPrefix").value || "KH").trim() || "KH";
+
+    await put("settings", {
+      ...old,
+      id: "main",
+      shopName: ($("settingShopName").value || "Khaikhong").trim() || "Khaikhong",
+      subtitle: ($("settingSubtitle").value || "ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก").trim(),
+      billPrefix,
+      nextBillNo: nextNo,
+      useNumberPad: $("settingUseNumberPad").checked,
+      updatedAt: new Date().toISOString()
+    });
+
+    await loadState();
+    showToast("บันทึกตั้งค่าแล้ว");
+  });
+}
+
+if ($("resetSettingsBtn")) $("resetSettingsBtn").addEventListener("click", renderSettingsUI);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -11,14 +11,14 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.0.8 • Backup & Import • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.0.9 • Settings • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="more" class="tab">เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -134,6 +134,46 @@
   <div class="panel danger-zone"><h3>ล้างข้อมูลทั้งหมด</h3><p>ใช้เฉพาะตอนเริ่มใหม่ แนะนำให้ Backup ก่อน</p><button id="clearAllBtn" class="danger-btn">ล้างข้อมูลทั้งหมด</button></div>
 </section>
 
+
+<section id="settings" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ตั้งค่า</h2>
+      <p>ตั้งค่าชื่อร้าน เลขบิล และรูปแบบการใช้งานพื้นฐาน</p>
+    </div>
+  </div>
+
+  <form id="settingsForm" class="panel form-grid">
+    <label>ชื่อร้าน / ชื่อระบบ<input id="settingShopName" placeholder="เช่น Khaikhong"></label>
+    <label>ข้อความใต้ชื่อระบบ<input id="settingSubtitle" placeholder="ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก"></label>
+    <label>คำนำหน้าเลขบิล<input id="settingBillPrefix" placeholder="เช่น KH"></label>
+    <label>เลขบิลถัดไป<input id="settingNextBillNo" data-keypad="true" type="number" min="1" step="1"></label>
+    <label class="toggle-label">
+      <span>เปิด POS Number Pad</span>
+      <input id="settingUseNumberPad" type="checkbox">
+    </label>
+    <div class="settings-preview">
+      <span>ตัวอย่างเลขบิลถัดไป</span>
+      <strong id="settingBillPreview">KH-000001</strong>
+    </div>
+    <div class="form-actions">
+      <button class="primary-btn" type="submit">บันทึกตั้งค่า</button>
+      <button class="soft-btn" type="button" id="resetSettingsBtn">โหลดค่าปัจจุบัน</button>
+    </div>
+  </form>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>คำแนะนำ</h3>
+    </div>
+    <div class="stack-list">
+      <div class="list-item"><div><strong>คำนำหน้าเลขบิล</strong><small>ใช้ตัวอักษรสั้น ๆ เช่น KH, SALE, SHOP เพื่อให้อ้างอิงบิลได้ง่าย</small></div></div>
+      <div class="list-item"><div><strong>เลขบิลถัดไป</strong><small>ถ้าตั้งเป็น 25 บิลต่อไปจะเป็น KH-000025</small></div></div>
+      <div class="list-item"><div><strong>Number Pad</strong><small>เหมาะกับ iPad/มือถือ ถ้าใช้คีย์บอร์ดคอมเป็นหลักสามารถปิดได้</small></div></div>
+    </div>
+  </div>
+</section>
+
 <section id="guide" class="page">
   <div class="page-head"><div><h2>คู่มือใช้งาน</h2><p>วิธีใช้งาน Khaikhong v2 แบบสั้นและตรงไปตรงมา</p></div></div>
   <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>รายละเอียดสินค้า</h3><ol><li>ไปที่เมนูสินค้า</li><li>กดรายละเอียด</li><li>ดูประวัติซื้อเข้า ขายออก และปรับสต็อก</li></ol></article><article class="guide-card"><b>5</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
@@ -141,7 +181,7 @@
 
 <section id="more" class="page">
   <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
-  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button></div>
+  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button></div>
 </section>
 </main>
 

@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.0.8 Backup Safety and CSV Import",
+  "description": "Khaikhong v2.0.9 Shop settings, bill prefix, next bill number and number pad toggle",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

@@ -1006,7 +1006,7 @@ function resetPaymentForm() {
   $("paymentId").value = "";
   $("paymentDate").value = today();
   $("paymentCustomer").value = "";
-  $("paymentBill").value = "";
+  if ($("paymentBill")) $("paymentBill").value = "";
   $("paymentAmount").value = "";
   $("paymentMethod").value = "เงินสด";
   $("paymentNote").value = "";
@@ -1023,7 +1023,7 @@ window.editPayment = (id) => {
   $("paymentDate").value = p.date || today();
   $("paymentCustomer").value = p.customerId || "";
   renderPaymentBillOptions();
-  $("paymentBill").value = p.billId || "";
+  if ($("paymentBill")) $("paymentBill").value = p.billId || "";
   $("paymentAmount").value = p.amount || "";
   $("paymentMethod").value = p.method || "เงินสด";
   $("paymentNote").value = p.note || "";
@@ -1290,7 +1290,7 @@ $("paymentForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const customerId = $("paymentCustomer").value;
-  const billId = $("paymentBill").value;
+  const billId = $("paymentBill") ? $("paymentBill").value : "";
   const amount = Number($("paymentAmount").value || 0);
   const editId = $("paymentId").value;
 
@@ -1383,12 +1383,12 @@ if (adjustForm) {
 
 
 $("paymentCustomer").addEventListener("change", () => {
-  $("paymentBill").value = "";
+  if ($("paymentBill")) $("paymentBill").value = "";
   $("paymentAmount").value = "";
   renderPaymentBillOptions();
   renderOutstandingBills();
 });
-$("paymentBill").addEventListener("change", () => {
+if ($("paymentBill")) if ($("paymentBill")) $("paymentBill").addEventListener("change", () => {
   const b = state.bills.find(x => x.id === $("paymentBill").value);
   if (b && !Number($("paymentAmount").value || 0)) $("paymentAmount").value = Number(b.creditAmount || 0);
   renderOutstandingBills();
@@ -1466,12 +1466,12 @@ if (adjustForm) {
 
 
 $("paymentCustomer").addEventListener("change", () => {
-  $("paymentBill").value = "";
+  if ($("paymentBill")) $("paymentBill").value = "";
   $("paymentAmount").value = "";
   renderPaymentBillOptions();
   renderOutstandingBills();
 });
-$("paymentBill").addEventListener("change", () => {
+if ($("paymentBill")) if ($("paymentBill")) $("paymentBill").addEventListener("change", () => {
   const b = state.bills.find(x => x.id === $("paymentBill").value);
   if (b && !Number($("paymentAmount").value || 0)) $("paymentAmount").value = Number(b.creditAmount || 0);
   renderOutstandingBills();
@@ -1499,7 +1499,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.6", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.7", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

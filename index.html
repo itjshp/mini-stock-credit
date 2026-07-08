@@ -11,7 +11,7 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.0.6 • Product Detail • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.0.7 • Fix Product Save • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
@@ -78,7 +78,7 @@
 
 <section id="payments" class="page">
   <div class="page-head"><div><h2>รับเงิน</h2><p>รับชำระลูกหนี้เครดิต</p></div></div>
-  <form id="paymentForm" class="panel form-grid"><input type="hidden" id="paymentId"><div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับเงิน</div><label>วันที่<input id="paymentDate" type="date"></label><label>ลูกค้า<select id="paymentCustomer"></select></label><label>จำนวนเงิน<input id="paymentAmount" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ช่องทาง<select id="paymentMethod"><option value="เงินสด">เงินสด</option><option value="โอน">โอน</option><option value="อื่น ๆ">อื่น ๆ</option></select></label><label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="paymentSubmitBtn">บันทึกรับเงิน</button><button class="soft-btn hidden" type="button" id="cancelPaymentEditBtn">ยกเลิกแก้ไข</button></div></form>
+  <form id="paymentForm" class="panel form-grid"><input type="hidden" id="paymentId"><div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับเงิน</div><label>วันที่<input id="paymentDate" type="date"></label><label>ลูกค้า<select id="paymentCustomer"></select></label><label>บิลที่รับเงิน<select id="paymentBill"></select></label><label>จำนวนเงิน<input id="paymentAmount" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ช่องทาง<select id="paymentMethod"><option value="เงินสด">เงินสด</option><option value="โอน">โอน</option><option value="อื่น ๆ">อื่น ๆ</option></select></label><label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="paymentSubmitBtn">บันทึกรับเงิน</button><button class="soft-btn hidden" type="button" id="cancelPaymentEditBtn">ยกเลิกแก้ไข</button></div></form>
   <div class="panel"><div class="panel-head"><h3>บิลที่ยังค้าง</h3><span class="hint">เลือกลูกค้าแล้วเลือกบิลที่จะรับเงิน</span></div><div id="outstandingBills" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3>ประวัติรับเงิน</h3></div><div id="paymentList" class="stack-list"></div></div>
 </section>
 

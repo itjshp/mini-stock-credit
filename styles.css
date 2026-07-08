@@ -286,3 +286,10 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.0.7: Fix missing paymentBill field */
+.fix-note{
+  color:var(--muted);
+  font-weight:800;
+}

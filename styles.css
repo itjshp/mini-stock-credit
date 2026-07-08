@@ -142,3 +142,27 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
     text-align:left;
   }
 }
+
+
+/* v2.0.3: Stock Adjustment */
+.adjust-in{
+  border-left:5px solid #16a34a;
+}
+.adjust-out{
+  border-left:5px solid #f97316;
+}
+.adjust-type-badge{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  font-size:12px;
+  font-weight:1000;
+}
+.adjust-type-in{
+  background:#dcfce7;
+  color:#047857;
+}
+.adjust-type-out{
+  background:#ffedd5;
+  color:#c2410c;
+}

@@ -209,6 +209,7 @@ function renderAll() {
   renderCustomers();
   renderSummary();
   renderMovements();
+  renderAdjustments();
   renderLedger();
   renderPayments();
   renderReports();
@@ -219,6 +220,7 @@ function renderAll() {
 function renderSelects() {
   setOptions("billCustomer", state.customers, "เลือกลูกค้า", c => `${c.name} • ค้าง ${money(customerDebt(c.id))}`);
   setOptions("purchaseProduct", activeProducts(), "เลือกสินค้า", p => `${p.name} • เหลือ ${money(p.stockQty)} ${p.unit || ""}`);
+  setOptions("adjustProduct", activeProducts(), "เลือกสินค้า", p => `${p.name} • เหลือ ${money(p.stockQty)} ${p.unit || ""}`);
   setOptions("paymentCustomer", state.customers, "เลือกลูกค้า", c => `${c.name} • ค้าง ${money(customerDebt(c.id))}`);
   setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
 }
@@ -653,6 +655,77 @@ window.deletePurchase = async (id) => {
   showToast("ลบรายการซื้อเข้าแล้ว");
 };
 
+
+function renderAdjustments() {
+  const rows = state.stock_movements
+    .filter(m => m.type === "adjust_in" || m.type === "adjust_out")
+    .slice(0, 30);
+
+  $("adjustList").innerHTML = rows.map(m => {
+    const isIn = m.type === "adjust_in";
+    const p = productById(m.productId);
+    const qty = isIn ? Number(m.qtyIn || 0) : Number(m.qtyOut || 0);
+    return `
+      <div class="list-item ${isIn ? "adjust-in" : "adjust-out"}">
+        <div>
+          <strong>${p?.name || "-"}</strong>
+          <small>${m.date} • <span class="adjust-type-badge ${isIn ? "adjust-type-in" : "adjust-type-out"}">${isIn ? "ปรับเพิ่ม" : "ปรับลด"}</span> • ${m.note || "-"}</small>
+          <small>ทุนต่อหน่วย: ${money(m.unitCost || 0)}</small>
+        </div>
+        <div class="row-actions">
+          <div class="money ${isIn ? "positive" : "negative"}">${isIn ? "+" : "-"}${money(qty)}</div>
+          <button class="small-btn small-edit" onclick="editAdjustment('${m.id}')">แก้ไข</button>
+          <button class="small-btn small-danger" onclick="deleteAdjustment('${m.id}')">ลบ</button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติปรับสต็อก</strong><small>ใช้เมื่อของเสีย ของหาย หรือนับจริงแล้วไม่ตรง</small></div></div>`;
+}
+
+function resetAdjustForm() {
+  $("adjustId").value = "";
+  $("adjustDate").value = today();
+  $("adjustProduct").value = "";
+  $("adjustType").value = "adjust_in";
+  $("adjustQty").value = "";
+  $("adjustCost").value = 0;
+  $("adjustNote").value = "";
+  $("adjustSubmitBtn").textContent = "บันทึกปรับสต็อก";
+  $("adjustEditBanner").classList.add("hidden");
+  $("cancelAdjustEditBtn").classList.add("hidden");
+}
+
+window.editAdjustment = (id) => {
+  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out"));
+  if (!m) return;
+
+  $("adjustId").value = m.id;
+  $("adjustDate").value = m.date || today();
+  $("adjustProduct").value = m.productId || "";
+  $("adjustType").value = m.type;
+  $("adjustQty").value = Number(m.qtyIn || 0) > 0 ? m.qtyIn : m.qtyOut;
+  $("adjustCost").value = m.unitCost || 0;
+  $("adjustNote").value = m.note || "";
+  $("adjustSubmitBtn").textContent = "อัปเดตปรับสต็อก";
+  $("adjustEditBanner").classList.remove("hidden");
+  $("cancelAdjustEditBtn").classList.remove("hidden");
+  switchTab("adjust");
+};
+
+window.deleteAdjustment = async (id) => {
+  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out"));
+  if (!m) return;
+
+  const p = productById(m.productId);
+  const qty = Number(m.qtyIn || 0) > 0 ? m.qtyIn : m.qtyOut;
+  if (!confirm(`ลบรายการปรับสต็อก?\n\nสินค้า: ${p?.name || "-"}\nจำนวน: ${money(qty)}\nเหตุผล: ${m.note || "-"}\n\nระบบจะคำนวณสต็อกใหม่`)) return;
+
+  await del("stock_movements", id);
+  await recomputeInventory();
+  await loadState();
+  showToast("ลบรายการปรับสต็อกแล้ว");
+};
+
 function renderLedger() {
   const q = ($("ledgerSearch")?.value || "").toLowerCase().trim();
   const rows = state.customers
@@ -877,7 +950,7 @@ function switchTab(id) {
 document.querySelectorAll(".tab,[data-open-tab]").forEach(el => el.addEventListener("click", () => switchTab(el.dataset.tab || el.dataset.openTab)));
 
 function setDates() {
-  ["billDate", "purchaseDate", "paymentDate"].forEach(id => $(id).value = today());
+  ["billDate", "purchaseDate", "paymentDate", "adjustDate"].forEach(id => $(id).value = today());
 }
 
 $("paymentType").addEventListener("change", () => {
@@ -1022,6 +1095,56 @@ $("paymentForm").addEventListener("submit", async (e) => {
 
 $("cancelPaymentEditBtn").addEventListener("click", resetPaymentForm);
 
+
+$("adjustForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const productId = $("adjustProduct").value;
+  const type = $("adjustType").value;
+  const qty = Number($("adjustQty").value || 0);
+  const cost = Number($("adjustCost").value || 0);
+  const note = $("adjustNote").value.trim();
+  const editId = $("adjustId").value;
+
+  if (!productId) return alert("กรุณาเลือกสินค้า");
+  if (qty <= 0) return alert("กรุณาใส่จำนวน");
+  if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
+
+  if (type === "adjust_out") {
+    const p = productById(productId);
+    const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+    const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
+    const available = Number(p?.stockQty || 0) + oldQtySameProduct;
+    if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
+  }
+
+  if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
+
+  const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+  await put("stock_movements", {
+    ...(old || {}),
+    id: editId || uid(),
+    productId,
+    type,
+    refType: "adjust",
+    refId: "",
+    date: $("adjustDate").value || today(),
+    qtyIn: type === "adjust_in" ? qty : 0,
+    qtyOut: type === "adjust_out" ? qty : 0,
+    unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
+    note,
+    createdAt: old?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  resetAdjustForm();
+  await recomputeInventory();
+  await loadState();
+  showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
+});
+
+$("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+
 ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).addEventListener("input", renderReports));
 
 $("filterTodayBtn").addEventListener("click", () => {
@@ -1039,7 +1162,57 @@ $("filterMonthBtn").addEventListener("click", () => {
 });
 
 $("resetFilterBtn").addEventListener("click", () => {
-  ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).value = "");
+  
+$("adjustForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const productId = $("adjustProduct").value;
+  const type = $("adjustType").value;
+  const qty = Number($("adjustQty").value || 0);
+  const cost = Number($("adjustCost").value || 0);
+  const note = $("adjustNote").value.trim();
+  const editId = $("adjustId").value;
+
+  if (!productId) return alert("กรุณาเลือกสินค้า");
+  if (qty <= 0) return alert("กรุณาใส่จำนวน");
+  if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
+
+  if (type === "adjust_out") {
+    const p = productById(productId);
+    const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+    const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
+    const available = Number(p?.stockQty || 0) + oldQtySameProduct;
+    if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
+  }
+
+  if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
+
+  const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+  await put("stock_movements", {
+    ...(old || {}),
+    id: editId || uid(),
+    productId,
+    type,
+    refType: "adjust",
+    refId: "",
+    date: $("adjustDate").value || today(),
+    qtyIn: type === "adjust_in" ? qty : 0,
+    qtyOut: type === "adjust_out" ? qty : 0,
+    unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
+    note,
+    createdAt: old?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  resetAdjustForm();
+  await recomputeInventory();
+  await loadState();
+  showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
+});
+
+$("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+
+["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).value = "");
   renderReports();
 });
 
@@ -1061,7 +1234,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.2", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.3", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -1164,6 +1337,7 @@ if ("serviceWorker" in navigator) {
   setDates();
   resetPurchaseForm();
   resetPaymentForm();
+  resetAdjustForm();
   await recomputeInventory();
   await recalcBills();
   await loadState();

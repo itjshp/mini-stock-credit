@@ -247,6 +247,7 @@ function renderAll() {
   renderCustomers();
   renderSummary();
   renderDailyClose();
+  renderLowStockCenter();
   renderMovements();
   renderAdjustments();
   renderLedger();
@@ -1108,6 +1109,100 @@ function renderReports() {
 
 
 
+
+function lowStockProducts() {
+  return activeProducts()
+    .filter(p => Number(p.minStock || 0) > 0 && Number(p.stockQty || 0) <= Number(p.minStock || 0))
+    .sort((a, b) => Number(a.stockQty || 0) - Number(b.stockQty || 0));
+}
+
+function lowStockStatus(p) {
+  return Number(p.stockQty || 0) <= 0 ? "critical" : "low";
+}
+
+function lowStockText() {
+  const setting = mainSettings();
+  const rows = lowStockProducts();
+  const lines = [
+    `${setting.shopName || "Khaikhong"} - สินค้าใกล้หมด`,
+    `วันที่: ${today()}`,
+    `จำนวน: ${rows.length} รายการ`,
+    "------------------------------"
+  ];
+
+  if (!rows.length) {
+    lines.push("ไม่มีสินค้าใกล้หมด");
+  } else {
+    rows.forEach(p => {
+      lines.push(`${p.name} | เหลือ ${money(p.stockQty)} ${p.unit || ""} | ขั้นต่ำ ${money(p.minStock)} | ราคาขาย ${money(p.price)}`);
+    });
+  }
+
+  return lines.join("\n");
+}
+
+function renderLowStockCenter() {
+  const rows = lowStockProducts();
+
+  if ($("lowStockCountText")) $("lowStockCountText").textContent = rows.length ? `พบ ${rows.length} รายการ` : "ไม่มีสินค้าใกล้หมด";
+
+  const html = rows.map(p => {
+    const status = lowStockStatus(p);
+    return `
+      <div class="list-item low-stock-item ${status}">
+        <div>
+          <strong>${p.name} <span class="stock-pill ${status}">${status === "critical" ? "หมด/ติดศูนย์" : "ใกล้หมด"}</span></strong>
+          <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ขั้นต่ำ ${money(p.minStock)} • ทุนเฉลี่ย ${money(p.avgCost)} • ราคาขาย ${money(p.price)}</small>
+        </div>
+        <div class="row-actions">
+          <button class="small-btn" onclick="openProductDetail('${p.id}')">รายละเอียด</button>
+          <button class="small-btn small-edit" onclick="quickPurchaseProduct('${p.id}')">ซื้อเข้า</button>
+          <button class="small-btn" onclick="quickAdjustProduct('${p.id}')">ปรับสต็อก</button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item"><div><strong>ไม่มีสินค้าใกล้หมด</strong><small>ระบบจะแสดงเมื่อสต็อกเหลือน้อยกว่าหรือเท่ากับขั้นต่ำ</small></div></div>`;
+
+  if ($("lowStockCenterList")) $("lowStockCenterList").innerHTML = html;
+  if ($("lowStockMiniList")) $("lowStockMiniList").innerHTML = rows.slice(0, 3).map(p => `
+    <div class="list-item low-stock-item ${lowStockStatus(p)}">
+      <div>
+        <strong>${p.name}</strong>
+        <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} / ขั้นต่ำ ${money(p.minStock)}</small>
+      </div>
+      <button class="small-btn small-edit" onclick="quickPurchaseProduct('${p.id}')">ซื้อเข้า</button>
+    </div>
+  `).join("") || `<div class="list-item"><div><strong>ไม่มีสินค้าใกล้หมด</strong></div></div>`;
+}
+
+async function copyLowStockList() {
+  const text = lowStockText();
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("คัดลอกรายการสินค้าใกล้หมดแล้ว");
+  } catch {
+    prompt("คัดลอกรายการสินค้าใกล้หมด:", text);
+  }
+}
+
+function printLowStockList() {
+  const rows = lowStockProducts();
+  const setting = mainSettings();
+  $("printArea").innerHTML = `
+    <div class="print-lowstock">
+      <h1>${setting.shopName || "Khaikhong"} - สินค้าใกล้หมด</h1>
+      <div class="muted">วันที่ ${today()} • ${rows.length} รายการ</div>
+      <table>
+        <thead><tr><th>สินค้า</th><th class="right">เหลือ</th><th class="right">ขั้นต่ำ</th><th class="right">ราคาขาย</th></tr></thead>
+        <tbody>
+          ${rows.map(p => `<tr><td>${p.name}</td><td class="right">${money(p.stockQty)} ${p.unit || ""}</td><td class="right">${money(p.minStock)}</td><td class="right">${money(p.price)}</td></tr>`).join("") || `<tr><td colspan="4">ไม่มีสินค้าใกล้หมด</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+  window.print();
+}
+
 function dailyCloseStats(dateText = today()) {
   const billsToday = activeBills().filter(b => String(b.date || "") === dateText);
   const paymentsToday = state.payments.filter(p => String(p.date || "") === dateText);
@@ -1931,7 +2026,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.1.4", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.1.5", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2520,6 +2615,10 @@ $("clearTestDataBtn")?.addEventListener("click", async () => {
 
 $("copyDailyCloseBtn")?.addEventListener("click", copyDailyClose);
 $("printDailyCloseBtn")?.addEventListener("click", printDailyClose);
+
+
+$("copyLowStockBtn")?.addEventListener("click", copyLowStockList);
+$("printLowStockBtn")?.addEventListener("click", printLowStockList);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

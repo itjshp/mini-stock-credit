@@ -11,13 +11,13 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.1.4 • Daily Close • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.1.5 • Low Stock • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
 
 <nav class="tabs">
-  <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="more" class="tab">เพิ่มเติม</button>
+  <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab">เพิ่มเติม</button>
   <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
@@ -58,6 +58,29 @@
   <div class="panel"><div class="panel-head"><h3>รายการลูกค้า</h3><button class="link-btn" data-open-tab="ledger">ยอดค้าง</button></div><input id="customerSearch" class="search-input" placeholder="ค้นหาลูกค้า"><div class="table-wrap"><table><thead><tr><th>ลูกค้า</th><th>ประเภท</th><th>ยอดค้าง</th><th>วงเงิน</th><th></th></tr></thead><tbody id="customersTable"></tbody></table></div></div>
 </section>
 
+
+<section id="lowStock" class="page">
+  <div class="page-head">
+    <div>
+      <h2>สินค้าใกล้หมด</h2>
+      <p>ดูสินค้าที่สต็อกต่ำกว่าจุดแจ้งเตือน และกดซื้อเข้าได้ทันที</p>
+    </div>
+    <div class="form-actions">
+      <button id="copyLowStockBtn" class="soft-btn" type="button">คัดลอกรายการ</button>
+      <button id="printLowStockBtn" class="soft-btn" type="button">พิมพ์รายการ</button>
+      <button class="primary-btn" data-open-tab="purchase" type="button">ซื้อเข้า</button>
+    </div>
+  </div>
+
+  <div class="panel low-stock-panel">
+    <div class="panel-head">
+      <h3>รายการที่ควรซื้อเพิ่ม</h3>
+      <span id="lowStockCountText" class="hint">กำลังตรวจสอบ...</span>
+    </div>
+    <div id="lowStockCenterList" class="stack-list"></div>
+  </div>
+</section>
+
 <section id="summary" class="page">
   <div class="page-head"><div><h2>สรุป</h2><p>ดูยอดขาย กำไร ลูกหนี้ และสต็อกแบบเร็ว</p></div></div>
   <div class="kpi-grid"><article class="kpi blue"><span>ยอดขายวันนี้</span><strong id="todaySales">0.00</strong><small>บาท</small></article><article class="kpi green"><span>กำไรวันนี้</span><strong id="todayProfit">0.00</strong><small>บาท</small></article><article class="kpi purple"><span>ยอดขายเดือนนี้</span><strong id="monthSales">0.00</strong><small>บาท</small></article><article class="kpi orange"><span>ลูกหนี้ค้างชำระ</span><strong id="totalCredit">0.00</strong><small>บาท</small></article></div>
@@ -83,6 +106,18 @@
     <div><span>จำนวนบิลวันนี้</span><strong id="closeBillCountToday">0</strong></div>
   </div>
 </div>
+
+
+      <div class="panel low-stock-mini-panel">
+        <div class="panel-head">
+          <div>
+            <h3>แจ้งเตือนสินค้าใกล้หมด</h3>
+            <span class="hint">รายการที่เหลือน้อยกว่าหรือเท่ากับสต็อกขั้นต่ำ</span>
+          </div>
+          <button class="soft-btn" data-open-tab="lowStock" type="button">ดูสินค้าใกล้หมด</button>
+        </div>
+        <div id="lowStockMiniList" class="stack-list"></div>
+      </div>
 
 <div class="dashboard-grid"><div class="panel"><div class="panel-head"><h3>สินค้าใกล้หมด</h3><button class="link-btn" data-open-tab="products">ดูสินค้า</button></div><div id="lowStockList" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3>ลูกหนี้สูงสุด</h3><button class="link-btn" data-open-tab="ledger">ดูยอดค้าง</button></div><div id="topDebtors" class="stack-list"></div></div></div>
   <div class="panel"><div class="panel-head"><h3>บิลล่าสุด</h3><span id="backupStatus" class="hint">Backup: -</span></div><div id="summaryRecentBills" class="stack-list"></div></div>
@@ -283,7 +318,7 @@
 
 <section id="more" class="page">
   <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
-  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 

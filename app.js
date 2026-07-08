@@ -1161,7 +1161,26 @@ window.openBillDetail = (id) => {
 
 function renderBackupStatus() {
   const t = localStorage.getItem("khaikhongV2LastBackup");
-  if ($("backupStatus")) $("backupStatus").textContent = `Backup: ${t ? new Date(t).toLocaleString("th-TH") : "ยังไม่เคย"}`;
+  const text = t ? new Date(t).toLocaleString("th-TH") : "ยังไม่เคย";
+  if ($("backupStatus")) $("backupStatus").textContent = `Backup: ${text}`;
+  if ($("backupStatusLarge")) $("backupStatusLarge").textContent = text;
+
+  const advice = $("backupAdvice");
+  if (advice) {
+    advice.classList.remove("ok");
+    if (!t) {
+      advice.textContent = "ยังไม่เคย Backup ข้อมูล ควร Export Backup ก่อนใช้งานจริงหรือก่อนอัปเดตระบบ";
+    } else {
+      const last = new Date(t).getTime();
+      const ageHours = (Date.now() - last) / 36e5;
+      if (ageHours > 24) {
+        advice.textContent = `Backup ล่าสุดเกิน 24 ชั่วโมงแล้ว แนะนำให้ Export Backup ใหม่`;
+      } else {
+        advice.textContent = `Backup ล่าสุดยังใหม่อยู่ แต่ควร Backup อีกครั้งหลังเพิ่มข้อมูลสำคัญ`;
+        advice.classList.add("ok");
+      }
+    }
+  }
 }
 
 function switchTab(id) {
@@ -1481,6 +1500,61 @@ if ($("paymentBill")) if ($("paymentBill")) $("paymentBill").addEventListener("c
   renderReports();
 });
 
+
+function parseCsvLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    const next = line[i + 1];
+
+    if (ch === '"' && inQuotes && next === '"') {
+      current += '"';
+      i++;
+    } else if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseCsv(text) {
+  const cleaned = text.replace(/^\ufeff/, "").replace(/\r/g, "");
+  const lines = cleaned.split("\n").map(line => line.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  const headers = parseCsvLine(lines[0]).map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const values = parseCsvLine(line);
+    const row = {};
+    headers.forEach((h, i) => row[h] = values[i] ?? "");
+    return row;
+  });
+}
+
+function getCsvValue(row, names) {
+  for (const name of names) {
+    if (row[name] !== undefined && row[name] !== "") return row[name];
+  }
+  return "";
+}
+
+function csvEscape(value) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function makeCsv(rows) {
+  return "\ufeff" + rows.map(r => r.map(csvEscape).join(",")).join("\n");
+}
+
 function download(filename, content, type = "application/octet-stream") {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -1499,7 +1573,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.7", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.8", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -1578,6 +1652,122 @@ $("numpadOk").addEventListener("click", () => {
 });
 $("numpadClose").addEventListener("click", closeNumberPad);
 $("numberPadOverlay").addEventListener("click", (e) => { if (e.target.id === "numberPadOverlay") closeNumberPad(); });
+
+
+$("downloadProductTemplateBtn")?.addEventListener("click", () => {
+  const csv = makeCsv([
+    ["ชื่อสินค้า", "หน่วย", "ราคาขาย", "สต็อกขั้นต่ำ", "หมายเหตุ"],
+    ["ปูอัด", "แพ็ค", "100", "2", "ตัวอย่างสินค้า"],
+    ["ลูกชิ้น", "ถุง", "80", "5", ""]
+  ]);
+  download("khaikhong-products-template.csv", csv, "text/csv;charset=utf-8");
+});
+
+$("downloadCustomerTemplateBtn")?.addEventListener("click", () => {
+  const csv = makeCsv([
+    ["ชื่อลูกค้า", "ประเภท", "เบอร์โทร", "วงเงินเครดิต", "เครดิตกี่วัน", "หมายเหตุ"],
+    ["แนน", "ขายส่ง", "0812345678", "3000", "7", "ตัวอย่างลูกค้า"],
+    ["ลูกค้าเงินสด", "ทั่วไป", "", "0", "0", ""]
+  ]);
+  download("khaikhong-customers-template.csv", csv, "text/csv;charset=utf-8");
+});
+
+$("importProductsCsvInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const rows = parseCsv(await file.text());
+  const valid = rows
+    .map(row => ({
+      name: getCsvValue(row, ["ชื่อสินค้า", "name", "สินค้า"]).trim(),
+      unit: getCsvValue(row, ["หน่วย", "unit"]).trim(),
+      price: Number(getCsvValue(row, ["ราคาขาย", "price", "ขาย"]) || 0),
+      minStock: Number(getCsvValue(row, ["สต็อกขั้นต่ำ", "minStock", "ขั้นต่ำ"]) || 0),
+      note: getCsvValue(row, ["หมายเหตุ", "note"]).trim()
+    }))
+    .filter(row => row.name);
+
+  if (!valid.length) {
+    alert("ไม่พบข้อมูลสินค้าใน CSV");
+    e.target.value = "";
+    return;
+  }
+
+  if (!confirm(`นำเข้าสินค้า ${valid.length} รายการ?\n\nระบบจะเพิ่มสินค้าใหม่ ถ้าชื่อซ้ำจะอัปเดตราคา/หน่วย/ขั้นต่ำ`)) {
+    e.target.value = "";
+    return;
+  }
+
+  for (const row of valid) {
+    const existing = state.products.find(p => !p.isArchived && (p.name || "").trim() === row.name);
+    await put("products", {
+      ...(existing || {}),
+      id: existing?.id || uid(),
+      name: row.name,
+      unit: row.unit,
+      price: row.price,
+      minStock: row.minStock,
+      note: row.note,
+      stockQty: Number(existing?.stockQty || 0),
+      avgCost: Number(existing?.avgCost || 0),
+      isArchived: false,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  await loadState();
+  showToast(`นำเข้าสินค้า ${valid.length} รายการแล้ว`);
+  e.target.value = "";
+});
+
+$("importCustomersCsvInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const rows = parseCsv(await file.text());
+  const valid = rows
+    .map(row => ({
+      name: getCsvValue(row, ["ชื่อลูกค้า", "name", "ลูกค้า"]).trim(),
+      type: getCsvValue(row, ["ประเภท", "type"]).trim() || "ทั่วไป",
+      phone: getCsvValue(row, ["เบอร์โทร", "phone", "โทร"]).trim(),
+      creditLimit: Number(getCsvValue(row, ["วงเงินเครดิต", "creditLimit", "วงเงิน"]) || 0),
+      creditDays: Number(getCsvValue(row, ["เครดิตกี่วัน", "creditDays", "เครดิตวัน"]) || 0),
+      note: getCsvValue(row, ["หมายเหตุ", "note"]).trim()
+    }))
+    .filter(row => row.name);
+
+  if (!valid.length) {
+    alert("ไม่พบข้อมูลลูกค้าใน CSV");
+    e.target.value = "";
+    return;
+  }
+
+  if (!confirm(`นำเข้าลูกค้า ${valid.length} รายการ?\n\nระบบจะเพิ่มลูกค้าใหม่ ถ้าชื่อซ้ำจะอัปเดตข้อมูล`)) {
+    e.target.value = "";
+    return;
+  }
+
+  for (const row of valid) {
+    const existing = state.customers.find(c => (c.name || "").trim() === row.name);
+    await put("customers", {
+      ...(existing || {}),
+      id: existing?.id || uid(),
+      name: row.name,
+      type: row.type,
+      phone: row.phone,
+      creditLimit: row.creditLimit,
+      creditDays: row.creditDays,
+      note: row.note,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  await loadState();
+  showToast(`นำเข้าลูกค้า ${valid.length} รายการแล้ว`);
+  e.target.value = "";
+});
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

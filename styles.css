@@ -293,3 +293,50 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
   color:var(--muted);
   font-weight:800;
 }
+
+
+/* v2.0.8: Backup Safety + Import CSV */
+.backup-status-panel{
+  border-top:5px solid #f97316;
+}
+.backup-advice{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  border-radius:18px;
+  padding:14px;
+  color:#9a3412;
+  font-weight:900;
+  margin-bottom:12px;
+}
+.backup-advice.ok{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.import-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.import-card{
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:#fff;
+  padding:16px;
+}
+.import-card h3{
+  margin:0 0 8px;
+}
+.import-card p{
+  color:var(--muted);
+  font-weight:800;
+  line-height:1.5;
+}
+.soft-warning{
+  margin-top:14px;
+}
+@media(max-width:720px){
+  .import-grid{
+    grid-template-columns:1fr;
+  }
+}

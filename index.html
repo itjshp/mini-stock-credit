@@ -11,7 +11,7 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.0.7 • Fix Product Save • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.0.8 • Backup & Import • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
@@ -130,7 +130,7 @@
 
 <section id="backup" class="page">
   <div class="page-head"><div><h2>Backup</h2><p>ข้อมูลอยู่ในเครื่อง ควรสำรองข้อมูลเป็นประจำ</p></div></div>
-  <div class="panel"><div class="backup-warning"><strong>สำคัญ:</strong> ข้อมูลเก็บใน Browser/เครื่องที่ใช้งาน ไม่ได้อยู่บน GitHub</div><div class="form-actions"><button id="exportBackupBtn" class="primary-btn">Export Backup JSON</button><label class="file-btn">Import Backup JSON<input id="importBackupInput" type="file" accept="application/json"></label></div></div>
+  <div class="panel"><div class="backup-warning"><strong>สำคัญ:</strong> ข้อมูลเก็บใน Browser/เครื่องที่ใช้งาน ไม่ได้อยู่บน GitHub</div><div id="backupAdvice" class="backup-advice">ควร Export Backup เป็นประจำ</div><div class="form-actions"><button id="exportBackupBtn" class="primary-btn">Export Backup JSON</button><label class="file-btn">Import Backup JSON<input id="importBackupInput" type="file" accept="application/json"></label></div></div>
   <div class="panel danger-zone"><h3>ล้างข้อมูลทั้งหมด</h3><p>ใช้เฉพาะตอนเริ่มใหม่ แนะนำให้ Backup ก่อน</p><button id="clearAllBtn" class="danger-btn">ล้างข้อมูลทั้งหมด</button></div>
 </section>
 

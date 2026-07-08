@@ -108,15 +108,16 @@ function activeBills() {
 }
 
 function customerDebt(customerId) {
-  const credit = activeBills()
+  const billDebt = activeBills()
     .filter(b => b.customerId === customerId && (b.paymentType === "credit" || Number(b.creditAmount || 0) > 0))
     .reduce((s, b) => s + Number(b.creditAmount || 0), 0);
 
-  const paid = state.payments
-    .filter(p => p.customerId === customerId)
+  // รองรับ payment เก่าที่เคยรับเงินแบบไม่ผูกบิล
+  const unlinkedPaid = state.payments
+    .filter(p => p.customerId === customerId && !p.billId)
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 
-  return Math.max(0, credit - paid);
+  return Math.max(0, billDebt - unlinkedPaid);
 }
 
 function totalDebt() {
@@ -178,6 +179,7 @@ async function recomputeInventory() {
 async function recalcBills() {
   const bills = await getAll("bills");
   const items = await getAll("bill_items");
+  const payments = await getAll("payments");
 
   for (const b of bills) {
     const its = items.filter(i => i.billId === b.id);
@@ -185,7 +187,20 @@ async function recalcBills() {
     b.costTotal = its.reduce((s, i) => s + Number(i.cost || 0), 0);
     b.profitTotal = its.reduce((s, i) => s + Number(i.profit || 0), 0);
 
+    // เก็บเงินที่รับตอนออกบิลไว้แยกจากเงินที่รับทีหลัง
+    if (b.initialPaidAmount === undefined || b.initialPaidAmount === null) {
+      const linkedPaid = payments
+        .filter(p => p.billId === b.id)
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+      b.initialPaidAmount = Math.max(0, Number(b.paidAmount || 0) - linkedPaid);
+    }
+
     if (b.status !== "cancelled") {
+      const linkedPaid = payments
+        .filter(p => p.billId === b.id)
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      b.paidAmount = Number(b.initialPaidAmount || 0) + linkedPaid;
       b.creditAmount = b.paymentType === "credit" ? Math.max(0, Number(b.subtotal || 0) - Number(b.paidAmount || 0)) : 0;
       b.status = b.creditAmount > 0 ? (Number(b.paidAmount || 0) > 0 ? "partial" : "credit") : "paid";
     }
@@ -212,6 +227,7 @@ function renderAll() {
   renderAdjustments();
   renderLedger();
   renderPayments();
+  renderOutstandingBills();
   renderReports();
   renderBillDetail();
   renderBackupStatus();
@@ -222,6 +238,7 @@ function renderSelects() {
   setOptions("purchaseProduct", activeProducts(), "เลือกสินค้า", p => `${p.name} • เหลือ ${money(p.stockQty)} ${p.unit || ""}`);
   setOptions("adjustProduct", activeProducts(), "เลือกสินค้า", p => `${p.name} • เหลือ ${money(p.stockQty)} ${p.unit || ""}`);
   setOptions("paymentCustomer", state.customers, "เลือกลูกค้า", c => `${c.name} • ค้าง ${money(customerDebt(c.id))}`);
+  renderPaymentBillOptions();
   setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
 }
 
@@ -332,6 +349,7 @@ async function saveBill() {
     costTotal,
     profitTotal: subtotal - costTotal,
     paidAmount,
+    initialPaidAmount: paidAmount,
     creditAmount,
     status: creditAmount > 0 ? (paidAmount > 0 ? "partial" : "credit") : "paid",
     note: $("billNote").value.trim(),
@@ -758,7 +776,7 @@ function renderLedger() {
   $("ledgerPaid").textContent = money(payments.reduce((s, p) => s + Number(p.amount || 0), 0));
 
   const entries = [
-    ...bills.map(b => ({ date: b.date, createdAt: b.createdAt || "", title: `บิล ${b.billNo}`, detail: `ขายเครดิต ${billItems(b.id).length} รายการ`, amount: Number(b.creditAmount || 0), type: "sale" })),
+    ...bills.map(b => ({ date: b.date, createdAt: b.createdAt || "", title: `บิล ${b.billNo}`, detail: `ขายเครดิต ${billItems(b.id).length} รายการ • ค้าง ${money(b.creditAmount)}`, amount: Number(b.subtotal || 0), type: "sale" })),
     ...payments.map(p => ({ date: p.date, createdAt: p.createdAt || "", title: "รับเงิน", detail: p.method || "", amount: -Number(p.amount || 0), type: "pay" }))
   ].sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
@@ -771,26 +789,97 @@ window.openLedger = (id) => {
   switchTab("ledger");
 };
 
-function renderPayments() {
-  $("paymentList").innerHTML = state.payments.slice(0, 30).map(p => `
-    <div class="list-item">
+
+function creditBillsForCustomer(customerId) {
+  if (!customerId) return [];
+  return activeBills()
+    .filter(b => b.customerId === customerId && b.paymentType === "credit")
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+}
+
+function outstandingBillsForCustomer(customerId) {
+  return creditBillsForCustomer(customerId).filter(b => Number(b.creditAmount || 0) > 0);
+}
+
+function renderPaymentBillOptions() {
+  const select = $("paymentBill");
+  if (!select) return;
+
+  const customerId = $("paymentCustomer")?.value || "";
+  const currentBill = select.value;
+  const rows = creditBillsForCustomer(customerId);
+
+  select.innerHTML = `<option value="">เลือกบิลที่รับเงิน</option>` + rows.map(b => {
+    const label = `${b.billNo} • ค้าง ${money(b.creditAmount)} • ${b.date}`;
+    return `<option value="${b.id}">${label}</option>`;
+  }).join("");
+
+  if ([...select.options].some(o => o.value === currentBill)) select.value = currentBill;
+}
+
+function renderOutstandingBills() {
+  const list = $("outstandingBills");
+  if (!list) return;
+
+  const customerId = $("paymentCustomer")?.value || "";
+  if (!customerId) {
+    list.innerHTML = `<div class="list-item"><div><strong>เลือกลูกค้าก่อน</strong><small>ระบบจะแสดงบิลเครดิตที่ยังค้างของลูกค้าคนนั้น</small></div></div>`;
+    return;
+  }
+
+  const rows = outstandingBillsForCustomer(customerId);
+  const selectedBillId = $("paymentBill")?.value || "";
+
+  list.innerHTML = rows.map(b => `
+    <div class="list-item outstanding-bill ${selectedBillId === b.id ? "selected" : ""}" onclick="selectPaymentBill('${b.id}')">
       <div>
-        <strong>${customerName(p.customerId)}</strong>
-        <small>${p.date} • ${p.method} ${p.note ? `• ${p.note}` : ""}</small>
+        <strong>${b.billNo} <span class="bill-pay-tag">ค้าง ${money(b.creditAmount)}</span></strong>
+        <small>${b.date} • ยอดบิล ${money(b.subtotal)} • รับแล้ว ${money(b.paidAmount)}</small>
       </div>
       <div class="row-actions">
-        <div class="money positive">${money(p.amount)}</div>
-        <button class="small-btn small-edit" onclick="editPayment('${p.id}')">แก้ไข</button>
-        <button class="small-btn small-danger" onclick="deletePayment('${p.id}')">ลบ</button>
+        <button class="small-btn" onclick="event.stopPropagation(); openBillDetail('${b.id}')">ดูบิล</button>
+        <button class="small-btn small-edit" onclick="event.stopPropagation(); selectPaymentBill('${b.id}')">เลือก</button>
       </div>
     </div>
-  `).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติรับเงิน</strong></div></div>`;
+  `).join("") || `<div class="list-item"><div><strong>ไม่มีบิลค้าง</strong><small>ลูกค้านี้ไม่มีบิลเครดิตที่ยังค้างชำระ</small></div></div>`;
+}
+
+window.selectPaymentBill = (billId) => {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return;
+
+  $("paymentBill").value = billId;
+  if (!Number($("paymentAmount").value || 0)) {
+    $("paymentAmount").value = Number(b.creditAmount || 0);
+  }
+  renderOutstandingBills();
+};
+
+function renderPayments() {
+  $("paymentList").innerHTML = state.payments.slice(0, 30).map(p => {
+    const b = state.bills.find(x => x.id === p.billId);
+    return `
+      <div class="list-item payment-linked">
+        <div>
+          <strong>${customerName(p.customerId)}</strong>
+          <small>${p.date} • ${p.method} ${b ? `• บิล ${b.billNo}` : "• ไม่ผูกบิล"} ${p.note ? `• ${p.note}` : ""}</small>
+        </div>
+        <div class="row-actions">
+          <div class="money positive">${money(p.amount)}</div>
+          ${b ? `<button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>` : ""}
+          <button class="small-btn small-edit" onclick="editPayment('${p.id}')">แก้ไข</button>
+          <button class="small-btn small-danger" onclick="deletePayment('${p.id}')">ลบ</button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติรับเงิน</strong></div></div>`;
 }
 
 function resetPaymentForm() {
   $("paymentId").value = "";
   $("paymentDate").value = today();
   $("paymentCustomer").value = "";
+  $("paymentBill").value = "";
   $("paymentAmount").value = "";
   $("paymentMethod").value = "เงินสด";
   $("paymentNote").value = "";
@@ -806,6 +895,8 @@ window.editPayment = (id) => {
   $("paymentId").value = p.id;
   $("paymentDate").value = p.date || today();
   $("paymentCustomer").value = p.customerId || "";
+  renderPaymentBillOptions();
+  $("paymentBill").value = p.billId || "";
   $("paymentAmount").value = p.amount || "";
   $("paymentMethod").value = p.method || "เงินสด";
   $("paymentNote").value = p.note || "";
@@ -822,6 +913,7 @@ window.deletePayment = async (id) => {
   if (!confirm(`ลบรายการรับเงิน?\n\nลูกค้า: ${customerName(p.customerId)}\nวันที่: ${p.date}\nจำนวน: ${money(p.amount)} บาท\n\nยอดค้างจะถูกคำนวณใหม่`)) return;
 
   await del("payments", id);
+  await recalcBills();
   await loadState();
   showToast("ลบรายการรับเงินแล้ว");
 };
@@ -1071,19 +1163,28 @@ $("paymentForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const customerId = $("paymentCustomer").value;
+  const billId = $("paymentBill").value;
   const amount = Number($("paymentAmount").value || 0);
   const editId = $("paymentId").value;
 
   if (!customerId) return alert("กรุณาเลือกลูกค้า");
+  if (!billId) return alert("กรุณาเลือกบิลที่รับเงิน");
   if (amount <= 0) return alert("กรุณาใส่จำนวนเงิน");
 
+  const bill = state.bills.find(b => b.id === billId);
   const old = editId ? state.payments.find(p => p.id === editId) : null;
+  const oldAmountSameBill = old && old.billId === billId ? Number(old.amount || 0) : 0;
+  const maxPay = Number(bill?.creditAmount || 0) + oldAmountSameBill;
+
+  if (amount > maxPay) {
+    return alert(`รับเงินมากกว่ายอดค้างไม่ได้\nยอดค้างที่รับได้: ${money(maxPay)} บาท`);
+  }
 
   await put("payments", {
     ...(old || {}),
     id: editId || uid(),
     customerId,
-    billId: "",
+    billId,
     date: $("paymentDate").value || today(),
     amount,
     method: $("paymentMethod").value,
@@ -1092,6 +1193,7 @@ $("paymentForm").addEventListener("submit", async (e) => {
     updatedAt: new Date().toISOString()
   });
 
+  await recalcBills();
   resetPaymentForm();
   await loadState();
   showToast(editId ? "อัปเดตรับเงินแล้ว" : "บันทึกรับเงินแล้ว");
@@ -1151,6 +1253,19 @@ if (adjustForm) {
 
   $("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
 }
+
+
+$("paymentCustomer").addEventListener("change", () => {
+  $("paymentBill").value = "";
+  $("paymentAmount").value = "";
+  renderPaymentBillOptions();
+  renderOutstandingBills();
+});
+$("paymentBill").addEventListener("change", () => {
+  const b = state.bills.find(x => x.id === $("paymentBill").value);
+  if (b && !Number($("paymentAmount").value || 0)) $("paymentAmount").value = Number(b.creditAmount || 0);
+  renderOutstandingBills();
+});
 
 ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).addEventListener("input", renderReports));
 
@@ -1222,6 +1337,19 @@ if (adjustForm) {
   $("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
 }
 
+
+$("paymentCustomer").addEventListener("change", () => {
+  $("paymentBill").value = "";
+  $("paymentAmount").value = "";
+  renderPaymentBillOptions();
+  renderOutstandingBills();
+});
+$("paymentBill").addEventListener("change", () => {
+  const b = state.bills.find(x => x.id === $("paymentBill").value);
+  if (b && !Number($("paymentAmount").value || 0)) $("paymentAmount").value = Number(b.creditAmount || 0);
+  renderOutstandingBills();
+});
+
 ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).value = "");
   renderReports();
 });
@@ -1244,7 +1372,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.4", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.5", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

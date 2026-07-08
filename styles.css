@@ -175,3 +175,30 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
   background:#ffedd5;
   color:#c2410c;
 }
+
+
+/* v2.0.5: Bill-based customer payments */
+.outstanding-bill{
+  border-left:5px solid #f97316;
+  cursor:pointer;
+}
+.outstanding-bill:hover{
+  border-color:#fed7aa;
+  transform:translateY(-1px);
+}
+.outstanding-bill.selected{
+  background:#fff7ed;
+  border-color:#f97316;
+}
+.bill-pay-tag{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#fff7ed;
+  color:#c2410c;
+  font-size:12px;
+  font-weight:1000;
+}
+.payment-linked{
+  border-left:5px solid #16a34a;
+}

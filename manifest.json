@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.0.9 Shop settings, bill prefix, next bill number and number pad toggle",
+  "description": "Khaikhong v2.1.0 Test Center for auto testing and data validation",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

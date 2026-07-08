@@ -255,6 +255,7 @@ function renderAll() {
   renderBillDetail();
   renderBackupStatus();
   renderSettingsUI();
+  renderTestSummary();
 }
 
 function renderSelects() {
@@ -1618,7 +1619,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.9", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.1.0", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -1844,6 +1845,365 @@ if ($("settingsForm")) {
 }
 
 if ($("resetSettingsBtn")) $("resetSettingsBtn").addEventListener("click", renderSettingsUI);
+
+
+function isTestProduct(p) {
+  return (p.name || "").startsWith("TEST-") || (p.note || "").includes("TEST-AUTO");
+}
+function isTestCustomer(c) {
+  return (c.name || "").startsWith("TEST-") || (c.note || "").includes("TEST-AUTO");
+}
+function isTestBill(b) {
+  return (b.note || "").includes("TEST-AUTO") || String(b.billNo || "").includes("TEST");
+}
+function isTestPayment(p) {
+  return (p.note || "").includes("TEST-AUTO");
+}
+function isTestMovement(m) {
+  return (m.note || "").includes("TEST-AUTO") || String(m.note || "").startsWith("TEST-");
+}
+
+function renderTestSummary() {
+  if (!$("testSummaryText")) return;
+  const count =
+    state.products.filter(isTestProduct).length +
+    state.customers.filter(isTestCustomer).length +
+    state.bills.filter(isTestBill).length +
+    state.payments.filter(isTestPayment).length +
+    state.stock_movements.filter(isTestMovement).length;
+  $("testSummaryText").textContent = count ? `พบข้อมูล TEST ${count} รายการ` : "ยังไม่มีข้อมูล TEST";
+}
+
+function testResult(status, title, detail = "") {
+  const cls = status === "pass" ? "test-result-pass" : (status === "fail" ? "test-result-fail" : "test-result-info");
+  const icon = status === "pass" ? "✅" : (status === "fail" ? "❌" : "ℹ️");
+  return `<div class="list-item ${cls}"><div><strong>${icon} ${title}</strong>${detail ? `<small>${detail}</small>` : ""}</div></div>`;
+}
+
+function showTestResults(results) {
+  const pass = results.filter(r => r.status === "pass").length;
+  const fail = results.filter(r => r.status === "fail").length;
+  const info = results.filter(r => r.status === "info").length;
+  $("testSummaryText").textContent = `ผ่าน ${pass} / ไม่ผ่าน ${fail} / ข้อมูล ${info}`;
+  $("testResults").innerHTML = results.map(r => testResult(r.status, r.title, r.detail)).join("");
+}
+
+function assertNear(actual, expected, tolerance = 0.01) {
+  return Math.abs(Number(actual || 0) - Number(expected || 0)) <= tolerance;
+}
+
+function calculateProductStockFromMovements(productId) {
+  return state.stock_movements
+    .filter(m => m.productId === productId)
+    .reduce((sum, m) => sum + Number(m.qtyIn || 0) - Number(m.qtyOut || 0), 0);
+}
+
+function calculateBillTotals(billId) {
+  const items = billItems(billId);
+  return {
+    subtotal: items.reduce((s, i) => s + Number(i.revenue || 0), 0),
+    costTotal: items.reduce((s, i) => s + Number(i.cost || 0), 0),
+    profitTotal: items.reduce((s, i) => s + Number(i.profit || 0), 0),
+    count: items.length
+  };
+}
+
+async function ensureTestProduct({ name, unit, price, minStock, note }) {
+  const existing = state.products.find(p => (p.name || "") === name);
+  if (existing) return existing;
+
+  const item = {
+    id: uid(),
+    name,
+    unit,
+    price,
+    minStock,
+    note,
+    stockQty: 0,
+    avgCost: 0,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await put("products", item);
+  return item;
+}
+
+async function ensureTestCustomer() {
+  const existing = state.customers.find(c => (c.name || "") === "TEST-ลูกค้าเครดิต");
+  if (existing) return existing;
+
+  const item = {
+    id: uid(),
+    name: "TEST-ลูกค้าเครดิต",
+    type: "ทดสอบ",
+    phone: "0000000000",
+    creditLimit: 9999,
+    creditDays: 7,
+    note: "TEST-AUTO",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await put("customers", item);
+  return item;
+}
+
+async function createAutoTestData() {
+  await clearTestData(false);
+  await loadState();
+
+  const productA = await ensureTestProduct({
+    name: "TEST-สินค้า A",
+    unit: "ชิ้น",
+    price: 25,
+    minStock: 2,
+    note: "TEST-AUTO"
+  });
+  const productB = await ensureTestProduct({
+    name: "TEST-สินค้า B",
+    unit: "ชิ้น",
+    price: 40,
+    minStock: 2,
+    note: "TEST-AUTO"
+  });
+  const customer = await ensureTestCustomer();
+
+  const date = today();
+  const now = new Date().toISOString();
+
+  // ซื้อเข้า
+  await put("stock_movements", {
+    id: uid(), productId: productA.id, type: "purchase", refType: "purchase", refId: "", date,
+    qtyIn: 10, qtyOut: 0, unitCost: 10, note: "TEST-AUTO ซื้อเข้า A", createdAt: now
+  });
+  await put("stock_movements", {
+    id: uid(), productId: productB.id, type: "purchase", refType: "purchase", refId: "", date,
+    qtyIn: 8, qtyOut: 0, unitCost: 20, note: "TEST-AUTO ซื้อเข้า B", createdAt: now
+  });
+
+  await recomputeInventory();
+  await loadState();
+
+  const freshA = state.products.find(p => p.name === "TEST-สินค้า A");
+  const freshB = state.products.find(p => p.name === "TEST-สินค้า B");
+
+  // ขายเงินสด
+  const billCashId = uid();
+  const billCashNo = "TEST-CASH-001";
+  const cashItems = [
+    { product: freshA, qty: 2, unitPrice: 25, unitCost: Number(freshA.avgCost || 10) },
+    { product: freshB, qty: 1, unitPrice: 40, unitCost: Number(freshB.avgCost || 20) }
+  ];
+  const cashSubtotal = cashItems.reduce((s, x) => s + x.qty * x.unitPrice, 0);
+  const cashCost = cashItems.reduce((s, x) => s + x.qty * x.unitCost, 0);
+  await put("bills", {
+    id: billCashId, billNo: billCashNo, date, customerId: "", paymentType: "cash",
+    subtotal: cashSubtotal, costTotal: cashCost, profitTotal: cashSubtotal - cashCost,
+    paidAmount: cashSubtotal, initialPaidAmount: cashSubtotal, creditAmount: 0, status: "paid",
+    note: "TEST-AUTO ขายเงินสด", createdAt: now
+  });
+  for (const item of cashItems) {
+    await put("bill_items", {
+      id: uid(), billId: billCashId, productId: item.product.id, productNameSnapshot: item.product.name,
+      qty: item.qty, unitPrice: item.unitPrice, unitCost: item.unitCost,
+      revenue: item.qty * item.unitPrice, cost: item.qty * item.unitCost, profit: item.qty * (item.unitPrice - item.unitCost)
+    });
+    await put("stock_movements", {
+      id: uid(), productId: item.product.id, type: "sale", refType: "bill", refId: billCashId, date,
+      qtyIn: 0, qtyOut: item.qty, unitCost: item.unitCost, note: `TEST-AUTO ขายบิล ${billCashNo}`, createdAt: now
+    });
+  }
+
+  // ขายเครดิต
+  const billCreditId = uid();
+  const billCreditNo = "TEST-CREDIT-001";
+  const creditQty = 3;
+  const creditUnitPrice = 25;
+  const creditUnitCost = Number(freshA.avgCost || 10);
+  const creditSubtotal = creditQty * creditUnitPrice;
+  const creditCost = creditQty * creditUnitCost;
+  await put("bills", {
+    id: billCreditId, billNo: billCreditNo, date, customerId: customer.id, paymentType: "credit",
+    subtotal: creditSubtotal, costTotal: creditCost, profitTotal: creditSubtotal - creditCost,
+    paidAmount: 0, initialPaidAmount: 0, creditAmount: creditSubtotal, status: "credit",
+    note: "TEST-AUTO ขายเครดิต", createdAt: now
+  });
+  await put("bill_items", {
+    id: uid(), billId: billCreditId, productId: freshA.id, productNameSnapshot: freshA.name,
+    qty: creditQty, unitPrice: creditUnitPrice, unitCost: creditUnitCost,
+    revenue: creditSubtotal, cost: creditCost, profit: creditSubtotal - creditCost
+  });
+  await put("stock_movements", {
+    id: uid(), productId: freshA.id, type: "sale", refType: "bill", refId: billCreditId, date,
+    qtyIn: 0, qtyOut: creditQty, unitCost: creditUnitCost, note: `TEST-AUTO ขายบิล ${billCreditNo}`, createdAt: now
+  });
+
+  // รับเงินบางส่วน
+  await put("payments", {
+    id: uid(), customerId: customer.id, billId: billCreditId, date, amount: 25,
+    method: "เงินสด", note: "TEST-AUTO รับเงินบางส่วน", createdAt: now
+  });
+
+  // ปรับสต็อก
+  await put("stock_movements", {
+    id: uid(), productId: freshB.id, type: "adjust_out", refType: "adjust", refId: "", date,
+    qtyIn: 0, qtyOut: 1, unitCost: Number(freshB.avgCost || 20), note: "TEST-AUTO ปรับลดของเสีย", createdAt: now
+  });
+
+  // บิลยกเลิก
+  const billCancelId = uid();
+  const billCancelNo = "TEST-CANCEL-001";
+  await put("bills", {
+    id: billCancelId, billNo: billCancelNo, date, customerId: "", paymentType: "cash",
+    subtotal: 25, costTotal: creditUnitCost, profitTotal: 25 - creditUnitCost,
+    paidAmount: 25, initialPaidAmount: 25, creditAmount: 0, status: "cancelled",
+    note: "TEST-AUTO บิลยกเลิก", cancelReason: "TEST-AUTO ทดสอบยกเลิกบิล", cancelledAt: now, createdAt: now
+  });
+  await put("bill_items", {
+    id: uid(), billId: billCancelId, productId: freshA.id, productNameSnapshot: freshA.name,
+    qty: 1, unitPrice: 25, unitCost: creditUnitCost,
+    revenue: 25, cost: creditUnitCost, profit: 25 - creditUnitCost
+  });
+  // จำลองขายออกแล้วคืนเข้าเพื่อทดสอบการคืนสต็อก
+  await put("stock_movements", {
+    id: uid(), productId: freshA.id, type: "sale", refType: "bill", refId: billCancelId, date,
+    qtyIn: 0, qtyOut: 1, unitCost: creditUnitCost, note: `TEST-AUTO ขายบิล ${billCancelNo}`, createdAt: now
+  });
+  await put("stock_movements", {
+    id: uid(), productId: freshA.id, type: "sale_cancel", refType: "bill", refId: billCancelId, date,
+    qtyIn: 1, qtyOut: 0, unitCost: creditUnitCost, note: `TEST-AUTO ยกเลิกบิล ${billCancelNo}`, createdAt: now
+  });
+
+  await recomputeInventory();
+  await recalcBills();
+  await loadState();
+}
+
+function runSystemChecks() {
+  const results = [];
+
+  // 1) ตรวจสินค้า stock ไม่ติดลบ
+  const negativeProducts = state.products.filter(p => Number(p.stockQty || 0) < -0.0001);
+  results.push({
+    status: negativeProducts.length ? "fail" : "pass",
+    title: "สินค้าไม่มีสต็อกติดลบ",
+    detail: negativeProducts.length ? negativeProducts.map(p => `${p.name}: ${money(p.stockQty)}`).join(", ") : "ผ่าน"
+  });
+
+  // 2) ตรวจ stock ตาม movements
+  const stockMismatches = state.products
+    .filter(p => !p.isArchived)
+    .map(p => ({ product: p, expected: calculateProductStockFromMovements(p.id), actual: Number(p.stockQty || 0) }))
+    .filter(row => !assertNear(row.actual, row.expected));
+  results.push({
+    status: stockMismatches.length ? "fail" : "pass",
+    title: "สต็อกตรงกับ Stock Movements",
+    detail: stockMismatches.length ? stockMismatches.map(r => `${r.product.name}: ระบบ ${money(r.actual)} / คำนวณ ${money(r.expected)}`).join(", ") : "ผ่าน"
+  });
+
+  // 3) ตรวจยอดบิลกับ bill_items
+  const billMismatches = state.bills.map(b => ({ bill: b, totals: calculateBillTotals(b.id) }))
+    .filter(row => !assertNear(row.bill.subtotal, row.totals.subtotal) || !assertNear(row.bill.costTotal, row.totals.costTotal) || !assertNear(row.bill.profitTotal, row.totals.profitTotal));
+  results.push({
+    status: billMismatches.length ? "fail" : "pass",
+    title: "ยอดบิล / ต้นทุน / กำไร ตรงกับรายการสินค้าในบิล",
+    detail: billMismatches.length ? billMismatches.map(r => r.bill.billNo).join(", ") : "ผ่าน"
+  });
+
+  // 4) ตรวจ paid/credit status
+  const paymentMismatches = activeBills().map(b => {
+    const linked = state.payments.filter(p => p.billId === b.id).reduce((s, p) => s + Number(p.amount || 0), 0);
+    const expectedPaid = Number(b.initialPaidAmount || 0) + linked;
+    const expectedCredit = b.paymentType === "credit" ? Math.max(0, Number(b.subtotal || 0) - expectedPaid) : 0;
+    return { bill: b, expectedPaid, expectedCredit };
+  }).filter(r => !assertNear(r.bill.paidAmount, r.expectedPaid) || !assertNear(r.bill.creditAmount, r.expectedCredit));
+  results.push({
+    status: paymentMismatches.length ? "fail" : "pass",
+    title: "ยอดรับเงินและยอดค้างของบิลถูกต้อง",
+    detail: paymentMismatches.length ? paymentMismatches.map(r => r.bill.billNo).join(", ") : "ผ่าน"
+  });
+
+  // 5) ตรวจ payment ต้องผูกกับบิล สำหรับ payment ใหม่
+  const unlinkedPayments = state.payments.filter(p => !p.billId && !(p.note || "").includes("legacy"));
+  results.push({
+    status: unlinkedPayments.length ? "fail" : "pass",
+    title: "รายการรับเงินผูกกับบิล",
+    detail: unlinkedPayments.length ? `พบ ${unlinkedPayments.length} รายการที่ไม่ผูกบิล` : "ผ่าน"
+  });
+
+  // 6) ตรวจบิลยกเลิกมีเหตุผล
+  const cancelledNoReason = state.bills.filter(b => b.status === "cancelled" && !(b.cancelReason || "").trim());
+  results.push({
+    status: cancelledNoReason.length ? "fail" : "pass",
+    title: "บิลยกเลิกมีเหตุผลการยกเลิก",
+    detail: cancelledNoReason.length ? cancelledNoReason.map(b => b.billNo).join(", ") : "ผ่าน"
+  });
+
+  // 7) ตรวจข้อมูล TEST มีครบ (info)
+  const testProducts = state.products.filter(isTestProduct).length;
+  const testBills = state.bills.filter(isTestBill).length;
+  const testPayments = state.payments.filter(isTestPayment).length;
+  results.push({
+    status: "info",
+    title: "ข้อมูล TEST ที่พบ",
+    detail: `สินค้า TEST ${testProducts} รายการ • บิล TEST ${testBills} บิล • รับเงิน TEST ${testPayments} รายการ`
+  });
+
+  return results;
+}
+
+async function clearTestData(showConfirm = true) {
+  if (showConfirm && !confirm("ล้างข้อมูล TEST ทั้งหมดใช่ไหม?\n\nระบบจะลบเฉพาะข้อมูลที่ขึ้นต้น/มีหมายเหตุ TEST-AUTO เท่านั้น")) return;
+
+  const testProductIds = state.products.filter(isTestProduct).map(p => p.id);
+  const testCustomerIds = state.customers.filter(isTestCustomer).map(c => c.id);
+  const testBillIds = state.bills.filter(isTestBill).map(b => b.id);
+
+  for (const item of state.bill_items) {
+    if (testBillIds.includes(item.billId) || testProductIds.includes(item.productId)) await del("bill_items", item.id);
+  }
+  for (const m of state.stock_movements) {
+    if (isTestMovement(m) || testProductIds.includes(m.productId) || testBillIds.includes(m.refId)) await del("stock_movements", m.id);
+  }
+  for (const p of state.payments) {
+    if (isTestPayment(p) || testCustomerIds.includes(p.customerId) || testBillIds.includes(p.billId)) await del("payments", p.id);
+  }
+  for (const b of state.bills) {
+    if (isTestBill(b) || testBillIds.includes(b.id)) await del("bills", b.id);
+  }
+  for (const p of state.products) {
+    if (testProductIds.includes(p.id)) await del("products", p.id);
+  }
+  for (const c of state.customers) {
+    if (testCustomerIds.includes(c.id)) await del("customers", c.id);
+  }
+
+  await recomputeInventory();
+  await recalcBills();
+  await loadState();
+
+  if (showConfirm) {
+    showToast("ล้างข้อมูล TEST แล้ว");
+    showTestResults([{ status: "info", title: "ล้างข้อมูล TEST แล้ว", detail: "ข้อมูลจริงที่ไม่ใช่ TEST ไม่ถูกลบ" }]);
+  }
+}
+
+$("runAutoTestBtn")?.addEventListener("click", async () => {
+  if (!confirm("เริ่ม Auto Test?\n\nระบบจะล้างข้อมูล TEST เดิม แล้วสร้างข้อมูล TEST ชุดใหม่")) return;
+  await createAutoTestData();
+  const results = runSystemChecks();
+  showTestResults(results);
+  showToast("ทดสอบระบบเสร็จแล้ว");
+});
+
+$("runCheckOnlyBtn")?.addEventListener("click", () => {
+  const results = runSystemChecks();
+  showTestResults(results);
+});
+
+$("clearTestDataBtn")?.addEventListener("click", async () => {
+  await clearTestData(true);
+});
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

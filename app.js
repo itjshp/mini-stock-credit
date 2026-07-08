@@ -1099,10 +1099,133 @@ function renderReports() {
     <td>${money(b.subtotal)}</td>
     <td class="${b.profitTotal >= 0 ? "positive" : "negative"}">${money(b.profitTotal)}</td>
     <td>${billBadge(b)}</td>
-    <td><div class="row-actions"><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>${b.status !== "cancelled" ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>` : ""}</div></td>
+    <td><div class="row-actions"><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button><button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอก</button>${b.status !== "cancelled" ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>` : ""}</div></td>
   </tr>`).join("") || `<tr><td colspan="7">ไม่พบรายการขาย</td></tr>`;
 }
 
+
+
+function receiptTextForBill(billId) {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return "";
+
+  const s = mainSettings();
+  const items = billItems(b.id);
+  const lines = [];
+  lines.push(s.shopName || "Khaikhong");
+  lines.push(`บิล: ${b.billNo}`);
+  lines.push(`วันที่: ${b.date}`);
+  lines.push(`ลูกค้า: ${customerName(b.customerId)}`);
+  lines.push(`สถานะ: ${b.status === "cancelled" ? "ยกเลิก" : (b.paymentType === "credit" ? "เครดิต/ค้างชำระ" : "ชำระแล้ว")}`);
+  lines.push("--------------------------------");
+
+  items.forEach(item => {
+    lines.push(`${item.productNameSnapshot || productById(item.productId)?.name || "-"} x ${money(item.qty)} = ${money(item.revenue)} บาท`);
+  });
+
+  lines.push("--------------------------------");
+  lines.push(`ยอดรวม: ${money(b.subtotal)} บาท`);
+  lines.push(`รับเงินแล้ว: ${money(b.paidAmount)} บาท`);
+  if (Number(b.creditAmount || 0) > 0) lines.push(`ยอดค้าง: ${money(b.creditAmount)} บาท`);
+  if (b.note) lines.push(`หมายเหตุ: ${b.note}`);
+  if (b.status === "cancelled") lines.push(`เหตุผลยกเลิก: ${b.cancelReason || "-"}`);
+  lines.push("ขอบคุณครับ/ค่ะ");
+
+  return lines.join("\n");
+}
+
+async function copyBillText(billId) {
+  const text = receiptTextForBill(billId);
+  if (!text) return alert("ไม่พบบิล");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("คัดลอกข้อความบิลแล้ว");
+  } catch {
+    prompt("คัดลอกข้อความบิล:", text);
+  }
+}
+
+function renderReceiptHtml(billId) {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return "";
+
+  const s = mainSettings();
+  const items = billItems(b.id);
+
+  return `
+    <div class="receipt-box">
+      <div class="receipt-head">
+        <div>
+          <h3>${s.shopName || "Khaikhong"}</h3>
+          <small>${s.subtitle || "ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก"}</small>
+        </div>
+        <div>
+          <strong>${b.billNo}</strong><br>
+          <small>${b.date}</small>
+        </div>
+      </div>
+
+      <div class="receipt-lines">
+        ${items.map(item => `
+          <div class="receipt-row">
+            <div>
+              <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
+              <small>จำนวน ${money(item.qty)} × ${money(item.unitPrice)}</small>
+            </div>
+            <div class="money">${money(item.revenue)}</div>
+          </div>
+        `).join("")}
+      </div>
+
+      <div class="receipt-total">
+        <div><span>ลูกค้า</span><span>${customerName(b.customerId)}</span></div>
+        <div><span>รับเงินแล้ว</span><span>${money(b.paidAmount)}</span></div>
+        ${Number(b.creditAmount || 0) > 0 ? `<div><span>ยอดค้าง</span><span>${money(b.creditAmount)}</span></div>` : ""}
+        <div class="grand"><span>ยอดรวม</span><span>${money(b.subtotal)} บาท</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function printBill(billId) {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return alert("ไม่พบบิล");
+
+  const s = mainSettings();
+  const items = billItems(b.id);
+  const rows = items.map(item => `
+    <tr>
+      <td>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</td>
+      <td class="right">${money(item.qty)}</td>
+      <td class="right">${money(item.revenue)}</td>
+    </tr>
+  `).join("");
+
+  $("printArea").innerHTML = `
+    <div class="print-receipt">
+      <h1>${s.shopName || "Khaikhong"}</h1>
+      <div class="muted">${s.subtitle || ""}</div>
+      <div class="muted">บิล: ${b.billNo} • วันที่: ${b.date}</div>
+      <div class="muted">ลูกค้า: ${customerName(b.customerId)}</div>
+
+      <table>
+        <thead>
+          <tr><th>สินค้า</th><th class="right">จำนวน</th><th class="right">รวม</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr><td colspan="2" class="total">ยอดรวม</td><td class="right total">${money(b.subtotal)}</td></tr>
+          <tr><td colspan="2">รับเงินแล้ว</td><td class="right">${money(b.paidAmount)}</td></tr>
+          ${Number(b.creditAmount || 0) > 0 ? `<tr><td colspan="2">ยอดค้าง</td><td class="right">${money(b.creditAmount)}</td></tr>` : ""}
+        </tfoot>
+      </table>
+      <p class="muted">ขอบคุณครับ/ค่ะ</p>
+    </div>
+  `;
+
+  window.print();
+}
 
 function renderBillDetail() {
   const wrap = $("billDetailContent");
@@ -1125,6 +1248,8 @@ function renderBillDetail() {
           <small>${b.date} • ${customerName(b.customerId)} • ${items.length} รายการ</small>
         </div>
         <div class="row-actions">
+          <button class="soft-btn" onclick="copyBillText('${b.id}')">คัดลอกบิล</button>
+          <button class="soft-btn" onclick="printBill('${b.id}')">พิมพ์บิล</button>
           <button class="soft-btn" onclick="switchTab('reports')">กลับรายงาน</button>
           ${!isCancelled ? `<button class="danger-btn" onclick="cancelBill('${b.id}')">ยกเลิกบิล</button>` : ""}
         </div>
@@ -1163,6 +1288,14 @@ function renderBillDetail() {
           </div>
         `).join("") || `<div class="list-item"><div><strong>ไม่มีรายการสินค้าในบิล</strong></div></div>`}
       </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>ใบเสร็จ / ข้อความบิล</h3>
+        <span class="hint">ใช้คัดลอกส่งแชทหรือพิมพ์บิล</span>
+      </div>
+      ${renderReceiptHtml(b.id)}
     </div>
 
     <div class="panel">
@@ -1619,7 +1752,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.1.0", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.1.1", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

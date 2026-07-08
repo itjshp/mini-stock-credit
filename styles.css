@@ -144,7 +144,16 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
 }
 
 
-/* v2.0.3: Stock Adjustment */
+/* v2.0.4: Stock Adjustment Fix */
+.edit-banner{
+  grid-column:1/-1;
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1d4ed8;
+  border-radius:16px;
+  padding:11px 12px;
+  font-weight:1000;
+}
 .adjust-in{
   border-left:5px solid #16a34a;
 }

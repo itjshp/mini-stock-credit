@@ -11,15 +11,14 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.0.3 • Stock Adjust • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.0.4 • Stock Adjust Fix • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="more" class="tab">เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button>
-    <button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -89,6 +88,46 @@
   <div class="panel"><div class="table-wrap"><table><thead><tr><th>บิล</th><th>วันที่</th><th>ลูกค้า</th><th>ยอดขาย</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead><tbody id="reportBills"></tbody></table></div></div>
 </section>
 
+
+<section id="adjust" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ปรับสต็อก</h2>
+      <p>ใช้เมื่อของเสีย ของหาย หรือนับสต็อกจริงแล้วไม่ตรงกับระบบ</p>
+    </div>
+  </div>
+
+  <form id="adjustForm" class="panel form-grid">
+    <input type="hidden" id="adjustId">
+    <div id="adjustEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการปรับสต็อก</div>
+
+    <label>วันที่<input id="adjustDate" type="date"></label>
+    <label>สินค้า<select id="adjustProduct"></select></label>
+    <label>ประเภท
+      <select id="adjustType">
+        <option value="adjust_in">ปรับเพิ่ม</option>
+        <option value="adjust_out">ปรับลด</option>
+      </select>
+    </label>
+    <label>จำนวน<input id="adjustQty" data-keypad="true" type="number" min="0.01" step="0.01"></label>
+    <label>ทุนต่อหน่วย <small>ใช้ตอนปรับเพิ่ม</small><input id="adjustCost" data-keypad="true" type="number" min="0" step="0.01" value="0"></label>
+    <label>เหตุผล / หมายเหตุ<input id="adjustNote" placeholder="เช่น ของเสีย / ของหาย / นับสต็อกแล้วไม่ตรง"></label>
+
+    <div class="form-actions">
+      <button class="primary-btn" type="submit" id="adjustSubmitBtn">บันทึกปรับสต็อก</button>
+      <button class="soft-btn hidden" type="button" id="cancelAdjustEditBtn">ยกเลิกแก้ไข</button>
+    </div>
+  </form>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>ประวัติปรับสต็อก</h3>
+      <span class="hint">แก้ไข/ลบได้ ระบบจะคำนวณสต็อกใหม่</span>
+    </div>
+    <div id="adjustList" class="stack-list"></div>
+  </div>
+</section>
+
 <section id="backup" class="page">
   <div class="page-head"><div><h2>Backup</h2><p>ข้อมูลอยู่ในเครื่อง ควรสำรองข้อมูลเป็นประจำ</p></div></div>
   <div class="panel"><div class="backup-warning"><strong>สำคัญ:</strong> ข้อมูลเก็บใน Browser/เครื่องที่ใช้งาน ไม่ได้อยู่บน GitHub</div><div class="form-actions"><button id="exportBackupBtn" class="primary-btn">Export Backup JSON</button><label class="file-btn">Import Backup JSON<input id="importBackupInput" type="file" accept="application/json"></label></div></div>
@@ -97,16 +136,12 @@
 
 <section id="guide" class="page">
   <div class="page-head"><div><h2>คู่มือใช้งาน</h2><p>วิธีใช้งาน Khaikhong v2 แบบสั้นและตรงไปตรงมา</p></div></div>
-  <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>ปรับสต็อก</h3><ol><li>ไปที่ เพิ่มเติม > ปรับสต็อก</li><li>เลือกปรับเพิ่มหรือปรับลด</li><li>ใส่เหตุผลทุกครั้ง</li></ol></article>
-        <article class="guide-card"><b>6</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
+  <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
 </section>
 
 <section id="more" class="page">
   <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
-  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button>
-        <button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button>
-
-        <button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button></div>
+  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button></div>
 </section>
 </main>
 

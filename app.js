@@ -657,11 +657,14 @@ window.deletePurchase = async (id) => {
 
 
 function renderAdjustments() {
+  const list = $("adjustList");
+  if (!list) return;
+
   const rows = state.stock_movements
     .filter(m => m.type === "adjust_in" || m.type === "adjust_out")
     .slice(0, 30);
 
-  $("adjustList").innerHTML = rows.map(m => {
+  list.innerHTML = rows.map(m => {
     const isIn = m.type === "adjust_in";
     const p = productById(m.productId);
     const qty = isIn ? Number(m.qtyIn || 0) : Number(m.qtyOut || 0);
@@ -683,6 +686,7 @@ function renderAdjustments() {
 }
 
 function resetAdjustForm() {
+  if (!$("adjustForm")) return;
   $("adjustId").value = "";
   $("adjustDate").value = today();
   $("adjustProduct").value = "";
@@ -1096,54 +1100,57 @@ $("paymentForm").addEventListener("submit", async (e) => {
 $("cancelPaymentEditBtn").addEventListener("click", resetPaymentForm);
 
 
-$("adjustForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const adjustForm = $("adjustForm");
+if (adjustForm) {
+  adjustForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const productId = $("adjustProduct").value;
-  const type = $("adjustType").value;
-  const qty = Number($("adjustQty").value || 0);
-  const cost = Number($("adjustCost").value || 0);
-  const note = $("adjustNote").value.trim();
-  const editId = $("adjustId").value;
+    const productId = $("adjustProduct").value;
+    const type = $("adjustType").value;
+    const qty = Number($("adjustQty").value || 0);
+    const cost = Number($("adjustCost").value || 0);
+    const note = $("adjustNote").value.trim();
+    const editId = $("adjustId").value;
 
-  if (!productId) return alert("กรุณาเลือกสินค้า");
-  if (qty <= 0) return alert("กรุณาใส่จำนวน");
-  if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
+    if (!productId) return alert("กรุณาเลือกสินค้า");
+    if (qty <= 0) return alert("กรุณาใส่จำนวน");
+    if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
 
-  if (type === "adjust_out") {
-    const p = productById(productId);
+    if (type === "adjust_out") {
+      const p = productById(productId);
+      const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+      const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
+      const available = Number(p?.stockQty || 0) + oldQtySameProduct;
+      if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
+    }
+
+    if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
+
     const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
-    const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
-    const available = Number(p?.stockQty || 0) + oldQtySameProduct;
-    if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
-  }
+    await put("stock_movements", {
+      ...(old || {}),
+      id: editId || uid(),
+      productId,
+      type,
+      refType: "adjust",
+      refId: "",
+      date: $("adjustDate").value || today(),
+      qtyIn: type === "adjust_in" ? qty : 0,
+      qtyOut: type === "adjust_out" ? qty : 0,
+      unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
+      note,
+      createdAt: old?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
 
-  if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
-
-  const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
-  await put("stock_movements", {
-    ...(old || {}),
-    id: editId || uid(),
-    productId,
-    type,
-    refType: "adjust",
-    refId: "",
-    date: $("adjustDate").value || today(),
-    qtyIn: type === "adjust_in" ? qty : 0,
-    qtyOut: type === "adjust_out" ? qty : 0,
-    unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
-    note,
-    createdAt: old?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    resetAdjustForm();
+    await recomputeInventory();
+    await loadState();
+    showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
   });
 
-  resetAdjustForm();
-  await recomputeInventory();
-  await loadState();
-  showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
-});
-
-$("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+  $("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+}
 
 ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).addEventListener("input", renderReports));
 
@@ -1163,54 +1170,57 @@ $("filterMonthBtn").addEventListener("click", () => {
 
 $("resetFilterBtn").addEventListener("click", () => {
   
-$("adjustForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const adjustForm = $("adjustForm");
+if (adjustForm) {
+  adjustForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const productId = $("adjustProduct").value;
-  const type = $("adjustType").value;
-  const qty = Number($("adjustQty").value || 0);
-  const cost = Number($("adjustCost").value || 0);
-  const note = $("adjustNote").value.trim();
-  const editId = $("adjustId").value;
+    const productId = $("adjustProduct").value;
+    const type = $("adjustType").value;
+    const qty = Number($("adjustQty").value || 0);
+    const cost = Number($("adjustCost").value || 0);
+    const note = $("adjustNote").value.trim();
+    const editId = $("adjustId").value;
 
-  if (!productId) return alert("กรุณาเลือกสินค้า");
-  if (qty <= 0) return alert("กรุณาใส่จำนวน");
-  if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
+    if (!productId) return alert("กรุณาเลือกสินค้า");
+    if (qty <= 0) return alert("กรุณาใส่จำนวน");
+    if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
 
-  if (type === "adjust_out") {
-    const p = productById(productId);
+    if (type === "adjust_out") {
+      const p = productById(productId);
+      const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+      const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
+      const available = Number(p?.stockQty || 0) + oldQtySameProduct;
+      if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
+    }
+
+    if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
+
     const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
-    const oldQtySameProduct = old && old.productId === productId && old.type === "adjust_out" ? Number(old.qtyOut || 0) : 0;
-    const available = Number(p?.stockQty || 0) + oldQtySameProduct;
-    if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
-  }
+    await put("stock_movements", {
+      ...(old || {}),
+      id: editId || uid(),
+      productId,
+      type,
+      refType: "adjust",
+      refId: "",
+      date: $("adjustDate").value || today(),
+      qtyIn: type === "adjust_in" ? qty : 0,
+      qtyOut: type === "adjust_out" ? qty : 0,
+      unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
+      note,
+      createdAt: old?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
 
-  if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
-
-  const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
-  await put("stock_movements", {
-    ...(old || {}),
-    id: editId || uid(),
-    productId,
-    type,
-    refType: "adjust",
-    refId: "",
-    date: $("adjustDate").value || today(),
-    qtyIn: type === "adjust_in" ? qty : 0,
-    qtyOut: type === "adjust_out" ? qty : 0,
-    unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
-    note,
-    createdAt: old?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    resetAdjustForm();
+    await recomputeInventory();
+    await loadState();
+    showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
   });
 
-  resetAdjustForm();
-  await recomputeInventory();
-  await loadState();
-  showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
-});
-
-$("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+  $("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
+}
 
 ["reportFrom", "reportTo", "reportCustomer", "reportPaymentType"].forEach(id => $(id).value = "");
   renderReports();
@@ -1234,7 +1244,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.3", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.4", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

@@ -10,3 +10,135 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
 .ledger-layout{display:grid;grid-template-columns:.9fr 1.1fr;gap:16px}.ledger-kpis{grid-template-columns:repeat(3,1fr)}.filter-actions{display:flex;gap:8px;flex-wrap:wrap}.backup-warning{background:#fff7ed;border:1px solid #fed7aa;border-radius:18px;padding:14px;color:#9a3412;font-weight:900;margin-bottom:12px}.danger-zone{border-color:#fecaca;background:#fff7f7}.badge{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:1000}.badge-paid{background:#dcfce7;color:#047857}.badge-credit{background:#ffedd5;color:#c2410c}.badge-cancelled{background:#fee2e2;color:#991b1b}.low{color:#c2410c;font-weight:1000}.ok-stock{color:#047857;font-weight:1000}
 .numpad-overlay{position:fixed;inset:0;background:rgba(15,23,42,.52);backdrop-filter:blur(5px);display:flex;align-items:flex-end;justify-content:center;z-index:100;padding:18px}.numpad{width:min(430px,100%);background:#fff;border-radius:28px;padding:16px;box-shadow:0 28px 70px rgba(0,0,0,.30)}.numpad-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}.numpad-head p{margin:0;color:var(--muted);font-size:12px;font-weight:900}.numpad-close{border:0;width:38px;height:38px;border-radius:14px;background:#f3f4f6;font-size:24px;cursor:pointer}.numpad-display{background:#0f172a;color:#fff;font-size:34px;font-weight:1000;text-align:right;border-radius:18px;padding:16px;margin-bottom:12px;min-height:76px}.numpad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.numpad-grid button{border:0;border-radius:18px;padding:18px 10px;font-size:22px;font-weight:1000;background:#eef4f2;color:#12201d;cursor:pointer}.numpad-grid .ok{background:var(--primary);color:#fff}.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:13px 17px;border-radius:999px;box-shadow:0 12px 28px rgba(0,0,0,.24);z-index:99;font-weight:900}.hidden{display:none!important}
 @media(max-width:980px){.pos-layout,.dashboard-grid,.ledger-layout{grid-template-columns:1fr}.right-col{position:static}.kpi-grid{grid-template-columns:repeat(2,1fr)}.product-grid{grid-template-columns:repeat(3,1fr);max-height:none}.more-grid,.guide-grid{grid-template-columns:repeat(2,1fr)}.tabs{justify-content:flex-start}}@media(max-width:720px){.hero-inner{display:block}.hero-actions{margin-top:14px}.steps,.form-grid,.form-row,.bill-summary,.kpi-grid,.ledger-kpis,.report-summary,.more-grid,.guide-grid{grid-template-columns:1fr}.product-grid{grid-template-columns:1fr}.list-item{grid-template-columns:1fr}.row-actions{justify-content:flex-start}.primary-btn,.soft-btn,.danger-btn,.file-btn,.save-btn{width:100%}.page-head{display:block}.page-head h2{font-size:26px}}
+
+/* v2.0.1: Edit/Delete safety fixes */
+.edit-banner{
+  grid-column:1/-1;
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1d4ed8;
+  border-radius:16px;
+  padding:11px 12px;
+  font-weight:1000;
+}
+.archived-note{
+  color:#9a3412;
+  font-weight:1000;
+}
+.movement-sale{
+  opacity:.84;
+}
+.action-note{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:800;
+}
+
+
+/* v2.0.2: Bill Detail + Cancel Reason */
+.bill-detail-wrap{
+  display:grid;
+  gap:16px;
+}
+.bill-hero{
+  background:linear-gradient(135deg,#fff,#f8fbfa);
+  border:1px solid var(--line);
+  border-radius:28px;
+  padding:18px;
+  box-shadow:var(--shadow);
+}
+.bill-hero-top{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+.bill-hero h3{
+  margin:0 0 6px;
+  font-size:26px;
+}
+.bill-hero small{
+  color:var(--muted);
+  font-weight:850;
+}
+.bill-detail-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+.bill-detail-kpis div{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+}
+.bill-detail-kpis span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:950;
+}
+.bill-detail-kpis strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+.bill-cancel-box{
+  background:#fff7f7;
+  border:1px solid #fecaca;
+  color:#991b1b;
+  border-radius:18px;
+  padding:14px;
+  font-weight:900;
+  margin-top:12px;
+}
+.bill-item-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:13px;
+  background:#fff;
+}
+.bill-item-row small{
+  display:block;
+  color:var(--muted);
+  font-weight:850;
+  margin-top:4px;
+}
+.bill-item-price{
+  text-align:right;
+}
+.bill-item-price strong{
+  display:block;
+  font-size:18px;
+}
+.bill-link{
+  border:0;
+  background:transparent;
+  color:var(--primary);
+  font-weight:1000;
+  cursor:pointer;
+  padding:0;
+  font-size:inherit;
+}
+.cancelled-row{
+  opacity:.72;
+}
+@media(max-width:720px){
+  .bill-hero-top{
+    display:block;
+  }
+  .bill-detail-kpis{
+    grid-template-columns:1fr;
+  }
+  .bill-item-row{
+    grid-template-columns:1fr;
+  }
+  .bill-item-price{
+    text-align:left;
+  }
+}

@@ -11,7 +11,7 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.0 • Bill System • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.0.2 • Bill Detail • Local-first</p><h1>Khaikhong</h1><p class="subtitle">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
@@ -19,6 +19,7 @@
 <nav class="tabs">
   <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="more" class="tab">เพิ่มเติม</button>
   <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button>
+    <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
 <main>
@@ -66,7 +67,7 @@
 
 <section id="purchase" class="page">
   <div class="page-head"><div><h2>ซื้อเข้า</h2><p>เพิ่มของเข้าสต็อกและบันทึกต้นทุน</p></div></div>
-  <form id="purchaseForm" class="panel form-grid"><label>วันที่<input id="purchaseDate" type="date"></label><label>สินค้า<select id="purchaseProduct"></select></label><label>จำนวน<input id="purchaseQty" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ทุนต่อหน่วย<input id="purchaseCost" data-keypad="true" type="number" min="0" step="0.01"></label><label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit">บันทึกซื้อเข้า</button></div></form>
+  <form id="purchaseForm" class="panel form-grid"><input type="hidden" id="purchaseId"><div id="purchaseEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการซื้อเข้า</div><label>วันที่<input id="purchaseDate" type="date"></label><label>สินค้า<select id="purchaseProduct"></select></label><label>จำนวน<input id="purchaseQty" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ทุนต่อหน่วย<input id="purchaseCost" data-keypad="true" type="number" min="0" step="0.01"></label><label>หมายเหตุ<input id="purchaseNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="purchaseSubmitBtn">บันทึกซื้อเข้า</button><button class="soft-btn hidden" type="button" id="cancelPurchaseEditBtn">ยกเลิกแก้ไข</button></div></form>
   <div class="panel"><div class="panel-head"><h3>ประวัติซื้อเข้า / เคลื่อนไหวสต็อก</h3></div><div id="movementList" class="stack-list"></div></div>
 </section>
 
@@ -77,12 +78,12 @@
 
 <section id="payments" class="page">
   <div class="page-head"><div><h2>รับเงิน</h2><p>รับชำระลูกหนี้เครดิต</p></div></div>
-  <form id="paymentForm" class="panel form-grid"><label>วันที่<input id="paymentDate" type="date"></label><label>ลูกค้า<select id="paymentCustomer"></select></label><label>จำนวนเงิน<input id="paymentAmount" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ช่องทาง<select id="paymentMethod"><option value="เงินสด">เงินสด</option><option value="โอน">โอน</option><option value="อื่น ๆ">อื่น ๆ</option></select></label><label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit">บันทึกรับเงิน</button></div></form>
+  <form id="paymentForm" class="panel form-grid"><input type="hidden" id="paymentId"><div id="paymentEditBanner" class="edit-banner hidden">กำลังแก้ไขรายการรับเงิน</div><label>วันที่<input id="paymentDate" type="date"></label><label>ลูกค้า<select id="paymentCustomer"></select></label><label>จำนวนเงิน<input id="paymentAmount" data-keypad="true" type="number" min="0.01" step="0.01"></label><label>ช่องทาง<select id="paymentMethod"><option value="เงินสด">เงินสด</option><option value="โอน">โอน</option><option value="อื่น ๆ">อื่น ๆ</option></select></label><label>หมายเหตุ<input id="paymentNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="paymentSubmitBtn">บันทึกรับเงิน</button><button class="soft-btn hidden" type="button" id="cancelPaymentEditBtn">ยกเลิกแก้ไข</button></div></form>
   <div class="panel"><div class="panel-head"><h3>ประวัติรับเงิน</h3></div><div id="paymentList" class="stack-list"></div></div>
 </section>
 
 <section id="reports" class="page">
-  <div class="page-head"><div><h2>รายงาน</h2><p>รายงานจากบิลขายจริง ไม่รวมบิลที่ยกเลิก</p></div><button id="exportCsvBtn" class="soft-btn">Export CSV</button></div>
+  <div class="page-head"><div><h2>รายงาน</h2><p>รายงานจากบิลขายจริง กดดูรายละเอียดบิลได้</p></div><button id="exportCsvBtn" class="soft-btn">Export CSV</button></div>
   <div class="panel"><div class="panel-head"><h3>ตัวกรอง</h3><div class="filter-actions"><button id="filterTodayBtn" class="soft-btn">วันนี้</button><button id="filterMonthBtn" class="soft-btn">เดือนนี้</button><button id="resetFilterBtn" class="soft-btn">ล้าง</button></div></div><div class="form-grid"><label>วันที่เริ่ม<input id="reportFrom" type="date"></label><label>วันที่สิ้นสุด<input id="reportTo" type="date"></label><label>ลูกค้า<select id="reportCustomer"></select></label><label>ประเภท<select id="reportPaymentType"><option value="">ทั้งหมด</option><option value="cash">เงินสด/โอนแล้ว</option><option value="credit">เครดิต</option></select></label></div><div class="report-summary"><div><span>ยอดขาย</span><strong id="reportSales">0.00</strong></div><div><span>ต้นทุน</span><strong id="reportCost">0.00</strong></div><div><span>กำไร</span><strong id="reportProfit">0.00</strong></div><div><span>จำนวนบิล</span><strong id="reportCount">0</strong></div></div></div>
   <div class="panel"><div class="table-wrap"><table><thead><tr><th>บิล</th><th>วันที่</th><th>ลูกค้า</th><th>ยอดขาย</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead><tbody id="reportBills"></tbody></table></div></div>
 </section>

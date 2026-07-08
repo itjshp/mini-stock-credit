@@ -624,3 +624,68 @@ main{max-width:1180px;margin:auto;padding:22px 16px 52px}.page{display:none}.pag
     font-weight:700;
   }
 }
+
+
+/* v2.1.4: Daily Close / ปิดยอดวันนี้ */
+.daily-close-panel{
+  border-top:5px solid #f97316;
+}
+.daily-close-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.daily-close-grid div{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+}
+.daily-close-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:950;
+}
+.daily-close-grid strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+@media(max-width:980px){
+  .daily-close-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .daily-close-grid{
+    grid-template-columns:1fr;
+  }
+}
+@media print{
+  .print-close{
+    max-width:520px;
+    margin:auto;
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:#111;
+  }
+  .print-close h1{
+    margin:0 0 6px;
+    font-size:24px;
+  }
+  .print-close .muted{
+    color:#555;
+    font-size:12px;
+    margin-bottom:14px;
+  }
+  .print-close .line{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px dashed #ccc;
+    padding:8px 0;
+  }
+  .print-close .total{
+    font-weight:800;
+    font-size:18px;
+  }
+}

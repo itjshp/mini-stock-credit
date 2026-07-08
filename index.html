@@ -11,7 +11,7 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.1.3 • Receipt UX • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.1.4 • Daily Close • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
@@ -61,7 +61,30 @@
 <section id="summary" class="page">
   <div class="page-head"><div><h2>สรุป</h2><p>ดูยอดขาย กำไร ลูกหนี้ และสต็อกแบบเร็ว</p></div></div>
   <div class="kpi-grid"><article class="kpi blue"><span>ยอดขายวันนี้</span><strong id="todaySales">0.00</strong><small>บาท</small></article><article class="kpi green"><span>กำไรวันนี้</span><strong id="todayProfit">0.00</strong><small>บาท</small></article><article class="kpi purple"><span>ยอดขายเดือนนี้</span><strong id="monthSales">0.00</strong><small>บาท</small></article><article class="kpi orange"><span>ลูกหนี้ค้างชำระ</span><strong id="totalCredit">0.00</strong><small>บาท</small></article></div>
-  <div class="dashboard-grid"><div class="panel"><div class="panel-head"><h3>สินค้าใกล้หมด</h3><button class="link-btn" data-open-tab="products">ดูสินค้า</button></div><div id="lowStockList" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3>ลูกหนี้สูงสุด</h3><button class="link-btn" data-open-tab="ledger">ดูยอดค้าง</button></div><div id="topDebtors" class="stack-list"></div></div></div>
+  
+<div class="panel daily-close-panel">
+  <div class="panel-head">
+    <div>
+      <h3>ปิดยอดวันนี้</h3>
+      <span class="hint">สรุปสำหรับตรวจยอดตอนสิ้นวัน</span>
+    </div>
+    <div class="row-actions">
+      <button id="copyDailyCloseBtn" class="soft-btn" type="button">คัดลอกสรุปวันนี้</button>
+      <button id="printDailyCloseBtn" class="soft-btn" type="button">พิมพ์สรุปวันนี้</button>
+    </div>
+  </div>
+
+  <div class="daily-close-grid">
+    <div><span>ยอดขายวันนี้</span><strong id="closeSalesToday">0.00</strong></div>
+    <div><span>กำไรวันนี้</span><strong id="closeProfitToday">0.00</strong></div>
+    <div><span>เงินสด/โอนที่ได้รับ</span><strong id="closeCashToday">0.00</strong></div>
+    <div><span>เครดิตใหม่วันนี้</span><strong id="closeCreditToday">0.00</strong></div>
+    <div><span>รับเงินลูกหนี้วันนี้</span><strong id="closePaymentToday">0.00</strong></div>
+    <div><span>จำนวนบิลวันนี้</span><strong id="closeBillCountToday">0</strong></div>
+  </div>
+</div>
+
+<div class="dashboard-grid"><div class="panel"><div class="panel-head"><h3>สินค้าใกล้หมด</h3><button class="link-btn" data-open-tab="products">ดูสินค้า</button></div><div id="lowStockList" class="stack-list"></div></div><div class="panel"><div class="panel-head"><h3>ลูกหนี้สูงสุด</h3><button class="link-btn" data-open-tab="ledger">ดูยอดค้าง</button></div><div id="topDebtors" class="stack-list"></div></div></div>
   <div class="panel"><div class="panel-head"><h3>บิลล่าสุด</h3><span id="backupStatus" class="hint">Backup: -</span></div><div id="summaryRecentBills" class="stack-list"></div></div>
 </section>
 

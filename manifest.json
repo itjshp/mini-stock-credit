@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.1.3 Receipt UX, short/full copy, share and print bill",
+  "description": "Khaikhong v2.1.4 Daily Close summary, copy and print closing report",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

@@ -246,6 +246,7 @@ function renderAll() {
   renderProductDetail();
   renderCustomers();
   renderSummary();
+  renderDailyClose();
   renderMovements();
   renderAdjustments();
   renderLedger();
@@ -1106,6 +1107,97 @@ function renderReports() {
 
 
 
+
+function dailyCloseStats(dateText = today()) {
+  const billsToday = activeBills().filter(b => String(b.date || "") === dateText);
+  const paymentsToday = state.payments.filter(p => String(p.date || "") === dateText);
+
+  const sales = billsToday.reduce((sum, b) => sum + Number(b.subtotal || 0), 0);
+  const cost = billsToday.reduce((sum, b) => sum + Number(b.costTotal || 0), 0);
+  const profit = billsToday.reduce((sum, b) => sum + Number(b.profitTotal || 0), 0);
+
+  const cashPaidFromBills = billsToday.reduce((sum, b) => sum + Number(b.initialPaidAmount ?? b.paidAmount ?? 0), 0);
+  const creditNew = billsToday.reduce((sum, b) => sum + Number(b.creditAmount || 0), 0);
+  const paymentsReceived = paymentsToday.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  return {
+    date: dateText,
+    bills: billsToday,
+    payments: paymentsToday,
+    sales,
+    cost,
+    profit,
+    cashPaidFromBills,
+    creditNew,
+    paymentsReceived,
+    billCount: billsToday.length
+  };
+}
+
+function renderDailyClose() {
+  if (!$("closeSalesToday")) return;
+
+  const s = dailyCloseStats();
+  $("closeSalesToday").textContent = money(s.sales);
+  $("closeProfitToday").textContent = money(s.profit);
+  $("closeCashToday").textContent = money(s.cashPaidFromBills);
+  $("closeCreditToday").textContent = money(s.creditNew);
+  $("closePaymentToday").textContent = money(s.paymentsReceived);
+  $("closeBillCountToday").textContent = s.billCount.toLocaleString("th-TH");
+}
+
+function dailyCloseText(dateText = today()) {
+  const s = dailyCloseStats(dateText);
+  const setting = mainSettings();
+
+  return [
+    `${setting.shopName || "Khaikhong"} - สรุปปิดยอด`,
+    `วันที่: ${s.date}`,
+    "------------------------------",
+    `จำนวนบิล: ${s.billCount}`,
+    `ยอดขายวันนี้: ${money(s.sales)} บาท`,
+    `ต้นทุนวันนี้: ${money(s.cost)} บาท`,
+    `กำไรวันนี้: ${money(s.profit)} บาท`,
+    `เงินสด/โอนจากบิลวันนี้: ${money(s.cashPaidFromBills)} บาท`,
+    `เครดิตใหม่วันนี้: ${money(s.creditNew)} บาท`,
+    `รับเงินลูกหนี้วันนี้: ${money(s.paymentsReceived)} บาท`,
+    "------------------------------",
+    `Backup ล่าสุด: ${localStorage.getItem("khaikhongV2LastBackup") ? new Date(localStorage.getItem("khaikhongV2LastBackup")).toLocaleString("th-TH") : "ยังไม่เคย"}`
+  ].join("\n");
+}
+
+async function copyDailyClose() {
+  const text = dailyCloseText();
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("คัดลอกสรุปปิดยอดแล้ว");
+  } catch {
+    prompt("คัดลอกสรุปปิดยอด:", text);
+  }
+}
+
+function printDailyClose() {
+  const s = dailyCloseStats();
+  const setting = mainSettings();
+
+  $("printArea").innerHTML = `
+    <div class="print-close">
+      <h1>${setting.shopName || "Khaikhong"} - สรุปปิดยอด</h1>
+      <div class="muted">วันที่ ${s.date}</div>
+      <div class="line"><span>จำนวนบิล</span><strong>${s.billCount}</strong></div>
+      <div class="line"><span>ยอดขายวันนี้</span><strong>${money(s.sales)}</strong></div>
+      <div class="line"><span>ต้นทุนวันนี้</span><strong>${money(s.cost)}</strong></div>
+      <div class="line total"><span>กำไรวันนี้</span><strong>${money(s.profit)}</strong></div>
+      <div class="line"><span>เงินสด/โอนจากบิลวันนี้</span><strong>${money(s.cashPaidFromBills)}</strong></div>
+      <div class="line"><span>เครดิตใหม่วันนี้</span><strong>${money(s.creditNew)}</strong></div>
+      <div class="line"><span>รับเงินลูกหนี้วันนี้</span><strong>${money(s.paymentsReceived)}</strong></div>
+      <div class="muted" style="margin-top:14px">พิมพ์จาก Khaikhong</div>
+    </div>
+  `;
+
+  window.print();
+}
+
 function receiptStatusText(b) {
   if (b.status === "cancelled") return "ยกเลิก";
   if (Number(b.creditAmount || 0) > 0) return "เครดิต/ค้างชำระ";
@@ -1839,7 +1931,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.1.3", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.1.4", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2424,6 +2516,10 @@ $("runCheckOnlyBtn")?.addEventListener("click", () => {
 $("clearTestDataBtn")?.addEventListener("click", async () => {
   await clearTestData(true);
 });
+
+
+$("copyDailyCloseBtn")?.addEventListener("click", copyDailyClose);
+$("printDailyCloseBtn")?.addEventListener("click", printDailyClose);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -6,6 +6,7 @@ let db;
 let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
+let selectedProductId = "";
 let selectedBillId = "";
 let currentNumberInput = null;
 let numberPadValue = "";
@@ -221,6 +222,7 @@ function renderAll() {
   renderSelects();
   renderSale();
   renderProducts();
+  renderProductDetail();
   renderCustomers();
   renderSummary();
   renderMovements();
@@ -453,6 +455,7 @@ function renderProducts() {
       <td>${Number(p.minStock || 0) > 0 && Number(p.stockQty || 0) <= Number(p.minStock || 0) ? '<span class="low">ใกล้หมด</span>' : '<span class="ok-stock">ปกติ</span>'}</td>
       <td>
         <div class="row-actions">
+          <button class="small-btn" onclick="openProductDetail('${p.id}')">รายละเอียด</button>
           <button class="small-btn small-edit" onclick="editProduct('${p.id}')">แก้ไข</button>
           <button class="small-btn small-danger" onclick="deleteProduct('${p.id}')">ลบ</button>
         </div>
@@ -505,6 +508,130 @@ async function deleteProduct(id) {
 }
 
 window.deleteProduct = deleteProduct;
+
+
+function getProductBillItems(productId) {
+  return state.bill_items
+    .filter(item => item.productId === productId)
+    .map(item => ({ ...item, bill: state.bills.find(b => b.id === item.billId) }))
+    .filter(row => row.bill)
+    .sort((a, b) => `${b.bill.date || ""} ${b.bill.createdAt || ""}`.localeCompare(`${a.bill.date || ""} ${a.bill.createdAt || ""}`));
+}
+
+function getProductMovements(productId) {
+  return state.stock_movements
+    .filter(m => m.productId === productId)
+    .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function renderProductDetail() {
+  const wrap = $("productDetailContent");
+  if (!wrap) return;
+
+  const p = productById(selectedProductId);
+  if (!p) {
+    wrap.innerHTML = `<div class="panel"><div class="list-item"><div><strong>ยังไม่ได้เลือกสินค้า</strong><small>ไปที่หน้าสินค้า แล้วกดปุ่มรายละเอียด</small></div></div></div>`;
+    return;
+  }
+
+  const items = getProductBillItems(p.id);
+  const activeItems = items.filter(row => row.bill.status !== "cancelled");
+  const movements = getProductMovements(p.id);
+
+  const soldQty = activeItems.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  const soldRevenue = activeItems.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
+  const productProfit = activeItems.reduce((sum, item) => sum + Number(item.profit || 0), 0);
+  const lowStock = Number(p.minStock || 0) > 0 && Number(p.stockQty || 0) <= Number(p.minStock || 0);
+
+  wrap.innerHTML = `
+    <div class="product-hero">
+      <div class="product-hero-top">
+        <div>
+          <h3>${p.name}</h3>
+          <small>${p.unit || "-"} ${p.note ? "• " + p.note : ""}</small>
+        </div>
+        <div class="row-actions">
+          <button class="soft-btn" onclick="quickPurchaseProduct('${p.id}')">ซื้อเข้า</button>
+          <button class="soft-btn" onclick="quickAdjustProduct('${p.id}')">ปรับสต็อก</button>
+          <button class="small-btn small-edit" onclick="editProduct('${p.id}')">แก้ไข</button>
+        </div>
+      </div>
+
+      <div class="product-detail-kpis">
+        <div><span>สต็อกคงเหลือ</span><strong>${money(p.stockQty)} ${p.unit || ""}</strong></div>
+        <div><span>ทุนเฉลี่ย</span><strong>${money(p.avgCost)}</strong></div>
+        <div><span>ราคาขาย</span><strong>${money(p.price)}</strong></div>
+        <div><span>สถานะ</span><strong class="${lowStock ? "low" : "ok-stock"}">${lowStock ? "ใกล้หมด" : "ปกติ"}</strong></div>
+        <div><span>จำนวนขาย</span><strong>${money(soldQty)} ${p.unit || ""}</strong></div>
+        <div><span>ยอดขายสินค้า</span><strong>${money(soldRevenue)}</strong></div>
+        <div><span>กำไรรวม</span><strong class="${productProfit >= 0 ? "positive" : "negative"}">${money(productProfit)}</strong></div>
+        <div><span>จำนวนบิล</span><strong>${activeItems.length.toLocaleString("th-TH")}</strong></div>
+      </div>
+    </div>
+
+    <div class="product-history-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>ประวัติขาย</h3>
+          <span class="hint">จากบิลขายที่มีสินค้านี้</span>
+        </div>
+        <div class="stack-list">
+          ${items.slice(0, 30).map(item => `
+            <div class="list-item ${item.bill.status === "cancelled" ? "cancelled-row" : "product-move-out"}">
+              <div>
+                <strong><button class="bill-link" onclick="openBillDetail('${item.bill.id}')">${item.bill.billNo}</button> ${billBadge(item.bill)}</strong>
+                <small>${item.bill.date} • ${customerName(item.bill.customerId)} • จำนวน ${money(item.qty)} • ราคา ${money(item.unitPrice)}</small>
+              </div>
+              <div>
+                <div class="money">${money(item.revenue)}</div>
+                <small class="${Number(item.profit || 0) >= 0 ? "positive" : "negative"}">กำไร ${money(item.profit)}</small>
+              </div>
+            </div>
+          `).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติขาย</strong></div></div>`}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>ประวัติสต็อก</h3>
+          <span class="hint">ซื้อเข้า / ปรับสต็อก / คืนจากยกเลิกบิล</span>
+        </div>
+        <div class="stack-list">
+          ${movements.slice(0, 30).map(m => {
+            const isIn = Number(m.qtyIn || 0) > 0;
+            const cls = m.type === "sale_cancel" ? "product-move-cancel" : (isIn ? "product-move-in" : "product-move-out");
+            const qty = isIn ? m.qtyIn : m.qtyOut;
+            return `
+              <div class="list-item ${cls}">
+                <div>
+                  <strong>${m.type}</strong>
+                  <small>${m.date} • ${m.note || "-"} • ทุน ${money(m.unitCost || 0)}</small>
+                </div>
+                <div class="money ${isIn ? "positive" : "negative"}">${isIn ? "+" : "-"}${money(qty)}</div>
+              </div>
+            `;
+          }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติสต็อก</strong></div></div>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.openProductDetail = (id) => {
+  selectedProductId = id;
+  renderProductDetail();
+  switchTab("productDetail");
+};
+
+window.quickPurchaseProduct = (id) => {
+  $("purchaseProduct").value = id;
+  switchTab("purchase");
+};
+
+window.quickAdjustProduct = (id) => {
+  $("adjustProduct").value = id;
+  switchTab("adjust");
+};
 
 function renderCustomers() {
   const q = ($("customerSearch")?.value || "").toLowerCase().trim();
@@ -1372,7 +1499,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.0.5", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.0.6", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

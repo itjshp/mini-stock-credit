@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.0.5 Bill-based customer payments",
+  "description": "Khaikhong v2.0.6 Product detail and product history",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

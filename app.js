@@ -549,7 +549,7 @@ function getProductMovements(productId) {
 
 function renderProductDetail() {
   const wrap = $("productDetailContent");
-  if (!wrap) return;
+  if (!wrap) { alert("ไม่พบพื้นที่แสดงรายละเอียดบิล กรุณาอัปเดต index.html"); return; }
 
   const p = productById(selectedProductId);
   if (!p) {
@@ -1312,6 +1312,11 @@ function renderBillDetail() {
 window.openBillDetail = (id) => {
   selectedBillId = id;
   renderBillDetail();
+  const page = $("billDetail");
+  if (!page) {
+    alert("ไม่พบหน้ารายละเอียดบิล กรุณาอัปเดตไฟล์ index.html ให้ครบ");
+    return;
+  }
   switchTab("billDetail");
 };
 
@@ -1752,7 +1757,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.1.1", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.1.2", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

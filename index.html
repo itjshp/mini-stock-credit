@@ -11,7 +11,7 @@
 <body>
 <header class="hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.1.1 • Receipt • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.1.2 • Bill Detail Fix • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
@@ -223,6 +223,32 @@
       <div class="list-item"><div><strong>คำนำหน้าเลขบิล</strong><small>ใช้ตัวอักษรสั้น ๆ เช่น KH, SALE, SHOP เพื่อให้อ้างอิงบิลได้ง่าย</small></div></div>
       <div class="list-item"><div><strong>เลขบิลถัดไป</strong><small>ถ้าตั้งเป็น 25 บิลต่อไปจะเป็น KH-000025</small></div></div>
       <div class="list-item"><div><strong>Number Pad</strong><small>เหมาะกับ iPad/มือถือ ถ้าใช้คีย์บอร์ดคอมเป็นหลักสามารถปิดได้</small></div></div>
+    </div>
+  </div>
+</section>
+
+
+<section id="billDetail" class="page">
+  <div class="page-head">
+    <div>
+      <h2>รายละเอียดบิล</h2>
+      <p>ตรวจรายการสินค้า ยอดรวม กำไร สถานะบิล และใบเสร็จ</p>
+    </div>
+    <div class="form-actions">
+      <button class="soft-btn" data-open-tab="reports" type="button">กลับรายงาน</button>
+      <button class="soft-btn" data-open-tab="summary" type="button">กลับสรุป</button>
+      <button class="soft-btn" data-open-tab="sale" type="button">ขายของต่อ</button>
+    </div>
+  </div>
+
+  <div id="billDetailContent" class="bill-detail-wrap">
+    <div class="panel">
+      <div class="list-item">
+        <div>
+          <strong>ยังไม่ได้เลือกบิล</strong>
+          <small>ไปที่สรุปหรือรายงาน แล้วกดปุ่ม “ดูบิล”</small>
+        </div>
+      </div>
     </div>
   </div>
 </section>

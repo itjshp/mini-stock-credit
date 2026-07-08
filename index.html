@@ -8,17 +8,17 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-<header class="hero">
+<body class="app-shell">
+<header class="hero cute-hero">
   <div class="hero-inner">
-    <div><p class="eyebrow">Khaikhong v2.1.5 • Low Stock • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
+    <div><p class="eyebrow">Khaikhong v2.2.0 • App UI • Local-first</p><h1 id="appTitleText">Khaikhong</h1><p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p></div>
     <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
   </div>
 </header>
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active">ขายของ</button><button data-tab="products" class="tab">สินค้า</button><button data-tab="customers" class="tab">ลูกค้า</button><button data-tab="summary" class="tab">สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab">เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -316,13 +316,74 @@
   <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>รายละเอียดสินค้า</h3><ol><li>ไปที่เมนูสินค้า</li><li>กดรายละเอียด</li><li>ดูประวัติซื้อเข้า ขายออก และปรับสต็อก</li></ol></article><article class="guide-card"><b>5</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
 </section>
 
+
+<section id="about" class="page">
+  <div class="page-head">
+    <div>
+      <h2>เกี่ยวกับ Khaikhong</h2>
+      <p>ข้อมูลแอป ความเป็นส่วนตัว และแนวทางการใช้งานแบบ Local-first</p>
+    </div>
+  </div>
+
+  <div class="about-layout">
+    <div class="panel about-hero">
+      <div class="app-mark">K</div>
+      <div>
+        <h3>Khaikhong</h3>
+        <p>ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
+        <span class="version-pill">v2.2.0</span>
+      </div>
+    </div>
+
+    <div class="panel privacy-panel">
+      <div class="panel-head"><h3>ความเป็นส่วนตัว</h3></div>
+      <div class="stack-list">
+        <div class="list-item"><div><strong>ข้อมูลอยู่ในเครื่องคุณ</strong><small>ข้อมูลสินค้า ลูกค้า บิล ยอดขาย และลูกหนี้ เก็บใน Browser/อุปกรณ์ที่ใช้งาน</small></div></div>
+        <div class="list-item"><div><strong>ผู้พัฒนาไม่ได้เห็นข้อมูล</strong><small>แอปนี้เป็น Local-first และไม่ได้ส่งข้อมูลไปยัง Server ของผู้พัฒนา</small></div></div>
+        <div class="list-item"><div><strong>Backup สำคัญมาก</strong><small>ถ้าล้าง Browser หรือเปลี่ยนเครื่องโดยไม่ Backup ข้อมูลอาจหายได้</small></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>เหมาะกับใคร</h3></div>
+      <div class="feature-chip-grid">
+        <div>ร้านเล็ก</div>
+        <div>ขายของออนไลน์</div>
+        <div>ขายเงินสด/เครดิต</div>
+        <div>คนใช้ iPad</div>
+        <div>คนที่ใช้ Google Sheet อยู่</div>
+        <div>ต้องการรู้กำไรเร็ว</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>คำแนะนำก่อนใช้งานจริง</h3></div>
+      <ol class="pretty-list">
+        <li>เพิ่มสินค้าและซื้อเข้าให้ถูกต้องก่อนเริ่มขาย</li>
+        <li>ทดสอบขายเงินสด / เครดิต / รับเงิน / ยกเลิกบิล</li>
+        <li>เข้าเมนูทดสอบระบบเพื่อตรวจความถูกต้อง</li>
+        <li>Export Backup ทุกวันหลังใช้งานจริง</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
 <section id="more" class="page">
   <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
-  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 
-<div id="numberPadOverlay" class="numpad-overlay hidden"><div class="numpad"><div class="numpad-head"><div><p>POS Number Pad</p><strong id="numpadTargetLabel">ใส่ตัวเลข</strong></div><button id="numpadClose" class="numpad-close">×</button></div><div id="numpadDisplay" class="numpad-display">0</div><div class="numpad-grid"><button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-num="0">0</button><button data-num="00">00</button><button data-num=".">.</button><button id="numpadBack">⌫</button><button id="numpadClear">C</button><button id="numpadOk" class="ok">ตกลง</button></div></div></div>
+
+<nav class="bottom-nav" aria-label="เมนูหลักมือถือ">
+  <button data-open-tab="sale" type="button"><span>🛒</span><strong>ขาย</strong></button>
+  <button data-open-tab="products" type="button"><span>📦</span><strong>สินค้า</strong></button>
+  <button data-open-tab="customers" type="button"><span>👥</span><strong>ลูกค้า</strong></button>
+  <button data-open-tab="summary" type="button"><span>📊</span><strong>สรุป</strong></button>
+  <button data-open-tab="more" type="button"><span>☰</span><strong>เพิ่ม</strong></button>
+</nav>
+
+  <div id="numberPadOverlay" class="numpad-overlay hidden"><div class="numpad"><div class="numpad-head"><div><p>POS Number Pad</p><strong id="numpadTargetLabel">ใส่ตัวเลข</strong></div><button id="numpadClose" class="numpad-close">×</button></div><div id="numpadDisplay" class="numpad-display">0</div><div class="numpad-grid"><button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-num="0">0</button><button data-num="00">00</button><button data-num=".">.</button><button id="numpadBack">⌫</button><button id="numpadClear">C</button><button id="numpadOk" class="ok">ตกลง</button></div></div></div>
 <div id="printArea" class="print-area"></div>
   <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>

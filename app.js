@@ -284,7 +284,7 @@ function renderSale() {
         <span>${Number(p.stockQty || 0) <= Number(p.minStock || 0) && Number(p.minStock || 0) > 0 ? "ใกล้หมด" : "พร้อมขาย"}</span>
       </div>
     </button>
-  `).join("") || `<div class="list-item"><div><strong>ไม่พบสินค้า</strong><small>เพิ่มสินค้าได้ที่เมนูสินค้า</small></div></div>`;
+  `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">📦</div><strong>ไม่พบสินค้า</strong><small>เพิ่มสินค้าได้ที่เมนูสินค้า</small></div></div>`;
 
   $("cartItems").innerHTML = cart.map(item => `
     <div class="cart-item">
@@ -299,7 +299,7 @@ function renderSale() {
         <span class="cart-price">${money(item.qty * item.unitPrice)}</span>
       </div>
     </div>
-  `).join("") || `<div class="list-item"><div><strong>ยังไม่มีสินค้าในบิล</strong><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div></div>`;
+  `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🛒</div><strong>บิลยังว่างอยู่</strong><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div></div>`;
 
   const total = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const cost = cart.reduce((s, i) => s + i.qty * i.unitCost, 0);
@@ -2026,7 +2026,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.1.5", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.0", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

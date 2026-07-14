@@ -155,6 +155,27 @@ function customerName(id) {
   return state.customers.find(c => c.id === id)?.name || "-";
 }
 
+
+function productCategories() {
+  return [...new Set(activeProducts()
+    .map(p => (p.category || "").trim())
+    .filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "th"));
+}
+
+function setCategoryOptions(id, includeAll = true) {
+  const el = $(id);
+  if (!el) return;
+  const cur = el.value;
+  const options = productCategories().map(c => `<option value="${c}">${c}</option>`).join("");
+  el.innerHTML = `${includeAll ? '<option value="">ทุกหมวดหมู่</option>' : '<option value="">ไม่ระบุหมวดหมู่</option>'}${options}`;
+  if ([...el.options].some(o => o.value === cur)) el.value = cur;
+}
+
+function productCategoryLabel(p) {
+  return (p?.category || "").trim() || "ไม่ระบุ";
+}
+
 function productById(id) {
   return state.products.find(p => p.id === id);
 }
@@ -365,6 +386,7 @@ function setOptions(id, rows, placeholder, labelFn) {
 
 function renderAll() {
   renderSelects();
+  renderCategoryOptions();
   renderSale();
   renderProducts();
   renderProductDetail();
@@ -383,6 +405,12 @@ function renderAll() {
   renderBackupStatus();
   renderSettingsUI();
   renderTestSummary();
+}
+
+
+function renderCategoryOptions() {
+  setCategoryOptions("productCategoryFilter");
+  setCategoryOptions("saleCategoryFilter");
 }
 
 function renderSelects() {
@@ -436,14 +464,16 @@ window.updateCartItemDiscount = (id, value) => {
 
 function renderSale() {
   const q = ($("saleSearch")?.value || "").toLowerCase().trim();
+  const category = $("saleCategoryFilter")?.value || "";
   const products = activeProducts()
-    .filter(p => !q || `${p.name} ${p.unit || ""} ${p.note || ""}`.toLowerCase().includes(q))
+    .filter(p => !category || (p.category || "") === category)
+    .filter(p => !q || `${p.name} ${p.unit || ""} ${p.category || ""} ${p.note || ""}`.toLowerCase().includes(q))
     .slice(0, 24);
 
   $("quickProducts").innerHTML = products.map(p => `
     <button class="product-tile" onclick="addProductToCart('${p.id}')" type="button">
       <strong>${p.name}</strong>
-      <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small>
+      <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small><span class="product-category-line">หมวดหมู่: ${productCategoryLabel(p)}</span>
       <div class="tile-price">
         <span class="${isWholesaleCustomer($('billCustomer')?.value || '') ? 'wholesale-price' : 'retail-price'}">${isWholesaleCustomer($('billCustomer')?.value || '') ? 'ส่ง' : 'ปลีก'} ${money(salePriceForProduct(p))}</span>
         <span>${Number(p.stockQty || 0) <= Number(p.minStock || 0) && Number(p.minStock || 0) > 0 ? "ใกล้หมด" : "พร้อมขาย"}</span>
@@ -650,11 +680,15 @@ window.cancelBill = cancelBill;
 
 function renderProducts() {
   const q = ($("productSearch")?.value || "").toLowerCase().trim();
-  const rows = activeProducts().filter(p => !q || `${p.name} ${p.unit || ""} ${p.note || ""}`.toLowerCase().includes(q));
+  const category = $("productCategoryFilter")?.value || "";
+  const rows = activeProducts()
+    .filter(p => !category || (p.category || "") === category)
+    .filter(p => !q || `${p.name} ${p.unit || ""} ${p.category || ""} ${p.note || ""}`.toLowerCase().includes(q));
 
   $("productsTable").innerHTML = rows.map(p => `
     <tr>
       <td><strong>${p.name}</strong><br><small>${p.unit || ""} ${p.note ? `• ${p.note}` : ""}</small></td>
+      <td><span class="category-chip ${p.category ? "" : "empty"}">${productCategoryLabel(p)}</span></td>
       <td>${money(p.stockQty)} ${p.unit || ""}</td>
       <td>${money(p.avgCost)}</td>
       <td>${money(p.price)}</td>
@@ -668,11 +702,11 @@ function renderProducts() {
         </div>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="7">ยังไม่มีสินค้า</td></tr>`;
+  `).join("") || `<tr><td colspan="8">ยังไม่มีสินค้า</td></tr>`;
 }
 
 function resetProductForm() {
-  ["productId", "productName", "productUnit", "productNote"].forEach(id => $(id).value = "");
+  ["productId", "productName", "productUnit", "productCategory", "productNote"].forEach(id => { if ($(id)) $(id).value = ""; });
   $("productPrice").value = 0;
   if ($("productWholesalePrice")) $("productWholesalePrice").value = 0;
   $("productMin").value = 0;
@@ -686,6 +720,7 @@ window.editProduct = (id) => {
   $("productId").value = p.id;
   $("productName").value = p.name || "";
   $("productUnit").value = p.unit || "";
+  if ($("productCategory")) $("productCategory").value = p.category || "";
   $("productPrice").value = p.price || 0;
   if ($("productWholesalePrice")) $("productWholesalePrice").value = p.wholesalePrice || p.price || 0;
   $("productMin").value = p.minStock || 0;
@@ -757,7 +792,7 @@ function renderProductDetail() {
       <div class="product-hero-top">
         <div>
           <h3>${p.name}</h3>
-          <small>${p.unit || "-"} ${p.note ? "• " + p.note : ""}</small>
+          <small>${p.unit || "-"} • หมวดหมู่: ${productCategoryLabel(p)} ${p.note ? "• " + p.note : ""}</small>
         </div>
         <div class="row-actions">
           <button class="soft-btn" onclick="quickPurchaseProduct('${p.id}')">ซื้อเข้า</button>
@@ -1445,7 +1480,7 @@ function renderReports() {
     <td class="${b.profitTotal >= 0 ? "positive" : "negative"}">${money(b.profitTotal)}</td>
     <td>${billBadge(b)}</td>
     <td><div class="row-actions"><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button><button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอกเต็ม</button>${b.status !== "cancelled" ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>` : `<button class="small-btn small-danger" onclick="deleteCancelledBill('${b.id}')">ลบถาวร</button>`}</div></td>
-  </tr>`).join("") || `<tr><td colspan="7">ไม่พบรายการขาย</td></tr>`;
+  </tr>`).join("") || `<tr><td colspan="8">ไม่พบรายการขาย</td></tr>`;
 }
 
 
@@ -1477,7 +1512,7 @@ function lowStockText() {
     lines.push("ไม่มีสินค้าใกล้หมด");
   } else {
     rows.forEach(p => {
-      lines.push(`${p.name} | เหลือ ${money(p.stockQty)} ${p.unit || ""} | ขั้นต่ำ ${money(p.minStock)} | ปลีก ${money(p.price)} / ส่ง ${money(productWholesalePrice(p))}`);
+      lines.push(`${p.name} | หมวดหมู่ ${productCategoryLabel(p)} | เหลือ ${money(p.stockQty)} ${p.unit || ""} | ขั้นต่ำ ${money(p.minStock)} | ปลีก ${money(p.price)} / ส่ง ${money(productWholesalePrice(p))}`);
     });
   }
 
@@ -2001,7 +2036,9 @@ $("paymentType").addEventListener("change", () => {
 $("billCustomer").addEventListener("change", refreshCartPricesForCustomer);
 
 $("saleSearch").addEventListener("input", renderSale);
+$("saleCategoryFilter")?.addEventListener("change", renderSale);
 $("productSearch").addEventListener("input", renderProducts);
+$("productCategoryFilter")?.addEventListener("change", renderProducts);
 $("customerSearch").addEventListener("input", renderCustomers);
 $("ledgerSearch").addEventListener("input", renderLedger);
 $("clearLedgerBtn").addEventListener("click", () => { selectedLedgerCustomerId = ""; renderLedger(); });
@@ -2023,6 +2060,7 @@ $("productForm").addEventListener("submit", async (e) => {
     id,
     name,
     unit: $("productUnit").value.trim(),
+    category: $("productCategory")?.value.trim() || "",
     price: Number($("productPrice").value || 0),
     wholesalePrice: Number($("productWholesalePrice")?.value || $("productPrice").value || 0),
     minStock: Number($("productMin").value || 0),
@@ -2376,7 +2414,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.5", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.6", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2459,9 +2497,9 @@ $("numberPadOverlay").addEventListener("click", (e) => { if (e.target.id === "nu
 
 $("downloadProductTemplateBtn")?.addEventListener("click", () => {
   const csv = makeCsv([
-    ["ชื่อสินค้า", "หน่วย", "ราคาขายปลีก", "ราคาขายส่ง", "สต็อกเริ่มต้น", "ทุนเริ่มต้น", "สต็อกขั้นต่ำ", "หมายเหตุ"],
-    ["ปูอัด", "แพ็ค", "100", "90", "10", "60", "2", "ตัวอย่างสินค้า"],
-    ["ลูกชิ้น", "ถุง", "80", "70", "20", "45", "5", ""]
+    ["ชื่อสินค้า", "หน่วย", "หมวดหมู่", "ราคาขายปลีก", "ราคาขายส่ง", "สต็อกเริ่มต้น", "ทุนเริ่มต้น", "สต็อกขั้นต่ำ", "หมายเหตุ"],
+    ["ปูอัด", "แพ็ค", "อาหารแช่แข็ง", "100", "90", "10", "60", "2", "ตัวอย่างสินค้า"],
+    ["ลูกชิ้น", "ถุง", "อาหารแช่แข็ง", "80", "70", "20", "45", "5", ""]
   ]);
   download("khaikhong-products-template.csv", csv, "text/csv;charset=utf-8");
 });
@@ -2484,6 +2522,7 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
     .map(row => ({
       name: getCsvValue(row, ["ชื่อสินค้า", "name", "สินค้า"]).trim(),
       unit: getCsvValue(row, ["หน่วย", "unit"]).trim(),
+      category: getCsvValue(row, ["หมวดหมู่", "category", "หมวด"]).trim(),
       price: Number(getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
       wholesalePrice: Number(getCsvValue(row, ["ราคาขายส่ง", "wholesalePrice", "ส่ง"]) || getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
       openingStock: Number(getCsvValue(row, ["สต็อกเริ่มต้น", "จำนวนเริ่มต้น", "stockQty", "stock"]) || 0),
@@ -2512,6 +2551,7 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
       id: productId,
       name: row.name,
       unit: row.unit,
+      category: row.category,
       price: row.price,
       wholesalePrice: row.wholesalePrice,
       minStock: row.minStock,
@@ -2707,7 +2747,7 @@ function calculateBillTotals(billId) {
   };
 }
 
-async function ensureTestProduct({ name, unit, price, minStock, note }) {
+async function ensureTestProduct({ name, unit, category = "TEST", price, minStock, note }) {
   const existing = state.products.find(p => (p.name || "") === name);
   if (existing) return existing;
 
@@ -2715,6 +2755,7 @@ async function ensureTestProduct({ name, unit, price, minStock, note }) {
     id: uid(),
     name,
     unit,
+    category,
     price,
     wholesalePrice: price,
     minStock,

@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.2.5 • Discount & Import • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.2.6 • Categories • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -38,7 +38,7 @@
   <div class="steps"><div><b>1</b><span>เลือกสินค้า</span></div><div><b>2</b><span>ตรวจบิล</span></div><div><b>3</b><span>บันทึกขาย</span></div></div>
   <div class="pos-layout">
     <div class="left-col">
-      <div class="panel product-picker"><div class="panel-head"><h3>เลือกสินค้า</h3><button class="link-btn" data-open-tab="products">+ เพิ่มสินค้า</button></div><input id="saleSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเพิ่มลงบิล"><div id="quickProducts" class="product-grid"></div></div>
+      <div class="panel product-picker"><div class="panel-head"><h3>เลือกสินค้า</h3><button class="link-btn" data-open-tab="products">+ เพิ่มสินค้า</button></div><div class="search-filter-row"><input id="saleSearch" class="search-input" placeholder="ค้นหาสินค้า แล้วแตะเพื่อเพิ่มลงบิล"><select id="saleCategoryFilter"><option value="">ทุกหมวดหมู่</option></select></div><div id="quickProducts" class="product-grid"></div></div>
       <div class="panel"><div class="panel-head"><h3>บิลล่าสุด</h3><button class="link-btn" data-open-tab="reports">ดูทั้งหมด</button></div><div id="recentBills" class="stack-list"></div></div>
     </div>
     <div class="right-col">
@@ -58,8 +58,8 @@
 
 <section id="products" class="page">
   <div class="page-head"><div><h2>สินค้า</h2><p>เพิ่มสินค้า ค้นหา ดูสต็อก ทุนเฉลี่ย และซื้อเข้า</p></div></div>
-  <form id="productForm" class="panel form-grid"><input type="hidden" id="productId"><label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label><label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label><label>ราคาขายปลีก<input id="productPrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>ราคาขายส่ง<input id="productWholesalePrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>สต็อกขั้นต่ำ<input id="productMin" data-keypad="true" type="number" min="0" step="1" value="0"></label><label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button><button class="soft-btn" type="button" id="resetProductBtn">ล้างฟอร์ม</button></div></form>
-  <div class="panel"><div class="panel-head"><h3>รายการสินค้า</h3><button class="link-btn" data-open-tab="purchase">ซื้อเข้า</button></div><input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า"><div class="table-wrap"><table><thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาปลีก</th><th>ราคาส่ง</th><th>สถานะ</th><th></th></tr></thead><tbody id="productsTable"></tbody></table></div></div>
+  <form id="productForm" class="panel form-grid"><input type="hidden" id="productId"><label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label><label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label><label>หมวดหมู่<input id="productCategory" placeholder="เช่น อาหารแช่แข็ง / เครื่องดื่ม"></label><label>ราคาขายปลีก<input id="productPrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>ราคาขายส่ง<input id="productWholesalePrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>สต็อกขั้นต่ำ<input id="productMin" data-keypad="true" type="number" min="0" step="1" value="0"></label><label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button><button class="soft-btn" type="button" id="resetProductBtn">ล้างฟอร์ม</button></div></form>
+  <div class="panel"><div class="panel-head"><h3>รายการสินค้า</h3><button class="link-btn" data-open-tab="purchase">ซื้อเข้า</button></div><div class="search-filter-row"><input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า / หมวดหมู่"><select id="productCategoryFilter"><option value="">ทุกหมวดหมู่</option></select></div><div class="table-wrap"><table><thead><tr><th>สินค้า</th><th>หมวดหมู่</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาปลีก</th><th>ราคาส่ง</th><th>สถานะ</th><th></th></tr></thead><tbody id="productsTable"></tbody></table></div></div>
 </section>
 
 

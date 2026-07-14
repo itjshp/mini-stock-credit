@@ -1514,3 +1514,71 @@ label{
   color:#334155;
   font-weight:900;
 }
+
+
+/* v2.2.5: Discount + Import Opening Stock + Safe Delete */
+.discount-input-wrap{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:1fr 140px;
+  gap:8px;
+  align-items:center;
+}
+.discount-input-wrap label{
+  margin:0;
+}
+.cart-discount-input{
+  padding:10px 12px;
+  border-radius:14px;
+}
+.discount-note{
+  color:#c2410c;
+  font-weight:900;
+}
+.discount-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#fff7ed;
+  color:#c2410c;
+  font-size:12px;
+  font-weight:1000;
+}
+.import-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.import-card{
+  border:1px solid var(--kk-line, #d8ece8);
+  border-radius:24px;
+  background:rgba(255,255,255,.86);
+  padding:16px;
+  box-shadow:0 10px 26px rgba(15,23,42,.05);
+}
+.import-card h3{
+  margin:0 0 8px;
+}
+.import-card p{
+  color:var(--kk-muted, #66817c);
+  font-weight:850;
+  line-height:1.55;
+}
+.soft-warning{
+  margin-top:14px;
+}
+.delete-permanent-zone{
+  margin-top:12px;
+  background:#fff7f7;
+  border:1px solid #fecaca;
+  color:#991b1b;
+  border-radius:18px;
+  padding:14px;
+  font-weight:900;
+}
+@media(max-width:720px){
+  .import-grid,
+  .discount-input-wrap{
+    grid-template-columns:1fr;
+  }
+}

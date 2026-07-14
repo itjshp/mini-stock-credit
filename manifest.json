@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.2.4 Wholesale price and customer detail button fix",
+  "description": "Khaikhong v2.2.5 Discounts, CSV import opening stock and safe cancelled bill delete",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

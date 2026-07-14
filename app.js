@@ -292,6 +292,8 @@ async function rebuildCostSnapshots() {
               ...item,
               unitCost: saleCost,
               cost: Number(item.qty || 0) * saleCost,
+              grossRevenue: Number(item.grossRevenue ?? (Number(item.qty || 0) * Number(item.unitPrice || 0))),
+              discount: Number(item.discount || 0),
               profit: Number(item.revenue || 0) - Number(item.qty || 0) * saleCost
             };
             itemsToUpdate.set(item.id, updated);
@@ -317,9 +319,19 @@ async function recalcBills() {
 
   for (const b of bills) {
     const its = items.filter(i => i.billId === b.id);
-    b.subtotal = its.reduce((s, i) => s + Number(i.revenue || 0), 0);
+    const grossTotal = its.reduce((s, i) => s + Number(i.grossRevenue ?? (Number(i.qty || 0) * Number(i.unitPrice || 0))), 0);
+    const itemDiscountTotal = its.reduce((s, i) => s + Number(i.discount || 0), 0);
+    const lineSubtotal = its.reduce((s, i) => s + Number(i.revenue || 0), 0);
+    const billDiscount = Math.min(Math.max(Number(b.billDiscount || 0), 0), Math.max(0, lineSubtotal));
+    const subtotal = Math.max(0, lineSubtotal - billDiscount);
+
+    b.grossTotal = grossTotal;
+    b.itemDiscountTotal = itemDiscountTotal;
+    b.billDiscount = billDiscount;
+    b.discountTotal = itemDiscountTotal + billDiscount;
+    b.subtotal = subtotal;
     b.costTotal = its.reduce((s, i) => s + Number(i.cost || 0), 0);
-    b.profitTotal = its.reduce((s, i) => s + Number(i.profit || 0), 0);
+    b.profitTotal = subtotal - Number(b.costTotal || 0);
 
     // เก็บเงินที่รับตอนออกบิลไว้แยกจากเงินที่รับทีหลัง
     if (b.initialPaidAmount === undefined || b.initialPaidAmount === null) {
@@ -382,6 +394,46 @@ function renderSelects() {
   setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
 }
 
+
+function cartLineGross(item) {
+  return Number(item.qty || 0) * Number(item.unitPrice || 0);
+}
+
+function cartLineDiscount(item) {
+  const gross = cartLineGross(item);
+  return Math.min(Math.max(Number(item.discount || 0), 0), gross);
+}
+
+function cartLineRevenue(item) {
+  return Math.max(0, cartLineGross(item) - cartLineDiscount(item));
+}
+
+function cartTotals() {
+  const gross = cart.reduce((sum, item) => sum + cartLineGross(item), 0);
+  const itemDiscountTotal = cart.reduce((sum, item) => sum + cartLineDiscount(item), 0);
+  const maxBillDiscount = Math.max(0, gross - itemDiscountTotal);
+  const billDiscount = Math.min(Math.max(Number($("billDiscount")?.value || 0), 0), maxBillDiscount);
+  const subtotal = Math.max(0, gross - itemDiscountTotal - billDiscount);
+  const cost = cart.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitCost || 0), 0);
+
+  return {
+    gross,
+    itemDiscountTotal,
+    billDiscount,
+    discountTotal: itemDiscountTotal + billDiscount,
+    subtotal,
+    cost,
+    profit: subtotal - cost
+  };
+}
+
+window.updateCartItemDiscount = (id, value) => {
+  const item = cart.find(i => i.productId === id);
+  if (!item) return;
+  item.discount = Math.max(0, Number(value || 0));
+  renderSale();
+};
+
 function renderSale() {
   const q = ($("saleSearch")?.value || "").toLowerCase().trim();
   const products = activeProducts()
@@ -409,16 +461,19 @@ function renderSale() {
         <button class="qty-btn" onclick="changeCartQty('${item.productId}', -1)">−</button>
         <span class="money">${money(item.qty)}</span>
         <button class="qty-btn" onclick="changeCartQty('${item.productId}', 1)">+</button>
-        <span class="cart-price">${money(item.qty * item.unitPrice)}</span>
+        <span class="cart-price">${money(cartLineRevenue(item))}</span>
+      </div>
+      <div class="discount-input-wrap">
+        <small>ราคาก่อนลด ${money(cartLineGross(item))}${cartLineDiscount(item) > 0 ? ` • <span class="discount-note">ลด ${money(cartLineDiscount(item))}</span>` : ""}</small>
+        <label>ส่วนลดรายการ<input class="cart-discount-input" data-keypad="true" type="number" min="0" step="0.01" value="${Number(item.discount || 0)}" oninput="updateCartItemDiscount('${item.productId}', this.value)"></label>
       </div>
     </div>
   `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🛒</div><strong>บิลยังว่างอยู่</strong><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div></div>`;
 
-  const total = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
-  const cost = cart.reduce((s, i) => s + i.qty * i.unitCost, 0);
+  const totals = cartTotals();
   $("cartCount").textContent = cart.length;
-  $("cartTotal").textContent = money(total);
-  $("cartProfit").textContent = money(total - cost);
+  $("cartTotal").textContent = money(totals.subtotal);
+  $("cartProfit").textContent = money(totals.profit);
   $("currentBillMeta").textContent = `เลขบิลถัดไป: ${nextBillNo()}`;
 }
 
@@ -428,7 +483,7 @@ window.addProductToCart = (id) => {
 
   const exist = cart.find(i => i.productId === id);
   if (exist) exist.qty += 1;
-  else cart.push({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: salePriceForProduct(p), unitCost: Number(p.avgCost || 0) });
+  else cart.push({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: salePriceForProduct(p), unitCost: Number(p.avgCost || 0), discount: 0 });
 
   renderSale();
   showToast(`เพิ่ม ${p.name} ลงบิล`);
@@ -448,6 +503,7 @@ window.removeCartItem = (id) => {
 
 function clearCart() {
   cart = [];
+  if ($("billDiscount")) $("billDiscount").value = 0;
   $("paidAmount").value = 0;
   $("billNote").value = "";
   renderSale();
@@ -469,8 +525,9 @@ async function saveBill() {
   const billId = uid();
   const billNo = nextBillNo();
   const date = $("billDate").value || today();
-  const subtotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
-  const costTotal = cart.reduce((s, i) => s + i.qty * i.unitCost, 0);
+  const totals = cartTotals();
+  const subtotal = totals.subtotal;
+  const costTotal = totals.cost;
   let paidAmount = Number($("paidAmount").value || 0);
 
   if (paymentType === "cash") paidAmount = subtotal;
@@ -485,6 +542,10 @@ async function saveBill() {
     date,
     customerId: customerId || "",
     paymentType,
+    grossTotal: totals.gross,
+    itemDiscountTotal: totals.itemDiscountTotal,
+    billDiscount: totals.billDiscount,
+    discountTotal: totals.discountTotal,
     subtotal,
     costTotal,
     profitTotal: subtotal - costTotal,
@@ -499,6 +560,11 @@ async function saveBill() {
   await put("bills", bill);
 
   for (const item of cart) {
+    const grossRevenue = cartLineGross(item);
+    const discount = cartLineDiscount(item);
+    const revenue = cartLineRevenue(item);
+    const cost = Number(item.qty || 0) * Number(item.unitCost || 0);
+
     await put("bill_items", {
       id: uid(),
       billId,
@@ -507,9 +573,11 @@ async function saveBill() {
       qty: item.qty,
       unitPrice: item.unitPrice,
       unitCost: item.unitCost,
-      revenue: item.qty * item.unitPrice,
-      cost: item.qty * item.unitCost,
-      profit: item.qty * (item.unitPrice - item.unitCost)
+      grossRevenue,
+      discount,
+      revenue,
+      cost,
+      profit: revenue - cost
     });
 
     await put("stock_movements", {
@@ -1319,6 +1387,32 @@ window.deletePayment = async (id) => {
   showToast("ลบรายการรับเงินแล้ว");
 };
 
+
+async function deleteCancelledBill(id) {
+  const b = state.bills.find(x => x.id === id);
+  if (!b) return alert("ไม่พบบิล");
+  if (b.status !== "cancelled") return alert("ลบถาวรได้เฉพาะบิลที่ยกเลิกแล้วเท่านั้น");
+
+  const typed = prompt(`ลบบิลถาวร?\n\nบิล: ${b.billNo}\nการกระทำนี้จะลบบิล รายการสินค้าในบิล การเคลื่อนไหวสต็อก และรายการรับเงินที่ผูกกับบิลนี้\n\nพิมพ์เลขบิลเพื่อยืนยัน:`);
+  if (typed !== b.billNo) {
+    if (typed !== null) alert("เลขบิลไม่ตรง ยกเลิกการลบ");
+    return;
+  }
+
+  if (!confirm(`ยืนยันลบถาวร ${b.billNo} อีกครั้ง?`)) return;
+
+  for (const item of state.bill_items.filter(i => i.billId === id)) await del("bill_items", item.id);
+  for (const m of state.stock_movements.filter(m => m.refId === id || (m.note || "").includes(b.billNo))) await del("stock_movements", m.id);
+  for (const p of state.payments.filter(p => p.billId === id)) await del("payments", p.id);
+  await del("bills", id);
+
+  selectedBillId = "";
+  await rebuildCostSnapshots();
+  await loadState();
+  showToast(`ลบถาวร ${b.billNo} แล้ว`);
+}
+window.deleteCancelledBill = deleteCancelledBill;
+
 function filteredBills() {
   const from = $("reportFrom")?.value || "";
   const to = $("reportTo")?.value || "";
@@ -1350,7 +1444,7 @@ function renderReports() {
     <td>${money(b.subtotal)}</td>
     <td class="${b.profitTotal >= 0 ? "positive" : "negative"}">${money(b.profitTotal)}</td>
     <td>${billBadge(b)}</td>
-    <td><div class="row-actions"><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button><button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอกเต็ม</button>${b.status !== "cancelled" ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>` : ""}</div></td>
+    <td><div class="row-actions"><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button><button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอกเต็ม</button>${b.status !== "cancelled" ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>` : `<button class="small-btn small-danger" onclick="deleteCancelledBill('${b.id}')">ลบถาวร</button>`}</div></td>
   </tr>`).join("") || `<tr><td colspan="7">ไม่พบรายการขาย</td></tr>`;
 }
 
@@ -1569,10 +1663,11 @@ function receiptTextForBill(billId) {
   lines.push("--------------------------------");
 
   items.forEach(item => {
-    lines.push(`${item.productNameSnapshot || productById(item.productId)?.name || "-"} x ${money(item.qty)} = ${money(item.revenue)} บาท`);
+    lines.push(`${item.productNameSnapshot || productById(item.productId)?.name || "-"} x ${money(item.qty)} = ${money(item.revenue)} บาท${Number(item.discount || 0) > 0 ? ` (ลด ${money(item.discount)})` : ""}`);
   });
 
   lines.push("--------------------------------");
+  if (Number(b.discountTotal || 0) > 0) lines.push(`ส่วนลดรวม: ${money(b.discountTotal)} บาท`);
   lines.push(`ยอดรวม: ${money(b.subtotal)} บาท`);
   lines.push(`รับเงินแล้ว: ${money(b.paidAmount)} บาท`);
   if (Number(b.creditAmount || 0) > 0) lines.push(`ยอดค้าง: ${money(b.creditAmount)} บาท`);
@@ -1676,7 +1771,7 @@ function renderReceiptHtml(billId) {
           <div class="receipt-row">
             <div>
               <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
-              <small>จำนวน ${money(item.qty)} × ${money(item.unitPrice)}</small>
+              <small>จำนวน ${money(item.qty)} × ${money(item.unitPrice)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>
             </div>
             <div class="money">${money(item.revenue)}</div>
           </div>
@@ -1686,6 +1781,7 @@ function renderReceiptHtml(billId) {
       <div class="receipt-total">
         <div><span>ลูกค้า</span><span>${customerName(b.customerId)}</span></div>
         <div><span>รับเงินแล้ว</span><span class="paid-amount">${money(b.paidAmount)}</span></div>
+        ${Number(b.discountTotal || 0) > 0 ? `<div><span>ส่วนลดรวม</span><span class="credit-due">${money(b.discountTotal)}</span></div>` : ""}
         ${Number(b.creditAmount || 0) > 0 ? `<div><span>ยอดค้าง</span><span class="credit-due">${money(b.creditAmount)}</span></div>` : ""}
         <div class="grand"><span>ยอดรวม</span><span>${money(b.subtotal)} บาท</span></div>
       </div>
@@ -1730,6 +1826,7 @@ function printBill(billId) {
         </thead>
         <tbody>${rows}</tbody>
         <tfoot>
+          ${Number(b.discountTotal || 0) > 0 ? `<tr><td colspan="2">ส่วนลดรวม</td><td class="right">${money(b.discountTotal)}</td></tr>` : ""}
           <tr><td colspan="2" class="total">ยอดรวม</td><td class="right total">${money(b.subtotal)}</td></tr>
           <tr><td colspan="2">รับเงินแล้ว</td><td class="right">${money(b.paidAmount)}</td></tr>
           ${Number(b.creditAmount || 0) > 0 ? `<tr><td colspan="2">ยอดค้าง</td><td class="right">${money(b.creditAmount)}</td></tr>` : ""}
@@ -1769,12 +1866,13 @@ function renderBillDetail() {
           <button class="soft-btn" onclick="shareBill('${b.id}')">แชร์บิล</button>
           <button class="soft-btn" onclick="printBill('${b.id}')">พิมพ์บิล</button>
           <button class="soft-btn" onclick="switchTab('reports')">กลับรายงาน</button>
-          ${!isCancelled ? `<button class="danger-btn" onclick="cancelBill('${b.id}')">ยกเลิกบิล</button>` : ""}
+          ${!isCancelled ? `<button class="danger-btn" onclick="cancelBill('${b.id}')">ยกเลิกบิล</button>` : `<button class="danger-btn" onclick="deleteCancelledBill('${b.id}')">ลบถาวร</button>`}
         </div>
       </div>
 
       <div class="bill-detail-kpis">
         <div><span>ยอดขาย</span><strong>${money(b.subtotal)}</strong></div>
+        <div><span>ส่วนลด</span><strong class="discount-note">${money(b.discountTotal || 0)}</strong></div>
         <div><span>ต้นทุน</span><strong>${money(b.costTotal)}</strong></div>
         <div><span>กำไร</span><strong class="${Number(b.profitTotal || 0) >= 0 ? "positive" : "negative"}">${money(b.profitTotal)}</strong></div>
         <div><span>ยอดค้าง</span><strong>${money(b.creditAmount)}</strong></div>
@@ -1797,7 +1895,7 @@ function renderBillDetail() {
           <div class="bill-item-row">
             <div>
               <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
-              <small>จำนวน ${money(item.qty)} • ราคาขาย ${money(item.unitPrice)} • ต้นทุน ${money(item.unitCost)}</small>
+              <small>จำนวน ${money(item.qty)} • ราคาขาย ${money(item.unitPrice)} • ต้นทุน ${money(item.unitCost)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>
             </div>
             <div class="bill-item-price">
               <strong>${money(item.revenue)}</strong>
@@ -1909,6 +2007,7 @@ $("ledgerSearch").addEventListener("input", renderLedger);
 $("clearLedgerBtn").addEventListener("click", () => { selectedLedgerCustomerId = ""; renderLedger(); });
 $("clearCartBtn").addEventListener("click", clearCart);
 $("saveBillBtn").addEventListener("click", saveBill);
+$("billDiscount")?.addEventListener("input", renderSale);
 
 $("productForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -2270,14 +2369,14 @@ function download(filename, content, type = "application/octet-stream") {
 }
 
 $("exportCsvBtn").addEventListener("click", () => {
-  const rows = [["billNo", "date", "customer", "subtotal", "cost", "profit", "status"]];
-  filteredBills().forEach(b => rows.push([b.billNo, b.date, customerName(b.customerId), b.subtotal, b.costTotal, b.profitTotal, b.status]));
+  const rows = [["billNo", "date", "customer", "grossTotal", "discountTotal", "subtotal", "cost", "profit", "status"]];
+  filteredBills().forEach(b => rows.push([b.billNo, b.date, customerName(b.customerId), b.grossTotal || b.subtotal, b.discountTotal || 0, b.subtotal, b.costTotal, b.profitTotal, b.status]));
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
   download(`khaikhong-v2-report-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.4", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.5", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2360,9 +2459,9 @@ $("numberPadOverlay").addEventListener("click", (e) => { if (e.target.id === "nu
 
 $("downloadProductTemplateBtn")?.addEventListener("click", () => {
   const csv = makeCsv([
-    ["ชื่อสินค้า", "หน่วย", "ราคาขายปลีก", "ราคาขายส่ง", "สต็อกขั้นต่ำ", "หมายเหตุ"],
-    ["ปูอัด", "แพ็ค", "100", "90", "2", "ตัวอย่างสินค้า"],
-    ["ลูกชิ้น", "ถุง", "80", "70", "5", ""]
+    ["ชื่อสินค้า", "หน่วย", "ราคาขายปลีก", "ราคาขายส่ง", "สต็อกเริ่มต้น", "ทุนเริ่มต้น", "สต็อกขั้นต่ำ", "หมายเหตุ"],
+    ["ปูอัด", "แพ็ค", "100", "90", "10", "60", "2", "ตัวอย่างสินค้า"],
+    ["ลูกชิ้น", "ถุง", "80", "70", "20", "45", "5", ""]
   ]);
   download("khaikhong-products-template.csv", csv, "text/csv;charset=utf-8");
 });
@@ -2387,6 +2486,8 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
       unit: getCsvValue(row, ["หน่วย", "unit"]).trim(),
       price: Number(getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
       wholesalePrice: Number(getCsvValue(row, ["ราคาขายส่ง", "wholesalePrice", "ส่ง"]) || getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
+      openingStock: Number(getCsvValue(row, ["สต็อกเริ่มต้น", "จำนวนเริ่มต้น", "stockQty", "stock"]) || 0),
+      openingCost: Number(getCsvValue(row, ["ทุนเริ่มต้น", "ต้นทุนเริ่มต้น", "avgCost", "cost", "ทุน"]) || 0),
       minStock: Number(getCsvValue(row, ["สต็อกขั้นต่ำ", "minStock", "ขั้นต่ำ"]) || 0),
       note: getCsvValue(row, ["หมายเหตุ", "note"]).trim()
     }))
@@ -2398,16 +2499,17 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
     return;
   }
 
-  if (!confirm(`นำเข้าสินค้า ${valid.length} รายการ?\n\nระบบจะเพิ่มสินค้าใหม่ ถ้าชื่อซ้ำจะอัปเดตราคา/หน่วย/ขั้นต่ำ`)) {
+  if (!confirm(`นำเข้าสินค้า ${valid.length} รายการ?\n\nระบบจะเพิ่ม/อัปเดตสินค้า และถ้ามีสต็อกเริ่มต้นจะสร้างรายการ opening stock`)) {
     e.target.value = "";
     return;
   }
 
   for (const row of valid) {
     const existing = state.products.find(p => !p.isArchived && (p.name || "").trim() === row.name);
+    const productId = existing?.id || uid();
     await put("products", {
       ...(existing || {}),
-      id: existing?.id || uid(),
+      id: productId,
       name: row.name,
       unit: row.unit,
       price: row.price,
@@ -2420,8 +2522,29 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+
+    if (row.openingStock > 0 || row.openingCost > 0) {
+      const openingNote = `IMPORT-CSV-OPENING:${productId}`;
+      const oldOpening = state.stock_movements.find(m => m.productId === productId && (m.note || "") === openingNote);
+      await put("stock_movements", {
+        ...(oldOpening || {}),
+        id: oldOpening?.id || uid(),
+        productId,
+        type: "opening",
+        refType: "opening",
+        refId: "",
+        date: today(),
+        qtyIn: Math.max(0, row.openingStock),
+        qtyOut: 0,
+        unitCost: Math.max(0, row.openingCost),
+        note: openingNote,
+        createdAt: oldOpening?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
   }
 
+  await recomputeInventory();
   await loadState();
   showToast(`นำเข้าสินค้า ${valid.length} รายการแล้ว`);
   e.target.value = "";
@@ -2570,11 +2693,16 @@ function calculateProductStockFromMovements(productId) {
 }
 
 function calculateBillTotals(billId) {
+  const b = state.bills.find(x => x.id === billId) || {};
   const items = billItems(billId);
+  const lineSubtotal = items.reduce((s, i) => s + Number(i.revenue || 0), 0);
+  const costTotal = items.reduce((s, i) => s + Number(i.cost || 0), 0);
+  const billDiscount = Math.min(Math.max(Number(b.billDiscount || 0), 0), Math.max(0, lineSubtotal));
+  const subtotal = Math.max(0, lineSubtotal - billDiscount);
   return {
-    subtotal: items.reduce((s, i) => s + Number(i.revenue || 0), 0),
-    costTotal: items.reduce((s, i) => s + Number(i.cost || 0), 0),
-    profitTotal: items.reduce((s, i) => s + Number(i.profit || 0), 0),
+    subtotal,
+    costTotal,
+    profitTotal: subtotal - costTotal,
     count: items.length
   };
 }

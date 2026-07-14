@@ -113,6 +113,43 @@ function activeProducts() {
   return state.products.filter(p => !p.isArchived);
 }
 
+
+function customerById(id) {
+  return state.customers.find(c => c.id === id);
+}
+
+function isWholesaleCustomer(customerId) {
+  const c = customerById(customerId);
+  return String(c?.type || "").includes("ขายส่ง");
+}
+
+function productRetailPrice(p) {
+  return Number(p?.price || 0);
+}
+
+function productWholesalePrice(p) {
+  const wholesale = Number(p?.wholesalePrice || 0);
+  return wholesale > 0 ? wholesale : productRetailPrice(p);
+}
+
+function salePriceForProduct(p, customerId = $("billCustomer")?.value || "") {
+  return isWholesaleCustomer(customerId) ? productWholesalePrice(p) : productRetailPrice(p);
+}
+
+function salePriceModeLabel(customerId = $("billCustomer")?.value || "") {
+  return isWholesaleCustomer(customerId) ? "ราคาขายส่ง" : "ราคาขายปลีก";
+}
+
+function refreshCartPricesForCustomer() {
+  const customerId = $("billCustomer")?.value || "";
+  cart = cart.map(item => {
+    const p = productById(item.productId);
+    if (!p) return item;
+    return { ...item, unitPrice: salePriceForProduct(p, customerId) };
+  });
+  renderSale();
+}
+
 function customerName(id) {
   if (!id) return "ลูกค้าเงินสด";
   return state.customers.find(c => c.id === id)?.name || "-";
@@ -356,7 +393,7 @@ function renderSale() {
       <strong>${p.name}</strong>
       <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small>
       <div class="tile-price">
-        <span>ขาย ${money(p.price)}</span>
+        <span class="${isWholesaleCustomer($('billCustomer')?.value || '') ? 'wholesale-price' : 'retail-price'}">${isWholesaleCustomer($('billCustomer')?.value || '') ? 'ส่ง' : 'ปลีก'} ${money(salePriceForProduct(p))}</span>
         <span>${Number(p.stockQty || 0) <= Number(p.minStock || 0) && Number(p.minStock || 0) > 0 ? "ใกล้หมด" : "พร้อมขาย"}</span>
       </div>
     </button>
@@ -391,7 +428,7 @@ window.addProductToCart = (id) => {
 
   const exist = cart.find(i => i.productId === id);
   if (exist) exist.qty += 1;
-  else cart.push({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: Number(p.price || 0), unitCost: Number(p.avgCost || 0) });
+  else cart.push({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: salePriceForProduct(p), unitCost: Number(p.avgCost || 0) });
 
   renderSale();
   showToast(`เพิ่ม ${p.name} ลงบิล`);
@@ -553,6 +590,7 @@ function renderProducts() {
       <td>${money(p.stockQty)} ${p.unit || ""}</td>
       <td>${money(p.avgCost)}</td>
       <td>${money(p.price)}</td>
+      <td class="wholesale-price">${money(productWholesalePrice(p))}</td>
       <td>${Number(p.minStock || 0) > 0 && Number(p.stockQty || 0) <= Number(p.minStock || 0) ? '<span class="low">ใกล้หมด</span>' : '<span class="ok-stock">ปกติ</span>'}</td>
       <td>
         <div class="row-actions">
@@ -562,12 +600,13 @@ function renderProducts() {
         </div>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="6">ยังไม่มีสินค้า</td></tr>`;
+  `).join("") || `<tr><td colspan="7">ยังไม่มีสินค้า</td></tr>`;
 }
 
 function resetProductForm() {
   ["productId", "productName", "productUnit", "productNote"].forEach(id => $(id).value = "");
   $("productPrice").value = 0;
+  if ($("productWholesalePrice")) $("productWholesalePrice").value = 0;
   $("productMin").value = 0;
   $("productSubmitBtn").textContent = "บันทึกสินค้า";
 }
@@ -580,6 +619,7 @@ window.editProduct = (id) => {
   $("productName").value = p.name || "";
   $("productUnit").value = p.unit || "";
   $("productPrice").value = p.price || 0;
+  if ($("productWholesalePrice")) $("productWholesalePrice").value = p.wholesalePrice || p.price || 0;
   $("productMin").value = p.minStock || 0;
   $("productNote").value = p.note || "";
   $("productSubmitBtn").textContent = "อัปเดตสินค้า";
@@ -661,7 +701,7 @@ function renderProductDetail() {
       <div class="product-detail-kpis">
         <div><span>สต็อกคงเหลือ</span><strong>${money(p.stockQty)} ${p.unit || ""}</strong></div>
         <div><span>ทุนเฉลี่ย</span><strong>${money(p.avgCost)}</strong></div>
-        <div><span>ราคาขาย</span><strong>${money(p.price)}</strong></div>
+        <div><span>ราคาปลีก</span><strong>${money(p.price)}</strong></div><div><span>ราคาส่ง</span><strong class="wholesale-price">${money(productWholesalePrice(p))}</strong></div>
         <div><span>สถานะ</span><strong class="${lowStock ? "low" : "ok-stock"}">${lowStock ? "ใกล้หมด" : "ปกติ"}</strong></div>
         <div><span>จำนวนขาย</span><strong>${money(soldQty)} ${p.unit || ""}</strong></div>
         <div><span>ยอดขายสินค้า</span><strong>${money(soldRevenue)}</strong></div>
@@ -750,7 +790,7 @@ function renderCustomers() {
       <td>${money(c.creditLimit || 0)}</td>
       <td>
         <div class="row-actions">
-          <button class="small-btn" onclick="openCustomerDetail('${c.id}')">รายละเอียด</button><button class="small-btn" onclick="openCustomerDetail('${c.id}')">รายละเอียด</button><button class="small-btn" onclick="openLedger('${c.id}')">สมุดบัญชี</button>
+          <button class="small-btn" onclick="openCustomerDetail('${c.id}')">รายละเอียด</button><button class="small-btn" onclick="openLedger('${c.id}')">สมุดบัญชี</button>
           <button class="small-btn small-edit" onclick="editCustomer('${c.id}')">แก้ไข</button>
           <button class="small-btn small-danger" onclick="deleteCustomer('${c.id}')">ลบ</button>
         </div>
@@ -1343,7 +1383,7 @@ function lowStockText() {
     lines.push("ไม่มีสินค้าใกล้หมด");
   } else {
     rows.forEach(p => {
-      lines.push(`${p.name} | เหลือ ${money(p.stockQty)} ${p.unit || ""} | ขั้นต่ำ ${money(p.minStock)} | ราคาขาย ${money(p.price)}`);
+      lines.push(`${p.name} | เหลือ ${money(p.stockQty)} ${p.unit || ""} | ขั้นต่ำ ${money(p.minStock)} | ปลีก ${money(p.price)} / ส่ง ${money(productWholesalePrice(p))}`);
     });
   }
 
@@ -1361,7 +1401,7 @@ function renderLowStockCenter() {
       <div class="list-item low-stock-item ${status}">
         <div>
           <strong>${p.name} <span class="stock-pill ${status}">${status === "critical" ? "หมด/ติดศูนย์" : "ใกล้หมด"}</span></strong>
-          <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ขั้นต่ำ ${money(p.minStock)} • ทุนเฉลี่ย ${money(p.avgCost)} • ราคาขาย ${money(p.price)}</small>
+          <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ขั้นต่ำ ${money(p.minStock)} • ทุนเฉลี่ย ${money(p.avgCost)} • ปลีก ${money(p.price)} / ส่ง ${money(productWholesalePrice(p))}</small>
         </div>
         <div class="row-actions">
           <button class="small-btn" onclick="openProductDetail('${p.id}')">รายละเอียด</button>
@@ -1860,6 +1900,7 @@ function setDates() {
 $("paymentType").addEventListener("change", () => {
   $("customerField").classList.toggle("hidden-field", $("paymentType").value !== "credit");
 });
+$("billCustomer").addEventListener("change", refreshCartPricesForCustomer);
 
 $("saleSearch").addEventListener("input", renderSale);
 $("productSearch").addEventListener("input", renderProducts);
@@ -1884,6 +1925,7 @@ $("productForm").addEventListener("submit", async (e) => {
     name,
     unit: $("productUnit").value.trim(),
     price: Number($("productPrice").value || 0),
+    wholesalePrice: Number($("productWholesalePrice")?.value || $("productPrice").value || 0),
     minStock: Number($("productMin").value || 0),
     note: $("productNote").value.trim(),
     stockQty: Number(old.stockQty || 0),
@@ -2235,7 +2277,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.3", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.4", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2318,9 +2360,9 @@ $("numberPadOverlay").addEventListener("click", (e) => { if (e.target.id === "nu
 
 $("downloadProductTemplateBtn")?.addEventListener("click", () => {
   const csv = makeCsv([
-    ["ชื่อสินค้า", "หน่วย", "ราคาขาย", "สต็อกขั้นต่ำ", "หมายเหตุ"],
-    ["ปูอัด", "แพ็ค", "100", "2", "ตัวอย่างสินค้า"],
-    ["ลูกชิ้น", "ถุง", "80", "5", ""]
+    ["ชื่อสินค้า", "หน่วย", "ราคาขายปลีก", "ราคาขายส่ง", "สต็อกขั้นต่ำ", "หมายเหตุ"],
+    ["ปูอัด", "แพ็ค", "100", "90", "2", "ตัวอย่างสินค้า"],
+    ["ลูกชิ้น", "ถุง", "80", "70", "5", ""]
   ]);
   download("khaikhong-products-template.csv", csv, "text/csv;charset=utf-8");
 });
@@ -2343,7 +2385,8 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
     .map(row => ({
       name: getCsvValue(row, ["ชื่อสินค้า", "name", "สินค้า"]).trim(),
       unit: getCsvValue(row, ["หน่วย", "unit"]).trim(),
-      price: Number(getCsvValue(row, ["ราคาขาย", "price", "ขาย"]) || 0),
+      price: Number(getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
+      wholesalePrice: Number(getCsvValue(row, ["ราคาขายส่ง", "wholesalePrice", "ส่ง"]) || getCsvValue(row, ["ราคาขายปลีก", "ราคาขาย", "price", "ขาย"]) || 0),
       minStock: Number(getCsvValue(row, ["สต็อกขั้นต่ำ", "minStock", "ขั้นต่ำ"]) || 0),
       note: getCsvValue(row, ["หมายเหตุ", "note"]).trim()
     }))
@@ -2368,6 +2411,7 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
       name: row.name,
       unit: row.unit,
       price: row.price,
+      wholesalePrice: row.wholesalePrice,
       minStock: row.minStock,
       note: row.note,
       stockQty: Number(existing?.stockQty || 0),
@@ -2544,6 +2588,7 @@ async function ensureTestProduct({ name, unit, price, minStock, note }) {
     name,
     unit,
     price,
+    wholesalePrice: price,
     minStock,
     note,
     stockQty: 0,

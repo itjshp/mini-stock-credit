@@ -1489,3 +1489,28 @@ label{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.2.4: Wholesale Price + Customer Detail Button Fix */
+.price-mode-pill{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:4px 8px;
+  font-size:12px;
+  font-weight:1000;
+  background:#fff7ed;
+  color:#c2410c;
+}
+.price-mode-pill.retail{
+  background:#e8f7f3;
+  color:#0f766e;
+}
+.wholesale-price{
+  color:#0f766e;
+  font-weight:1000;
+}
+.retail-price{
+  color:#334155;
+  font-weight:900;
+}

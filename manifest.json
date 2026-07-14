@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.2.3 Customer bill history and customer detail page",
+  "description": "Khaikhong v2.2.4 Wholesale price and customer detail button fix",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

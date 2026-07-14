@@ -1635,3 +1635,90 @@ label{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.2.7: Bill Search Center */
+.bill-search-card{
+  border-color:#bfdbfe;
+  background:linear-gradient(180deg,#fff,#eff6ff)!important;
+}
+.bill-search-panel{
+  border-top:5px solid #2563eb;
+}
+.bill-search-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+}
+.bill-search-summary{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-top:14px;
+}
+.bill-search-summary div{
+  background:#101827;
+  color:#fff;
+  border-radius:20px;
+  padding:14px;
+}
+.bill-search-summary span{
+  display:block;
+  font-size:12px;
+  opacity:.85;
+  font-weight:950;
+}
+.bill-search-summary strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+.bill-search-results{
+  display:grid;
+  gap:10px;
+}
+.bill-search-row{
+  border-left:5px solid #0f766e;
+}
+.bill-search-row.credit{
+  border-left-color:#f97316;
+}
+.bill-search-row.cancelled{
+  border-left-color:#b91c1c;
+  opacity:.78;
+}
+.bill-search-row .bill-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:6px;
+}
+.bill-search-row .bill-meta span{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:12px;
+  font-weight:900;
+}
+.bill-items-preview{
+  display:block;
+  color:var(--kk-muted,#66817c);
+  font-weight:850;
+  margin-top:5px;
+}
+@media(max-width:980px){
+  .bill-search-grid{
+    grid-template-columns:1fr 1fr;
+  }
+  .bill-search-summary{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:720px){
+  .bill-search-grid,
+  .bill-search-summary{
+    grid-template-columns:1fr;
+  }
+}

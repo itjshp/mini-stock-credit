@@ -401,6 +401,7 @@ function renderAll() {
   renderPayments();
   renderOutstandingBills();
   renderReports();
+  renderBillSearch();
   renderBillDetail();
   renderBackupStatus();
   renderSettingsUI();
@@ -420,6 +421,7 @@ function renderSelects() {
   setOptions("paymentCustomer", state.customers, "เลือกลูกค้า", c => `${c.name} • ค้าง ${money(customerDebt(c.id))}`);
   renderPaymentBillOptions();
   setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
+  setOptions("billSearchCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
 }
 
 
@@ -1448,6 +1450,173 @@ async function deleteCancelledBill(id) {
 }
 window.deleteCancelledBill = deleteCancelledBill;
 
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function monthRange(date = new Date()) {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const start = new Date(y, m, 1).toISOString().slice(0, 10);
+  const end = new Date(y, m + 1, 0).toISOString().slice(0, 10);
+  return { start, end };
+}
+
+function billItemText(billId) {
+  return billItems(billId)
+    .map(item => `${item.productNameSnapshot || productById(item.productId)?.name || "-"} x${money(item.qty)}`)
+    .join(", ");
+}
+
+function billSearchRows() {
+  const text = ($("billSearchText")?.value || "").toLowerCase().trim();
+  const itemText = ($("billSearchItem")?.value || "").toLowerCase().trim();
+  const from = $("billSearchFrom")?.value || "";
+  const to = $("billSearchTo")?.value || "";
+  const customerId = $("billSearchCustomer")?.value || "";
+  const status = $("billSearchStatus")?.value || "";
+  const paymentType = $("billSearchPaymentType")?.value || "";
+
+  return state.bills.filter(b => {
+    if (from && b.date < from) return false;
+    if (to && b.date > to) return false;
+    if (customerId && b.customerId !== customerId) return false;
+    if (paymentType && b.paymentType !== paymentType) return false;
+
+    if (status) {
+      if (status === "creditDue") {
+        if (!(Number(b.creditAmount || 0) > 0 && b.status !== "cancelled")) return false;
+      } else if (b.status !== status) {
+        return false;
+      }
+    }
+
+    if (text) {
+      const hay = `${b.billNo || ""} ${customerName(b.customerId)} ${b.note || ""} ${b.status || ""}`.toLowerCase();
+      if (!hay.includes(text)) return false;
+    }
+
+    if (itemText) {
+      const itemHay = billItems(b.id)
+        .map(item => `${item.productNameSnapshot || ""} ${productById(item.productId)?.name || ""}`)
+        .join(" ")
+        .toLowerCase();
+      if (!itemHay.includes(itemText)) return false;
+    }
+
+    return true;
+  }).sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function billSearchClass(b) {
+  if (b.status === "cancelled") return "cancelled";
+  if (Number(b.creditAmount || 0) > 0 || b.paymentType === "credit") return "credit";
+  return "";
+}
+
+function renderBillSearch() {
+  if (!$("billSearchResults")) return;
+
+  const rows = billSearchRows();
+  const activeRows = rows.filter(b => b.status !== "cancelled");
+
+  $("billSearchCount").textContent = rows.length.toLocaleString("th-TH");
+  $("billSearchSales").textContent = money(activeRows.reduce((s, b) => s + Number(b.subtotal || 0), 0));
+  $("billSearchCost").textContent = money(activeRows.reduce((s, b) => s + Number(b.costTotal || 0), 0));
+  $("billSearchProfit").textContent = money(activeRows.reduce((s, b) => s + Number(b.profitTotal || 0), 0));
+  $("billSearchCredit").textContent = money(activeRows.reduce((s, b) => s + Number(b.creditAmount || 0), 0));
+  $("billSearchResultText").textContent = rows.length ? `พบ ${rows.length} บิล` : "ไม่พบบิลตามเงื่อนไข";
+
+  $("billSearchResults").innerHTML = rows.map(b => {
+    const items = billItems(b.id);
+    const itemPreview = billItemText(b.id) || "ไม่มีรายการสินค้า";
+    const actions = [
+      `<button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>`,
+      `<button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอก</button>`,
+      `<button class="small-btn" onclick="printBill('${b.id}')">พิมพ์</button>`,
+      b.status !== "cancelled"
+        ? `<button class="small-btn small-danger" onclick="cancelBill('${b.id}')">ยกเลิก</button>`
+        : `<button class="small-btn small-danger" onclick="deleteCancelledBill('${b.id}')">ลบถาวร</button>`
+    ].join("");
+
+    return `
+      <div class="list-item bill-search-row ${billSearchClass(b)}">
+        <div>
+          <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+          <div class="bill-meta">
+            <span>${b.date || "-"}</span>
+            <span>${customerName(b.customerId)}</span>
+            <span>${items.length} รายการ</span>
+            <span>${b.paymentType === "credit" ? "เครดิต" : "เงินสด/โอน"}</span>
+          </div>
+          <small class="bill-items-preview">${itemPreview}</small>
+          ${b.status === "cancelled" && b.cancelReason ? `<small class="negative">ยกเลิก: ${b.cancelReason}</small>` : ""}
+        </div>
+        <div class="row-actions">
+          <div>
+            <div class="money">${money(b.subtotal)}</div>
+            <small class="${Number(b.profitTotal || 0) >= 0 ? "positive" : "negative"}">กำไร ${money(b.profitTotal)}</small>
+            ${Number(b.creditAmount || 0) > 0 ? `<small class="negative">ค้าง ${money(b.creditAmount)}</small>` : ""}
+          </div>
+          ${actions}
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🔎</div><strong>ไม่พบบิล</strong><small>ลองเปลี่ยนช่วงวันที่ หรือค้นหาจากเลขบิล/ลูกค้า/สินค้า</small></div></div>`;
+}
+
+function setBillSearchRange(kind) {
+  const now = new Date();
+  if (kind === "today") {
+    $("billSearchFrom").value = today();
+    $("billSearchTo").value = today();
+  } else if (kind === "yesterday") {
+    const y = addDays(now, -1);
+    $("billSearchFrom").value = y;
+    $("billSearchTo").value = y;
+  } else if (kind === "7days") {
+    $("billSearchFrom").value = addDays(now, -6);
+    $("billSearchTo").value = today();
+  } else if (kind === "month") {
+    const r = monthRange(now);
+    $("billSearchFrom").value = r.start;
+    $("billSearchTo").value = r.end;
+  }
+  renderBillSearch();
+}
+
+function clearBillSearch() {
+  ["billSearchText", "billSearchItem", "billSearchFrom", "billSearchTo", "billSearchCustomer", "billSearchStatus", "billSearchPaymentType"].forEach(id => {
+    if ($(id)) $(id).value = "";
+  });
+  renderBillSearch();
+}
+
+function exportBillSearchCsv() {
+  const rows = [["billNo", "date", "customer", "items", "paymentType", "status", "grossTotal", "discountTotal", "subtotal", "cost", "profit", "creditAmount"]];
+  billSearchRows().forEach(b => {
+    rows.push([
+      b.billNo,
+      b.date,
+      customerName(b.customerId),
+      billItemText(b.id),
+      b.paymentType,
+      b.status,
+      b.grossTotal || b.subtotal,
+      b.discountTotal || 0,
+      b.subtotal,
+      b.costTotal,
+      b.profitTotal,
+      b.creditAmount || 0
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+  download(`khaikhong-bill-search-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
+}
+
 function filteredBills() {
   const from = $("reportFrom")?.value || "";
   const to = $("reportTo")?.value || "";
@@ -2414,7 +2583,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.6", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.7", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3055,6 +3224,18 @@ $("copyLowStockBtn")?.addEventListener("click", copyLowStockList);
 $("printLowStockBtn")?.addEventListener("click", printLowStockList);
 
 $("repairCostsBtn")?.addEventListener("click", repairAllCosts);
+
+["billSearchText", "billSearchItem", "billSearchFrom", "billSearchTo", "billSearchCustomer", "billSearchStatus", "billSearchPaymentType"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderBillSearch);
+  if ($(id)) $(id).addEventListener("change", renderBillSearch);
+});
+$("billSearchTodayBtn")?.addEventListener("click", () => setBillSearchRange("today"));
+$("billSearchYesterdayBtn")?.addEventListener("click", () => setBillSearchRange("yesterday"));
+$("billSearch7DaysBtn")?.addEventListener("click", () => setBillSearchRange("7days"));
+$("billSearchMonthBtn")?.addEventListener("click", () => setBillSearchRange("month"));
+$("billSearchClearBtn")?.addEventListener("click", clearBillSearch);
+$("exportBillSearchCsvBtn")?.addEventListener("click", exportBillSearchCsv);
+
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;

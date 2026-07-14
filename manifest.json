@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.2.2 Cost repair, cost adjustment and product detail fix",
+  "description": "Khaikhong v2.2.3 Customer bill history and customer detail page",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

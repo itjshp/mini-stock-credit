@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.2.2 • Cost Repair • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.2.3 • Customer Bills • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -114,6 +114,32 @@
       <span id="lowStockCountText" class="hint">กำลังตรวจสอบ...</span>
     </div>
     <div id="lowStockCenterList" class="stack-list"></div>
+  </div>
+</section>
+
+
+<section id="customerDetail" class="page">
+  <div class="page-head">
+    <div>
+      <h2>รายละเอียดลูกค้า</h2>
+      <p>ดูข้อมูลลูกค้า บิลทั้งหมด ยอดค้าง และรายการรับเงิน</p>
+    </div>
+    <div class="form-actions">
+      <button class="soft-btn" data-open-tab="customers" type="button">กลับลูกค้า</button>
+      <button class="soft-btn" id="customerDetailPaymentBtn" type="button">รับเงิน</button>
+      <button class="soft-btn" id="customerDetailLedgerBtn" type="button">ดูยอดค้าง</button>
+    </div>
+  </div>
+
+  <div id="customerDetailContent" class="customer-detail-wrap">
+    <div class="panel">
+      <div class="list-item">
+        <div>
+          <strong>ยังไม่ได้เลือกลูกค้า</strong>
+          <small>ไปที่หน้าลูกค้า แล้วกดปุ่ม “รายละเอียด” หรือ “สมุดบัญชี”</small>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 

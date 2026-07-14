@@ -6,6 +6,7 @@ let db;
 let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
+let selectedCustomerDetailId = "";
 let selectedProductId = "";
 let selectedBillId = "";
 let currentNumberInput = null;
@@ -319,6 +320,7 @@ function renderAll() {
   renderProducts();
   renderProductDetail();
   renderCustomers();
+  renderCustomerDetail();
   renderSummary();
   renderDailyClose();
   renderLowStockCenter();
@@ -748,7 +750,7 @@ function renderCustomers() {
       <td>${money(c.creditLimit || 0)}</td>
       <td>
         <div class="row-actions">
-          <button class="small-btn" onclick="openLedger('${c.id}')">สมุดบัญชี</button>
+          <button class="small-btn" onclick="openCustomerDetail('${c.id}')">รายละเอียด</button><button class="small-btn" onclick="openCustomerDetail('${c.id}')">รายละเอียด</button><button class="small-btn" onclick="openLedger('${c.id}')">สมุดบัญชี</button>
           <button class="small-btn small-edit" onclick="editCustomer('${c.id}')">แก้ไข</button>
           <button class="small-btn small-danger" onclick="deleteCustomer('${c.id}')">ลบ</button>
         </div>
@@ -792,6 +794,134 @@ async function deleteCustomer(id) {
 }
 
 window.deleteCustomer = deleteCustomer;
+
+
+function customerBills(customerId) {
+  return state.bills
+    .filter(b => b.customerId === customerId)
+    .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function customerPayments(customerId) {
+  return state.payments
+    .filter(p => p.customerId === customerId)
+    .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function renderCustomerDetail() {
+  const wrap = $("customerDetailContent");
+  if (!wrap) return;
+
+  const c = state.customers.find(x => x.id === selectedCustomerDetailId);
+  if (!c) {
+    wrap.innerHTML = `<div class="panel"><div class="list-item"><div><strong>ยังไม่ได้เลือกลูกค้า</strong><small>ไปที่หน้าลูกค้า แล้วกดปุ่ม “รายละเอียด” หรือ “สมุดบัญชี”</small></div></div></div>`;
+    return;
+  }
+
+  const bills = customerBills(c.id);
+  const activeCustomerBills = bills.filter(b => b.status !== "cancelled");
+  const payments = customerPayments(c.id);
+
+  const totalSales = activeCustomerBills.reduce((sum, b) => sum + Number(b.subtotal || 0), 0);
+  const totalProfit = activeCustomerBills.reduce((sum, b) => sum + Number(b.profitTotal || 0), 0);
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const debt = customerDebt(c.id);
+
+  wrap.innerHTML = `
+    <div class="customer-hero">
+      <div class="customer-hero-top">
+        <div class="customer-title-row">
+          <div class="customer-avatar-big">👤</div>
+          <div>
+            <h3>${c.name}</h3>
+            <small>${c.type || "ทั่วไป"} ${c.phone ? "• " + c.phone : ""} ${c.note ? "• " + c.note : ""}</small>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="soft-btn" onclick="editCustomer('${c.id}')">แก้ไขลูกค้า</button>
+          <button class="soft-btn" onclick="openLedger('${c.id}')">สมุดบัญชี</button>
+          <button class="primary-btn" onclick="quickPaymentCustomer('${c.id}')">รับเงิน</button>
+        </div>
+      </div>
+
+      <div class="customer-kpis">
+        <div><span>ยอดซื้อรวม</span><strong>${money(totalSales)}</strong></div>
+        <div><span>กำไรรวม</span><strong class="${totalProfit >= 0 ? "positive" : "negative"}">${money(totalProfit)}</strong></div>
+        <div><span>รับเงินแล้ว</span><strong class="positive">${money(totalPaid)}</strong></div>
+        <div><span>ยอดค้าง</span><strong class="${debt > 0 ? "negative" : "positive"}">${money(debt)}</strong></div>
+        <div><span>จำนวนบิล</span><strong>${activeCustomerBills.length.toLocaleString("th-TH")}</strong></div>
+        <div><span>วงเงินเครดิต</span><strong>${money(c.creditLimit || 0)}</strong></div>
+        <div><span>เครดิตกี่วัน</span><strong>${Number(c.creditDays || 0).toLocaleString("th-TH")}</strong></div>
+        <div><span>บิลเครดิตค้าง</span><strong>${activeCustomerBills.filter(b => Number(b.creditAmount || 0) > 0).length.toLocaleString("th-TH")}</strong></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>บิลของลูกค้านี้</h3>
+        <span class="hint">กดดูบิลเพื่อดูว่าสินค้าในบิลมีอะไรบ้าง</span>
+      </div>
+      <div class="stack-list">
+        ${bills.map(b => `
+          <div class="list-item customer-bill-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
+            <div>
+              <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+              <small>${b.date} • ${billItems(b.id).length} รายการ • ยอดขาย ${money(b.subtotal)} • กำไร ${money(b.profitTotal)}</small>
+              ${Number(b.creditAmount || 0) > 0 ? `<small>ยอดค้างบิลนี้: ${money(b.creditAmount)}</small>` : ""}
+              ${b.status === "cancelled" && b.cancelReason ? `<small>ยกเลิก: ${b.cancelReason}</small>` : ""}
+            </div>
+            <div class="row-actions">
+              <button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>
+              <button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอก</button>
+            </div>
+          </div>
+        `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🧾</div><strong>ยังไม่มีบิลของลูกค้านี้</strong><small>เมื่อขายให้ลูกค้าคนนี้ บิลจะแสดงที่นี่</small></div></div>`}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>ประวัติรับเงิน</h3>
+        <span class="hint">รายการรับเงินที่ผูกกับลูกค้านี้</span>
+      </div>
+      <div class="stack-list">
+        ${payments.map(p => {
+          const b = state.bills.find(x => x.id === p.billId);
+          return `
+            <div class="list-item customer-payment-row">
+              <div>
+                <strong>รับเงิน ${money(p.amount)} บาท</strong>
+                <small>${p.date} • ${p.method || "-"} ${b ? "• บิล " + b.billNo : "• ไม่ผูกบิล"} ${p.note ? "• " + p.note : ""}</small>
+              </div>
+              <div class="row-actions">
+                ${b ? `<button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>` : ""}
+                <button class="small-btn small-edit" onclick="editPayment('${p.id}')">แก้ไข</button>
+              </div>
+            </div>
+          `;
+        }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติรับเงิน</strong><small>เมื่อรับเงินจากลูกค้า รายการจะแสดงที่นี่</small></div></div>`}
+      </div>
+    </div>
+  `;
+}
+
+window.openCustomerDetail = (id) => {
+  selectedCustomerDetailId = id;
+  selectedLedgerCustomerId = id;
+  renderCustomerDetail();
+  if (!$("customerDetail")) {
+    alert("ไม่พบหน้ารายละเอียดลูกค้า กรุณาอัปเดต index.html ให้ครบ");
+    return;
+  }
+  switchTab("customerDetail");
+};
+
+window.quickPaymentCustomer = (id) => {
+  $("paymentCustomer").value = id;
+  renderPaymentBillOptions();
+  renderOutstandingBills();
+  switchTab("payments");
+};
 
 function renderSummary() {
   const active = activeBills();
@@ -986,7 +1116,7 @@ function renderLedger() {
     .filter(c => !q || `${c.name} ${c.phone || ""}`.toLowerCase().includes(q))
     .sort((a, b) => b.debt - a.debt);
 
-  $("ledgerCustomers").innerHTML = rows.map(c => `<div class="list-item" onclick="openLedger('${c.id}')"><div><strong>${c.name}</strong><small>${c.type || ""}</small></div><div class="money ${c.debt > 0 ? "negative" : "positive"}">${money(c.debt)}</div></div>`).join("") || `<div class="list-item"><div><strong>ยังไม่มีลูกค้า</strong></div></div>`;
+  $("ledgerCustomers").innerHTML = rows.map(c => `<div class="list-item" onclick="openCustomerDetail('${c.id}')"><div><strong>${c.name}</strong><small>${c.type || ""}</small></div><div class="money ${c.debt > 0 ? "negative" : "positive"}">${money(c.debt)}</div></div>`).join("") || `<div class="list-item"><div><strong>ยังไม่มีลูกค้า</strong></div></div>`;
 
   const c = state.customers.find(x => x.id === selectedLedgerCustomerId);
   if (!c) {
@@ -1007,11 +1137,11 @@ function renderLedger() {
   $("ledgerPaid").textContent = money(payments.reduce((s, p) => s + Number(p.amount || 0), 0));
 
   const entries = [
-    ...bills.map(b => ({ date: b.date, createdAt: b.createdAt || "", title: `บิล ${b.billNo}`, detail: `ขายเครดิต ${billItems(b.id).length} รายการ • ค้าง ${money(b.creditAmount)}`, amount: Number(b.subtotal || 0), type: "sale" })),
+    ...bills.map(b => ({ date: b.date, createdAt: b.createdAt || "", title: `บิล ${b.billNo}`, detail: `ขายเครดิต ${billItems(b.id).length} รายการ • ค้าง ${money(b.creditAmount)}`, amount: Number(b.subtotal || 0), type: "sale", billId: b.id })),
     ...payments.map(p => ({ date: p.date, createdAt: p.createdAt || "", title: "รับเงิน", detail: p.method || "", amount: -Number(p.amount || 0), type: "pay" }))
   ].sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
-  $("ledgerEntries").innerHTML = entries.map(e => `<div class="list-item"><div><strong>${e.title}</strong><small>${e.date} • ${e.detail}</small></div><div class="money ${e.amount > 0 ? "negative" : "positive"}">${e.amount > 0 ? "+" : "-"}${money(Math.abs(e.amount))}</div></div>`).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติเครดิต</strong></div></div>`;
+  $("ledgerEntries").innerHTML = entries.map(e => `<div class="list-item"><div><strong>${e.billId ? `<button class="bill-link" onclick="openBillDetail(\`${e.billId}\`)">${e.title}</button>` : e.title}</strong><small>${e.date} • ${e.detail}</small></div><div class="money ${e.amount > 0 ? "negative" : "positive"}">${e.amount > 0 ? "+" : "-"}${money(Math.abs(e.amount))}</div></div>`).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติเครดิต</strong></div></div>`;
 }
 
 window.openLedger = (id) => {
@@ -2105,7 +2235,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.2", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.3", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

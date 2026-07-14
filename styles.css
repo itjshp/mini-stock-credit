@@ -1370,3 +1370,25 @@ label{
     min-height:120px;
   }
 }
+
+
+/* v2.2.2: Cost Repair + Product Detail Fix */
+.cost-adjust{
+  border-left:5px solid #7c3aed;
+}
+.cost-adjust .adjust-type-badge{
+  background:#f5f3ff;
+  color:#6d28d9;
+}
+.product-detail-wrap{
+  display:grid;
+  gap:16px;
+}
+.repair-note{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#9a3412;
+  border-radius:18px;
+  padding:12px;
+  font-weight:900;
+}

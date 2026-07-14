@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.2.1 • Cute Pastel UI • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.2.2 • Cost Repair • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -60,6 +60,32 @@
   <div class="page-head"><div><h2>สินค้า</h2><p>เพิ่มสินค้า ค้นหา ดูสต็อก ทุนเฉลี่ย และซื้อเข้า</p></div></div>
   <form id="productForm" class="panel form-grid"><input type="hidden" id="productId"><label>ชื่อสินค้า<input id="productName" required placeholder="เช่น ปูอัด"></label><label>หน่วย<input id="productUnit" placeholder="ชิ้น / แพ็ค / กก."></label><label>ราคาขาย<input id="productPrice" data-keypad="true" type="number" min="0" step="0.01" value="0"></label><label>สต็อกขั้นต่ำ<input id="productMin" data-keypad="true" type="number" min="0" step="1" value="0"></label><label>หมายเหตุ<input id="productNote" placeholder="ไม่บังคับ"></label><div class="form-actions"><button class="primary-btn" type="submit" id="productSubmitBtn">บันทึกสินค้า</button><button class="soft-btn" type="button" id="resetProductBtn">ล้างฟอร์ม</button></div></form>
   <div class="panel"><div class="panel-head"><h3>รายการสินค้า</h3><button class="link-btn" data-open-tab="purchase">ซื้อเข้า</button></div><input id="productSearch" class="search-input" placeholder="ค้นหาสินค้า"><div class="table-wrap"><table><thead><tr><th>สินค้า</th><th>สต็อก</th><th>ทุนเฉลี่ย</th><th>ราคาขาย</th><th>สถานะ</th><th></th></tr></thead><tbody id="productsTable"></tbody></table></div></div>
+</section>
+
+
+<section id="productDetail" class="page">
+  <div class="page-head">
+    <div>
+      <h2>รายละเอียดสินค้า</h2>
+      <p>ดูสต็อก ทุนเฉลี่ย ยอดขาย กำไร และประวัติการเคลื่อนไหวของสินค้า</p>
+    </div>
+    <div class="form-actions">
+      <button class="soft-btn" data-open-tab="products" type="button">กลับสินค้า</button>
+      <button class="soft-btn" id="detailPurchaseBtn" type="button">ซื้อเข้า</button>
+      <button class="soft-btn" id="detailAdjustBtn" type="button">ปรับสต็อก</button>
+    </div>
+  </div>
+
+  <div id="productDetailContent" class="product-detail-wrap">
+    <div class="panel">
+      <div class="list-item">
+        <div>
+          <strong>ยังไม่ได้เลือกสินค้า</strong>
+          <small>ไปที่หน้าสินค้า แล้วกดปุ่มรายละเอียด</small>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section id="customers" class="page">
@@ -174,10 +200,10 @@
     <label>ประเภท
       <select id="adjustType">
         <option value="adjust_in">ปรับเพิ่ม</option>
-        <option value="adjust_out">ปรับลด</option>
+        <option value="adjust_out">ปรับลด</option><option value="cost_adjust">ปรับทุนเฉลี่ย</option>
       </select>
     </label>
-    <label>จำนวน<input id="adjustQty" data-keypad="true" type="number" min="0.01" step="0.01"></label>
+    <label>จำนวน <small>ไม่ต้องใส่ถ้าปรับทุนเฉลี่ย</small><input id="adjustQty" data-keypad="true" type="number" min="0.01" step="0.01"></label>
     <label>ทุนต่อหน่วย <small>ใช้ตอนปรับเพิ่ม</small><input id="adjustCost" data-keypad="true" type="number" min="0" step="0.01" value="0"></label>
     <label>เหตุผล / หมายเหตุ<input id="adjustNote" placeholder="เช่น ของเสีย / ของหาย / นับสต็อกแล้วไม่ตรง"></label>
 
@@ -223,7 +249,7 @@
 
   <div class="test-actions-grid">
     <button id="runAutoTestBtn" class="primary-btn test-action" type="button">สร้างข้อมูลทดสอบ + ตรวจระบบ</button>
-    <button id="runCheckOnlyBtn" class="soft-btn test-action" type="button">ตรวจข้อมูลปัจจุบัน</button>
+    <button id="runCheckOnlyBtn" class="soft-btn test-action" type="button">ตรวจข้อมูลปัจจุบัน</button><button id="repairCostsBtn" class="soft-btn test-action" type="button">ตรวจ/ซ่อมทุน</button>
     <button id="clearTestDataBtn" class="danger-btn test-action" type="button">ล้างข้อมูล TEST</button>
   </div>
 

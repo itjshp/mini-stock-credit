@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.2.1 Cute Pastel App UI for iPad and Mobile",
+  "description": "Khaikhong v2.2.2 Cost repair, cost adjustment and product detail fix",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

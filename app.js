@@ -180,12 +180,20 @@ async function recomputeInventory() {
     const outQty = Number(m.qtyOut || 0);
     const unitCost = Number(m.unitCost || 0);
 
+    // ปรับทุนเฉลี่ยโดยไม่เปลี่ยนจำนวนสต็อก
+    if (m.type === "cost_adjust") {
+      if (unitCost >= 0) p.avgCost = unitCost;
+      continue;
+    }
+
     if (inQty > 0) {
-      const oldQty = Number(p.stockQty || 0);
-      const oldVal = oldQty * Number(p.avgCost || 0);
-      const newQty = oldQty + inQty;
-      p.avgCost = newQty > 0 ? (oldVal + inQty * unitCost) / newQty : 0;
-      p.stockQty = newQty;
+      // ถ้าเคยมีสต็อกติดลบจากข้อมูลเก่า ห้ามใช้จำนวนติดลบไปถ่วงทุน
+      const currentQty = Number(p.stockQty || 0);
+      const oldQtyForCost = Math.max(0, currentQty);
+      const oldVal = oldQtyForCost * Number(p.avgCost || 0);
+      const costQty = oldQtyForCost + inQty;
+      p.avgCost = costQty > 0 ? (oldVal + inQty * unitCost) / costQty : 0;
+      p.stockQty = currentQty + inQty;
     }
 
     if (outQty > 0) {
@@ -196,6 +204,72 @@ async function recomputeInventory() {
   for (const p of map.values()) {
     await put("products", { ...p, updatedAt: new Date().toISOString() });
   }
+}
+
+
+async function rebuildCostSnapshots() {
+  const products = await getAll("products");
+  const movements = (await getAll("stock_movements"))
+    .sort((a, b) => `${a.date || ""} ${a.createdAt || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""}`));
+  const items = await getAll("bill_items");
+
+  const sim = new Map(products.map(p => [p.id, { qty: 0, avgCost: 0 }]));
+  const itemsToUpdate = new Map();
+
+  for (const m of movements) {
+    const p = sim.get(m.productId);
+    if (!p) continue;
+
+    const inQty = Number(m.qtyIn || 0);
+    const outQty = Number(m.qtyOut || 0);
+
+    if (m.type === "cost_adjust") {
+      p.avgCost = Number(m.unitCost || 0);
+      await put("stock_movements", { ...m, unitCost: p.avgCost, updatedAt: new Date().toISOString() });
+      continue;
+    }
+
+    if (inQty > 0) {
+      const unitCost = Number(m.unitCost || 0);
+      const oldQtyForCost = Math.max(0, Number(p.qty || 0));
+      const oldVal = oldQtyForCost * Number(p.avgCost || 0);
+      const costQty = oldQtyForCost + inQty;
+      p.avgCost = costQty > 0 ? (oldVal + inQty * unitCost) / costQty : 0;
+      p.qty = Number(p.qty || 0) + inQty;
+      continue;
+    }
+
+    if (outQty > 0) {
+      const saleCost = Number(p.avgCost || 0);
+
+      if (m.type === "sale" || m.type === "adjust_out") {
+        await put("stock_movements", { ...m, unitCost: saleCost, updatedAt: new Date().toISOString() });
+      }
+
+      if (m.type === "sale" && m.refType === "bill" && m.refId) {
+        items
+          .filter(item => item.billId === m.refId && item.productId === m.productId)
+          .forEach(item => {
+            const updated = {
+              ...item,
+              unitCost: saleCost,
+              cost: Number(item.qty || 0) * saleCost,
+              profit: Number(item.revenue || 0) - Number(item.qty || 0) * saleCost
+            };
+            itemsToUpdate.set(item.id, updated);
+          });
+      }
+
+      p.qty = Number(p.qty || 0) - outQty;
+    }
+  }
+
+  for (const item of itemsToUpdate.values()) {
+    await put("bill_items", item);
+  }
+
+  await recalcBills();
+  await recomputeInventory();
 }
 
 async function recalcBills() {
@@ -551,7 +625,7 @@ function getProductMovements(productId) {
 
 function renderProductDetail() {
   const wrap = $("productDetailContent");
-  if (!wrap) { alert("ไม่พบพื้นที่แสดงรายละเอียดบิล กรุณาอัปเดต index.html"); return; }
+  if (!wrap) return;
 
   const p = productById(selectedProductId);
   if (!p) {
@@ -632,7 +706,7 @@ function renderProductDetail() {
                   <strong>${m.type}</strong>
                   <small>${m.date} • ${m.note || "-"} • ทุน ${money(m.unitCost || 0)}</small>
                 </div>
-                <div class="money ${isIn ? "positive" : "negative"}">${isIn ? "+" : "-"}${money(qty)}</div>
+                <div class="money ${isCost ? "product-profit" : (isIn ? "positive" : "negative")}">${isCost ? "ทุน " + money(m.unitCost || 0) : (isIn ? "+" : "-") + money(qty)}</div>
               </div>
             `;
           }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติสต็อก</strong></div></div>`}
@@ -645,6 +719,10 @@ function renderProductDetail() {
 window.openProductDetail = (id) => {
   selectedProductId = id;
   renderProductDetail();
+  if (!$("productDetail")) {
+    alert("ไม่พบหน้ารายละเอียดสินค้า กรุณาอัปเดต index.html ให้ครบ");
+    return;
+  }
   switchTab("productDetail");
 };
 
@@ -820,9 +898,9 @@ window.deletePurchase = async (id) => {
   if (!confirm(`ลบรายการซื้อเข้า?\n\nสินค้า: ${productById(m.productId)?.name || "-"}\nวันที่: ${m.date}\nจำนวน: ${money(m.qtyIn)}\n\nระบบจะคำนวณสต็อกและทุนเฉลี่ยใหม่`)) return;
 
   await del("stock_movements", id);
-  await recomputeInventory();
+  await rebuildCostSnapshots();
   await loadState();
-  showToast("ลบรายการซื้อเข้าแล้ว");
+  showToast("ลบรายการซื้อเข้าและคำนวณทุนใหม่แล้ว");
 };
 
 
@@ -831,22 +909,23 @@ function renderAdjustments() {
   if (!list) return;
 
   const rows = state.stock_movements
-    .filter(m => m.type === "adjust_in" || m.type === "adjust_out")
+    .filter(m => m.type === "adjust_in" || m.type === "adjust_out" || m.type === "cost_adjust")
     .slice(0, 30);
 
   list.innerHTML = rows.map(m => {
     const isIn = m.type === "adjust_in";
+    const isCost = m.type === "cost_adjust";
     const p = productById(m.productId);
-    const qty = isIn ? Number(m.qtyIn || 0) : Number(m.qtyOut || 0);
+    const qty = isCost ? 0 : (isIn ? Number(m.qtyIn || 0) : Number(m.qtyOut || 0));
     return `
-      <div class="list-item ${isIn ? "adjust-in" : "adjust-out"}">
+      <div class="list-item ${isCost ? "cost-adjust" : (isIn ? "adjust-in" : "adjust-out")}">
         <div>
           <strong>${p?.name || "-"}</strong>
-          <small>${m.date} • <span class="adjust-type-badge ${isIn ? "adjust-type-in" : "adjust-type-out"}">${isIn ? "ปรับเพิ่ม" : "ปรับลด"}</span> • ${m.note || "-"}</small>
+          <small>${m.date} • <span class="adjust-type-badge ${isIn ? "adjust-type-in" : "adjust-type-out"}">${isCost ? "ปรับทุนเฉลี่ย" : (isIn ? "ปรับเพิ่ม" : "ปรับลด")}</span> • ${m.note || "-"}</small>
           <small>ทุนต่อหน่วย: ${money(m.unitCost || 0)}</small>
         </div>
         <div class="row-actions">
-          <div class="money ${isIn ? "positive" : "negative"}">${isIn ? "+" : "-"}${money(qty)}</div>
+          <div class="money ${isCost ? "product-profit" : (isIn ? "positive" : "negative")}">${isCost ? "ทุน " + money(m.unitCost || 0) : (isIn ? "+" : "-") + money(qty)}</div>
           <button class="small-btn small-edit" onclick="editAdjustment('${m.id}')">แก้ไข</button>
           <button class="small-btn small-danger" onclick="deleteAdjustment('${m.id}')">ลบ</button>
         </div>
@@ -870,14 +949,14 @@ function resetAdjustForm() {
 }
 
 window.editAdjustment = (id) => {
-  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out"));
+  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out" || x.type === "cost_adjust"));
   if (!m) return;
 
   $("adjustId").value = m.id;
   $("adjustDate").value = m.date || today();
   $("adjustProduct").value = m.productId || "";
   $("adjustType").value = m.type;
-  $("adjustQty").value = Number(m.qtyIn || 0) > 0 ? m.qtyIn : m.qtyOut;
+  $("adjustQty").value = m.type === "cost_adjust" ? "" : (Number(m.qtyIn || 0) > 0 ? m.qtyIn : m.qtyOut);
   $("adjustCost").value = m.unitCost || 0;
   $("adjustNote").value = m.note || "";
   $("adjustSubmitBtn").textContent = "อัปเดตปรับสต็อก";
@@ -887,7 +966,7 @@ window.editAdjustment = (id) => {
 };
 
 window.deleteAdjustment = async (id) => {
-  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out"));
+  const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out" || x.type === "cost_adjust"));
   if (!m) return;
 
   const p = productById(m.productId);
@@ -895,9 +974,9 @@ window.deleteAdjustment = async (id) => {
   if (!confirm(`ลบรายการปรับสต็อก?\n\nสินค้า: ${p?.name || "-"}\nจำนวน: ${money(qty)}\nเหตุผล: ${m.note || "-"}\n\nระบบจะคำนวณสต็อกใหม่`)) return;
 
   await del("stock_movements", id);
-  await recomputeInventory();
+  await rebuildCostSnapshots();
   await loadState();
-  showToast("ลบรายการปรับสต็อกแล้ว");
+  showToast("ลบรายการปรับสต็อก/ทุนและคำนวณใหม่แล้ว");
 };
 
 function renderLedger() {
@@ -1751,9 +1830,9 @@ $("purchaseForm").addEventListener("submit", async (e) => {
   });
 
   resetPurchaseForm();
-  await recomputeInventory();
+  await rebuildCostSnapshots();
   await loadState();
-  showToast(editId ? "อัปเดตซื้อเข้าแล้ว" : "บันทึกซื้อเข้าแล้ว");
+  showToast(editId ? "อัปเดตซื้อเข้าและคำนวณทุนใหม่แล้ว" : "บันทึกซื้อเข้าแล้ว");
 });
 
 $("cancelPurchaseEditBtn").addEventListener("click", resetPurchaseForm);
@@ -1814,7 +1893,7 @@ if (adjustForm) {
     const editId = $("adjustId").value;
 
     if (!productId) return alert("กรุณาเลือกสินค้า");
-    if (qty <= 0) return alert("กรุณาใส่จำนวน");
+    if (type !== "cost_adjust" && qty <= 0) return alert("กรุณาใส่จำนวน");
     if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
 
     if (type === "adjust_out") {
@@ -1825,7 +1904,7 @@ if (adjustForm) {
       if (qty > available) return alert(`สต็อกไม่พอ เหลือ ${money(available)} ${p?.unit || ""}`);
     }
 
-    if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
+    if ((type === "adjust_in" || type === "cost_adjust") && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
 
     const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
     await put("stock_movements", {
@@ -1833,21 +1912,21 @@ if (adjustForm) {
       id: editId || uid(),
       productId,
       type,
-      refType: "adjust",
+      refType: type === "cost_adjust" ? "cost" : "adjust",
       refId: "",
       date: $("adjustDate").value || today(),
       qtyIn: type === "adjust_in" ? qty : 0,
       qtyOut: type === "adjust_out" ? qty : 0,
-      unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
+      unitCost: (type === "adjust_in" || type === "cost_adjust") ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
       note,
       createdAt: old?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
 
     resetAdjustForm();
-    await recomputeInventory();
+    await rebuildCostSnapshots();
     await loadState();
-    showToast(editId ? "อัปเดตปรับสต็อกแล้ว" : "บันทึกปรับสต็อกแล้ว");
+    showToast(editId ? "อัปเดตปรับสต็อก/ทุนแล้ว" : "บันทึกปรับสต็อก/ทุนแล้ว");
   });
 
   $("cancelAdjustEditBtn").addEventListener("click", resetAdjustForm);
@@ -2026,7 +2105,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.1", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.2", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -2253,6 +2332,17 @@ if ($("settingsForm")) {
 
 if ($("resetSettingsBtn")) $("resetSettingsBtn").addEventListener("click", renderSettingsUI);
 
+
+
+async function repairAllCosts() {
+  if (!confirm("ตรวจ/ซ่อมทุนและกำไรทั้งหมด?\n\nระบบจะคำนวณต้นทุนขายจากประวัติซื้อเข้า/ปรับทุนใหม่ และอัปเดตกำไรของบิลทั้งหมด")) return;
+  await rebuildCostSnapshots();
+  await loadState();
+  showToast("ตรวจ/ซ่อมทุนเรียบร้อยแล้ว");
+  if ($("testResults")) {
+    showTestResults([{ status: "info", title: "ตรวจ/ซ่อมทุนเรียบร้อย", detail: "ระบบคำนวณต้นทุนขาย กำไรบิล สต็อก และทุนเฉลี่ยใหม่แล้ว" }, ...runSystemChecks()]);
+  }
+}
 
 function isTestProduct(p) {
   return (p.name || "").startsWith("TEST-") || (p.note || "").includes("TEST-AUTO");
@@ -2620,6 +2710,7 @@ $("printDailyCloseBtn")?.addEventListener("click", printDailyClose);
 $("copyLowStockBtn")?.addEventListener("click", copyLowStockList);
 $("printLowStockBtn")?.addEventListener("click", printLowStockList);
 
+$("repairCostsBtn")?.addEventListener("click", repairAllCosts);
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;

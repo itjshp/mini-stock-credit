@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.2.8 • Customer Purchase • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.2.9 • Beta Ready • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -503,6 +503,119 @@
   </div>
 </section>
 
+
+<section id="gettingStarted" class="page">
+  <div class="page-head">
+    <div>
+      <h2>เริ่มต้นใช้งาน / Beta Ready</h2>
+      <p>ตรวจความพร้อมก่อนใช้งานจริง ส่ง Feedback และคัดลอกข้อมูลระบบเพื่อช่วยแก้ปัญหา</p>
+    </div>
+    <div class="form-actions">
+      <button class="soft-btn" data-open-tab="settings" type="button">ตั้งค่าร้าน</button>
+      <button class="soft-btn" data-open-tab="backup" type="button">Backup / Import</button>
+      <button class="soft-btn" data-open-tab="testCenter" type="button">ข้อมูลตัวอย่าง</button>
+    </div>
+  </div>
+
+  <div class="panel beta-warning-panel">
+    <div class="panel-head">
+      <div>
+        <h3>สถานะเวอร์ชันทดลอง</h3>
+        <span class="hint">เหมาะสำหรับทดสอบกับร้านจริง 3-5 ร้าน ก่อนปล่อยใช้งานกว้างขึ้น</span>
+      </div>
+      <span class="beta-pill">BETA</span>
+    </div>
+    <div class="beta-notice">
+      ข้อมูลของคุณเก็บอยู่ในเครื่องนี้แบบ Local-first ควร Backup ก่อนและหลังใช้งานจริงทุกครั้ง หากเปลี่ยนเครื่องหรือล้าง Browser โดยไม่ Backup ข้อมูลอาจหายได้
+    </div>
+  </div>
+
+  <div class="beta-grid">
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Checklist ความพร้อม</h3>
+        <span id="betaReadySummary" class="hint">กำลังตรวจสอบ...</span>
+      </div>
+      <div id="betaChecklistList" class="stack-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>เริ่มใช้งาน 5 ขั้นตอน</h3>
+        <span class="hint">แนะนำสำหรับผู้ใช้ใหม่</span>
+      </div>
+      <ol class="pretty-list beta-steps">
+        <li>ตั้งค่าชื่อร้านและเลขบิล</li>
+        <li>เพิ่มสินค้า หรือ Import CSV</li>
+        <li>ใส่สต็อกเริ่มต้น / ซื้อเข้า</li>
+        <li>เพิ่มลูกค้า โดยเฉพาะลูกค้าขายส่งหรือเครดิต</li>
+        <li>ทดลองขายเงินสด 1 บิล และขายเครดิต 1 บิล แล้ว Backup</li>
+      </ol>
+      <div class="form-actions">
+        <button class="soft-btn" data-open-tab="products" type="button">ไปสินค้า</button>
+        <button class="soft-btn" data-open-tab="sale" type="button">ไปขายของ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Backup Reminder</h3>
+      <span id="betaBackupStatus" class="hint">กำลังตรวจสอบ...</span>
+    </div>
+    <div id="betaBackupAdvice" class="beta-notice">ควร Backup เป็นประจำ</div>
+    <div class="form-actions">
+      <button class="primary-btn" id="betaExportBackupBtn" type="button">Backup ตอนนี้</button>
+      <button class="soft-btn" data-open-tab="backup" type="button">ไปหน้า Backup</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>ส่ง Feedback / แจ้งปัญหา</h3>
+      <span class="hint">ระบบจะช่วยเตรียมข้อความให้คัดลอกไปส่งผู้พัฒนา</span>
+    </div>
+    <div class="feedback-grid">
+      <label>หน้าที่เจอปัญหา
+        <select id="feedbackPage">
+          <option value="ขายของ">ขายของ</option>
+          <option value="สินค้า">สินค้า</option>
+          <option value="ลูกค้า">ลูกค้า</option>
+          <option value="รายละเอียดลูกค้า">รายละเอียดลูกค้า</option>
+          <option value="ค้นหาบิล">ค้นหาบิล</option>
+          <option value="รายงาน">รายงาน</option>
+          <option value="Backup">Backup</option>
+          <option value="อื่น ๆ">อื่น ๆ</option>
+        </select>
+      </label>
+      <label>ประเภท Feedback
+        <select id="feedbackType">
+          <option value="เจอบัค">เจอบัค</option>
+          <option value="ใช้งานยาก">ใช้งานยาก</option>
+          <option value="อยากให้เพิ่ม">อยากให้เพิ่ม</option>
+          <option value="คำถาม">คำถาม</option>
+        </select>
+      </label>
+      <label class="feedback-full">รายละเอียด
+        <textarea id="feedbackMessage" rows="5" placeholder="เล่าว่ากดอะไร ก่อนเจอปัญหา หรืออยากให้ปรับอะไร"></textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="primary-btn" id="copyFeedbackBtn" type="button">คัดลอก Feedback</button>
+      <button class="soft-btn" id="copyDiagnosticBtn" type="button">คัดลอกข้อมูลระบบ</button>
+      <button class="soft-btn" id="copyBetaReportBtn" type="button">คัดลอกรายงาน Beta</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>ข้อมูลระบบ</h3>
+      <span class="hint">ใช้สำหรับช่วยตรวจปัญหาโดยไม่เปิดเผยข้อมูลละเอียดของลูกค้า/สินค้า</span>
+    </div>
+    <div id="diagnosticCards" class="diagnostic-grid"></div>
+  </div>
+</section>
+
 <section id="guide" class="page">
   <div class="page-head"><div><h2>คู่มือใช้งาน</h2><p>วิธีใช้งาน Khaikhong v2 แบบสั้นและตรงไปตรงมา</p></div></div>
   <div class="guide-grid"><article class="guide-card"><b>1</b><h3>เริ่มต้น</h3><ol><li>เพิ่มสินค้า</li><li>ซื้อเข้า</li><li>ขายของ</li><li>Backup</li></ol></article><article class="guide-card"><b>2</b><h3>ขายของ</h3><ol><li>ค้นหาสินค้า</li><li>แตะสินค้าเข้าบิล</li><li>กด + / - ปรับจำนวน</li><li>บันทึกขาย</li></ol></article><article class="guide-card"><b>3</b><h3>ขายเครดิต</h3><ol><li>เพิ่มลูกค้า</li><li>เลือกชำระแบบเครดิต</li><li>เลือกลูกค้า</li><li>ดูยอดค้างในเมนูยอดค้าง</li></ol></article><article class="guide-card"><b>4</b><h3>รายละเอียดสินค้า</h3><ol><li>ไปที่เมนูสินค้า</li><li>กดรายละเอียด</li><li>ดูประวัติซื้อเข้า ขายออก และปรับสต็อก</li></ol></article><article class="guide-card"><b>5</b><h3>ยกเลิกบิล</h3><ol><li>ไปที่รายงาน</li><li>กดยกเลิกบิล</li><li>ระบบคืนสต็อกให้อัตโนมัติ</li></ol></article><article class="guide-card"><b>5</b><h3>Backup</h3><ol><li>ไปที่ Backup</li><li>Export JSON</li><li>เก็บไฟล์ไว้ใน Drive/iCloud</li></ol></article></div>
@@ -573,7 +686,7 @@
     <input id="moreSearchInput" class="search-input" placeholder="ค้นหาเมนู เช่น ค้นหาบิล / รับเงิน / ปรับสต็อก">
   </div>
 
-  <div class="more-grid" id="moreGrid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+  <div class="more-grid" id="moreGrid"><button class="more-card beta-ready-card" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 

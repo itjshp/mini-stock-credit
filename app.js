@@ -404,6 +404,7 @@ function renderAll() {
   renderBillSearch();
   renderBillDetail();
   renderBackupStatus();
+  renderBetaReady();
   renderSettingsUI();
   renderTestSummary();
 }
@@ -2831,7 +2832,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.8", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.9", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3504,6 +3505,249 @@ $("moreSearchInput")?.addEventListener("input", () => {
     const text = card.textContent.toLowerCase();
     card.classList.toggle("hidden-by-search", q && !text.includes(q));
   });
+});
+
+
+function appVersion() {
+  const m = document.querySelector(".eyebrow")?.textContent || "Khaikhong";
+  const found = m.match(/v\d+\.\d+\.\d+/);
+  return found ? found[0] : "v2.2.9";
+}
+
+function lastBackupTime() {
+  return localStorage.getItem("khaikhongV2LastBackup");
+}
+
+function backupAgeHours() {
+  const t = lastBackupTime();
+  if (!t) return Infinity;
+  return (Date.now() - new Date(t).getTime()) / 36e5;
+}
+
+function betaCounts() {
+  return {
+    products: activeProducts().length,
+    productsWithStock: activeProducts().filter(p => Number(p.stockQty || 0) > 0).length,
+    customers: state.customers.length,
+    bills: state.bills.length,
+    billsActive: state.bills.filter(b => b.status !== "cancelled").length,
+    payments: state.payments.length,
+    movements: state.stock_movements.length,
+    lowStock: lowStockProducts ? lowStockProducts().length : 0
+  };
+}
+
+function betaChecklist() {
+  const counts = betaCounts();
+  const s = mainSettings();
+  const backupTime = lastBackupTime();
+  const hasSettings = !!state.settings.find(x => x.id === "main");
+  const hasRecentBackup = backupAgeHours() <= 24;
+  const hasAnyBackup = !!backupTime;
+
+  return [
+    {
+      key: "settings",
+      title: "ตั้งค่าร้านแล้ว",
+      detail: hasSettings ? `ชื่อร้าน: ${s.shopName || "Khaikhong"} • เลขบิลถัดไป ${nextBillNo()}` : "ยังไม่ได้บันทึกหน้า ตั้งค่า",
+      status: hasSettings ? "pass" : "warn",
+      action: "ตั้งค่าร้าน",
+      tab: "settings"
+    },
+    {
+      key: "products",
+      title: "มีสินค้าในระบบ",
+      detail: counts.products ? `${counts.products} รายการ` : "ควรเพิ่มสินค้า หรือ Import CSV ก่อนใช้งานจริง",
+      status: counts.products ? "pass" : "bad",
+      action: "ไปสินค้า",
+      tab: "products"
+    },
+    {
+      key: "stock",
+      title: "มีสินค้าที่มีสต็อก",
+      detail: counts.productsWithStock ? `${counts.productsWithStock} รายการมีสต็อก` : "ควรซื้อเข้า หรือ Import สต็อกเริ่มต้น",
+      status: counts.productsWithStock ? "pass" : "warn",
+      action: "ซื้อเข้า",
+      tab: "purchase"
+    },
+    {
+      key: "customers",
+      title: "มีข้อมูลลูกค้า",
+      detail: counts.customers ? `${counts.customers} รายการ` : "ถ้าขายเครดิต/ขายส่ง ควรเพิ่มลูกค้าก่อน",
+      status: counts.customers ? "pass" : "warn",
+      action: "ไปลูกค้า",
+      tab: "customers"
+    },
+    {
+      key: "backup",
+      title: "Backup ข้อมูล",
+      detail: hasAnyBackup ? `ล่าสุด: ${new Date(backupTime).toLocaleString("th-TH")}` : "ยังไม่เคย Backup",
+      status: hasRecentBackup ? "pass" : (hasAnyBackup ? "warn" : "bad"),
+      action: "Backup",
+      tab: "backup"
+    },
+    {
+      key: "test",
+      title: "ทดสอบระบบพื้นฐาน",
+      detail: counts.bills ? `มีบิลแล้ว ${counts.bills} บิล` : "แนะนำให้ลองขายเงินสด/เครดิตก่อนใช้จริง",
+      status: counts.bills ? "pass" : "warn",
+      action: "ทดสอบระบบ",
+      tab: "testCenter"
+    }
+  ];
+}
+
+function renderBetaReady() {
+  if (!$("betaChecklistList")) return;
+
+  const checklist = betaChecklist();
+  const pass = checklist.filter(x => x.status === "pass").length;
+  const warn = checklist.filter(x => x.status === "warn").length;
+  const bad = checklist.filter(x => x.status === "bad").length;
+  $("betaReadySummary").textContent = `ผ่าน ${pass} / ควรเช็ก ${warn} / ต้องทำ ${bad}`;
+
+  $("betaChecklistList").innerHTML = checklist.map(item => `
+    <div class="list-item beta-check-${item.status}">
+      <div>
+        <strong>${item.status === "pass" ? "✅" : item.status === "warn" ? "⚠️" : "❌"} ${item.title}</strong>
+        <small>${item.detail}</small>
+      </div>
+      <div class="row-actions">
+        <span class="beta-check-chip ${item.status}">${item.status === "pass" ? "พร้อม" : item.status === "warn" ? "ควรเช็ก" : "ต้องทำ"}</span>
+        <button class="small-btn" onclick="switchTab('${item.tab}')">${item.action}</button>
+      </div>
+    </div>
+  `).join("");
+
+  const backupTime = lastBackupTime();
+  const age = backupAgeHours();
+  if ($("betaBackupStatus")) $("betaBackupStatus").textContent = backupTime ? `ล่าสุด: ${new Date(backupTime).toLocaleString("th-TH")}` : "ยังไม่เคย Backup";
+
+  const advice = $("betaBackupAdvice");
+  if (advice) {
+    advice.classList.remove("ok");
+    if (!backupTime) {
+      advice.textContent = "ยังไม่เคย Backup ข้อมูล แนะนำให้ Backup ก่อนเริ่มใช้กับข้อมูลจริง";
+    } else if (age > 24) {
+      advice.textContent = "Backup ล่าสุดเกิน 24 ชั่วโมงแล้ว แนะนำให้ Backup ใหม่ก่อนปิดร้านหรือก่อนอัปเดตระบบ";
+    } else {
+      advice.textContent = "Backup ล่าสุดยังใหม่อยู่ แต่ควร Backup อีกครั้งหลังขายจริงหรือเพิ่มข้อมูลสำคัญ";
+      advice.classList.add("ok");
+    }
+  }
+
+  renderDiagnosticCards();
+}
+
+function diagnosticData() {
+  const counts = betaCounts();
+  return {
+    version: appVersion(),
+    url: location.href,
+    userAgent: navigator.userAgent,
+    screen: `${window.innerWidth}x${window.innerHeight}`,
+    platform: navigator.platform || "-",
+    online: navigator.onLine ? "online" : "offline",
+    dbName: DB_NAME,
+    products: counts.products,
+    productsWithStock: counts.productsWithStock,
+    lowStock: counts.lowStock,
+    customers: counts.customers,
+    bills: counts.bills,
+    activeBills: counts.billsActive,
+    payments: counts.payments,
+    movements: counts.movements,
+    lastBackup: lastBackupTime() ? new Date(lastBackupTime()).toLocaleString("th-TH") : "ยังไม่เคย",
+    generatedAt: new Date().toLocaleString("th-TH")
+  };
+}
+
+function renderDiagnosticCards() {
+  if (!$("diagnosticCards")) return;
+  const d = diagnosticData();
+  const cards = [
+    ["เวอร์ชัน", d.version],
+    ["สินค้า", d.products],
+    ["ลูกค้า", d.customers],
+    ["บิล", d.bills],
+    ["สินค้าใกล้หมด", d.lowStock],
+    ["Backup ล่าสุด", d.lastBackup],
+    ["สถานะเน็ต", d.online],
+    ["หน้าจอ", d.screen]
+  ];
+  $("diagnosticCards").innerHTML = cards.map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function diagnosticText() {
+  const d = diagnosticData();
+  return [
+    "Khaikhong Diagnostic",
+    `Version: ${d.version}`,
+    `URL: ${d.url}`,
+    `Platform: ${d.platform}`,
+    `Screen: ${d.screen}`,
+    `Online: ${d.online}`,
+    `DB: ${d.dbName}`,
+    `Products: ${d.products}`,
+    `Products with stock: ${d.productsWithStock}`,
+    `Low stock: ${d.lowStock}`,
+    `Customers: ${d.customers}`,
+    `Bills: ${d.bills}`,
+    `Active bills: ${d.activeBills}`,
+    `Payments: ${d.payments}`,
+    `Stock movements: ${d.movements}`,
+    `Last Backup: ${d.lastBackup}`,
+    `Generated: ${d.generatedAt}`,
+    `User Agent: ${d.userAgent}`
+  ].join("\n");
+}
+
+function feedbackText() {
+  return [
+    "Khaikhong Feedback",
+    `Version: ${appVersion()}`,
+    `Page: ${$("feedbackPage")?.value || "-"}`,
+    `Type: ${$("feedbackType")?.value || "-"}`,
+    "",
+    "รายละเอียด:",
+    $("feedbackMessage")?.value || "-",
+    "",
+    "Diagnostic:",
+    diagnosticText()
+  ].join("\n");
+}
+
+async function copyTextToClipboard(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(successMessage);
+  } catch {
+    prompt(successMessage, text);
+  }
+}
+
+function betaReportText() {
+  const checklist = betaChecklist();
+  return [
+    "Khaikhong Beta Report",
+    `Version: ${appVersion()}`,
+    `Generated: ${new Date().toLocaleString("th-TH")}`,
+    "",
+    "Checklist:",
+    ...checklist.map(item => `- ${item.title}: ${item.status.toUpperCase()} | ${item.detail}`),
+    "",
+    "Diagnostic:",
+    diagnosticText()
+  ].join("\n");
+}
+
+
+$("copyFeedbackBtn")?.addEventListener("click", () => copyTextToClipboard(feedbackText(), "คัดลอก Feedback แล้ว"));
+$("copyDiagnosticBtn")?.addEventListener("click", () => copyTextToClipboard(diagnosticText(), "คัดลอกข้อมูลระบบแล้ว"));
+$("copyBetaReportBtn")?.addEventListener("click", () => copyTextToClipboard(betaReportText(), "คัดลอกรายงาน Beta แล้ว"));
+$("betaExportBackupBtn")?.addEventListener("click", () => $("exportBackupBtn")?.click());
+["feedbackPage", "feedbackType", "feedbackMessage"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderDiagnosticCards);
 });
 
 window.addEventListener("beforeinstallprompt", (e) => {

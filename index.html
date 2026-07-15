@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.2.7 • Bill Search • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.2.8 • Customer Purchase • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -126,8 +126,42 @@
     </div>
     <div class="form-actions">
       <button class="soft-btn" data-open-tab="customers" type="button">กลับลูกค้า</button>
+      <button class="soft-btn" id="copyCustomerHistoryBtn" type="button">คัดลอกสรุป</button>
+      <button class="soft-btn" id="printCustomerHistoryBtn" type="button">พิมพ์ประวัติ</button>
+      <button class="soft-btn" id="exportCustomerHistoryCsvBtn" type="button">Export CSV</button>
       <button class="soft-btn" id="customerDetailPaymentBtn" type="button">รับเงิน</button>
       <button class="soft-btn" id="customerDetailLedgerBtn" type="button">ดูยอดค้าง</button>
+    </div>
+  </div>
+
+
+  <div class="panel customer-history-filter">
+    <div class="panel-head">
+      <h3>ตัวกรองประวัติการซื้อ</h3>
+      <div class="filter-actions">
+        <button id="customerHistoryTodayBtn" class="soft-btn" type="button">วันนี้</button>
+        <button id="customerHistory7DaysBtn" class="soft-btn" type="button">7 วัน</button>
+        <button id="customerHistoryMonthBtn" class="soft-btn" type="button">เดือนนี้</button>
+        <button id="customerHistoryPrevMonthBtn" class="soft-btn" type="button">เดือนก่อน</button>
+        <button id="customerHistoryClearBtn" class="soft-btn" type="button">ล้าง</button>
+      </div>
+    </div>
+    <div class="customer-history-grid">
+      <label>วันที่เริ่ม<input id="customerHistoryFrom" type="date"></label>
+      <label>วันที่สิ้นสุด<input id="customerHistoryTo" type="date"></label>
+      <label>ค้นหาสินค้า<input id="customerHistoryItemSearch" placeholder="เช่น ปูอัด / ลูกชิ้น"></label>
+      <label>มุมมอง
+        <select id="customerHistoryView">
+          <option value="overview">ภาพรวม</option>
+          <option value="bills">บิลที่ซื้อ</option>
+          <option value="items">รายการที่ซื้อ</option>
+          <option value="summary">สรุปสินค้า</option>
+        </select>
+      </label>
+      <label class="toggle-label customer-toggle">
+        <span>แสดงบิลยกเลิกด้วย</span>
+        <input id="customerHistoryIncludeCancelled" type="checkbox">
+      </label>
     </div>
   </div>
 
@@ -528,7 +562,18 @@
 
 <section id="more" class="page">
   <div class="page-head"><div><h2>เพิ่มเติม</h2><p>เมนูที่ไม่ได้ใช้บ่อย รวมไว้ที่นี่</p></div></div>
-  <div class="more-grid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+
+  <div class="panel more-helper-panel">
+    <div class="panel-head">
+      <div>
+        <h3>ค้นหาเมนูที่ต้องการ</h3>
+        <span class="hint">พิมพ์คำ เช่น บิล, สต็อก, Backup, ลูกหนี้, รายงาน</span>
+      </div>
+    </div>
+    <input id="moreSearchInput" class="search-input" placeholder="ค้นหาเมนู เช่น ค้นหาบิล / รับเงิน / ปรับสต็อก">
+  </div>
+
+  <div class="more-grid" id="moreGrid"><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 

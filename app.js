@@ -953,6 +953,170 @@ function customerPayments(customerId) {
     .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 }
 
+function customerHistoryFilters() {
+  return {
+    from: $("customerHistoryFrom")?.value || "",
+    to: $("customerHistoryTo")?.value || "",
+    item: ($("customerHistoryItemSearch")?.value || "").toLowerCase().trim(),
+    view: $("customerHistoryView")?.value || "overview",
+    includeCancelled: !!$("customerHistoryIncludeCancelled")?.checked
+  };
+}
+
+function customerHistoryBills(customerId) {
+  const f = customerHistoryFilters();
+  return state.bills
+    .filter(b => b.customerId === customerId)
+    .filter(b => f.includeCancelled || b.status !== "cancelled")
+    .filter(b => !f.from || b.date >= f.from)
+    .filter(b => !f.to || b.date <= f.to)
+    .filter(b => {
+      if (!f.item) return true;
+      return billItems(b.id).some(item => `${item.productNameSnapshot || ""} ${productById(item.productId)?.name || ""}`.toLowerCase().includes(f.item));
+    })
+    .sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+}
+
+function customerHistoryItems(customerId) {
+  return customerHistoryBills(customerId).flatMap(b => {
+    return billItems(b.id)
+      .filter(item => {
+        const q = customerHistoryFilters().item;
+        if (!q) return true;
+        return `${item.productNameSnapshot || ""} ${productById(item.productId)?.name || ""}`.toLowerCase().includes(q);
+      })
+      .map(item => ({ ...item, bill: b }));
+  });
+}
+
+function customerProductSummary(customerId) {
+  const map = new Map();
+  for (const row of customerHistoryItems(customerId)) {
+    const key = row.productId || row.productNameSnapshot || "unknown";
+    const current = map.get(key) || {
+      productId: row.productId,
+      name: row.productNameSnapshot || productById(row.productId)?.name || "-",
+      qty: 0,
+      revenue: 0,
+      cost: 0,
+      profit: 0,
+      count: 0,
+      lastDate: ""
+    };
+    current.qty += Number(row.qty || 0);
+    current.revenue += Number(row.revenue || 0);
+    current.cost += Number(row.cost || 0);
+    current.profit += Number(row.profit || 0);
+    current.count += 1;
+    if (String(row.bill?.date || "") > String(current.lastDate || "")) current.lastDate = row.bill.date;
+    map.set(key, current);
+  }
+  return [...map.values()].sort((a, b) => b.revenue - a.revenue);
+}
+
+function customerHistoryStats(customerId) {
+  const bills = customerHistoryBills(customerId);
+  const active = bills.filter(b => b.status !== "cancelled");
+  const items = customerHistoryItems(customerId).filter(item => item.bill.status !== "cancelled");
+  return {
+    bills,
+    active,
+    items,
+    billCount: active.length,
+    itemCount: items.length,
+    sales: active.reduce((sum, b) => sum + Number(b.subtotal || 0), 0),
+    cost: active.reduce((sum, b) => sum + Number(b.costTotal || 0), 0),
+    profit: active.reduce((sum, b) => sum + Number(b.profitTotal || 0), 0),
+    credit: active.reduce((sum, b) => sum + Number(b.creditAmount || 0), 0),
+    qty: items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
+  };
+}
+
+function customerHistoryRangeText() {
+  const f = customerHistoryFilters();
+  if (f.from && f.to) return `${f.from} ถึง ${f.to}`;
+  if (f.from) return `ตั้งแต่ ${f.from}`;
+  if (f.to) return `ถึง ${f.to}`;
+  return "ทั้งหมด";
+}
+
+function renderCustomerHistoryContent(c) {
+  const f = customerHistoryFilters();
+  const stats = customerHistoryStats(c.id);
+  const summary = customerProductSummary(c.id);
+
+  const summaryHtml = `
+    <div class="customer-history-summary">
+      <div><span>จำนวนบิล</span><strong>${stats.billCount.toLocaleString("th-TH")}</strong></div>
+      <div><span>จำนวนรายการ</span><strong>${stats.itemCount.toLocaleString("th-TH")}</strong></div>
+      <div><span>ยอดซื้อ</span><strong>${money(stats.sales)}</strong></div>
+      <div><span>กำไร</span><strong>${money(stats.profit)}</strong></div>
+      <div><span>ยอดค้าง</span><strong>${money(stats.credit)}</strong></div>
+    </div>
+  `;
+
+  if (f.view === "bills") {
+    return `${summaryHtml}<div class="panel"><div class="panel-head"><h3>บิลที่ซื้อ</h3><span class="hint">${customerHistoryRangeText()}</span></div><div class="stack-list">
+      ${stats.bills.map(b => `
+        <div class="list-item customer-purchase-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
+          <div>
+            <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+            <small>${b.date} • ${billItems(b.id).length} รายการ • ${billItemText(b.id)}</small>
+            ${Number(b.creditAmount || 0) > 0 ? `<small class="negative">ยอดค้างบิลนี้ ${money(b.creditAmount)}</small>` : ""}
+          </div>
+          <div class="row-actions"><div><div class="money">${money(b.subtotal)}</div><small class="${b.profitTotal >= 0 ? "positive" : "negative"}">กำไร ${money(b.profitTotal)}</small></div><button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button><button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอก</button></div>
+        </div>`).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🧾</div><strong>ไม่พบบิล</strong><small>ลองเปลี่ยนช่วงวันที่หรือคำค้นหา</small></div></div>`}
+    </div></div>`;
+  }
+
+  if (f.view === "items") {
+    return `${summaryHtml}<div class="panel"><div class="panel-head"><h3>รายการที่ซื้อ</h3><span class="hint">แยกรายการสินค้าจากทุกบิล</span></div><div class="stack-list">
+      ${stats.items.map(item => `
+        <div class="list-item customer-item-row">
+          <div>
+            <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
+            <small>${item.bill.date} • บิล <button class="bill-link" onclick="openBillDetail('${item.bill.id}')">${item.bill.billNo}</button> • จำนวน ${money(item.qty)} • ราคา ${money(item.unitPrice)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>
+          </div>
+          <div><div class="money">${money(item.revenue)}</div><small class="${item.profit >= 0 ? "positive" : "negative"}">กำไร ${money(item.profit)}</small></div>
+        </div>`).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">📦</div><strong>ไม่พบรายการสินค้า</strong></div></div>`}
+    </div></div>`;
+  }
+
+  if (f.view === "summary") {
+    return `${summaryHtml}<div class="panel"><div class="panel-head"><h3>สรุปสินค้าที่ซื้อ</h3><span class="hint">รวมตามสินค้า</span></div><div class="stack-list">
+      ${summary.map(row => `
+        <div class="list-item customer-summary-row">
+          <div>
+            <strong>${row.name}</strong>
+            <small>จำนวนรวม ${money(row.qty)} • ${row.count} รายการ • ซื้อล่าสุด ${row.lastDate || "-"}</small>
+          </div>
+          <div><div class="money">${money(row.revenue)}</div><small class="${row.profit >= 0 ? "positive" : "negative"}">กำไร ${money(row.profit)}</small></div>
+        </div>`).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">📊</div><strong>ยังไม่มีสรุปสินค้า</strong></div></div>`}
+    </div></div>`;
+  }
+
+  // overview
+  return `${summaryHtml}
+    <div class="dashboard-grid">
+      <div class="panel">
+        <div class="panel-head"><h3>บิลล่าสุดของลูกค้านี้</h3><button class="link-btn" onclick="setCustomerHistoryView('bills')">ดูทั้งหมด</button></div>
+        <div class="stack-list">
+          ${stats.bills.slice(0, 5).map(b => `
+            <div class="list-item customer-purchase-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
+              <div><strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong><small>${b.date} • ${billItems(b.id).length} รายการ • ${billItemText(b.id)}</small></div>
+              <div class="money">${money(b.subtotal)}</div>
+            </div>`).join("") || `<div class="list-item"><div><strong>ไม่พบบิล</strong></div></div>`}
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>สินค้าที่ซื้อบ่อย/มูลค่าสูง</h3><button class="link-btn" onclick="setCustomerHistoryView('summary')">ดูสรุปสินค้า</button></div>
+        <div class="stack-list">
+          ${summary.slice(0, 5).map(row => `<div class="list-item customer-summary-row"><div><strong>${row.name}</strong><small>จำนวน ${money(row.qty)} • ${row.count} รายการ</small></div><div class="money">${money(row.revenue)}</div></div>`).join("") || `<div class="list-item"><div><strong>ยังไม่มีสินค้า</strong></div></div>`}
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderCustomerDetail() {
   const wrap = $("customerDetailContent");
   if (!wrap) return;
@@ -963,12 +1127,10 @@ function renderCustomerDetail() {
     return;
   }
 
-  const bills = customerBills(c.id);
-  const activeCustomerBills = bills.filter(b => b.status !== "cancelled");
+  const allBills = customerBills(c.id).filter(b => b.status !== "cancelled");
   const payments = customerPayments(c.id);
-
-  const totalSales = activeCustomerBills.reduce((sum, b) => sum + Number(b.subtotal || 0), 0);
-  const totalProfit = activeCustomerBills.reduce((sum, b) => sum + Number(b.profitTotal || 0), 0);
+  const totalSales = allBills.reduce((sum, b) => sum + Number(b.subtotal || 0), 0);
+  const totalProfit = allBills.reduce((sum, b) => sum + Number(b.profitTotal || 0), 0);
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const debt = customerDebt(c.id);
 
@@ -994,35 +1156,14 @@ function renderCustomerDetail() {
         <div><span>กำไรรวม</span><strong class="${totalProfit >= 0 ? "positive" : "negative"}">${money(totalProfit)}</strong></div>
         <div><span>รับเงินแล้ว</span><strong class="positive">${money(totalPaid)}</strong></div>
         <div><span>ยอดค้าง</span><strong class="${debt > 0 ? "negative" : "positive"}">${money(debt)}</strong></div>
-        <div><span>จำนวนบิล</span><strong>${activeCustomerBills.length.toLocaleString("th-TH")}</strong></div>
+        <div><span>จำนวนบิลทั้งหมด</span><strong>${allBills.length.toLocaleString("th-TH")}</strong></div>
         <div><span>วงเงินเครดิต</span><strong>${money(c.creditLimit || 0)}</strong></div>
         <div><span>เครดิตกี่วัน</span><strong>${Number(c.creditDays || 0).toLocaleString("th-TH")}</strong></div>
-        <div><span>บิลเครดิตค้าง</span><strong>${activeCustomerBills.filter(b => Number(b.creditAmount || 0) > 0).length.toLocaleString("th-TH")}</strong></div>
+        <div><span>บิลเครดิตค้าง</span><strong>${allBills.filter(b => Number(b.creditAmount || 0) > 0).length.toLocaleString("th-TH")}</strong></div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head">
-        <h3>บิลของลูกค้านี้</h3>
-        <span class="hint">กดดูบิลเพื่อดูว่าสินค้าในบิลมีอะไรบ้าง</span>
-      </div>
-      <div class="stack-list">
-        ${bills.map(b => `
-          <div class="list-item customer-bill-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
-            <div>
-              <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
-              <small>${b.date} • ${billItems(b.id).length} รายการ • ยอดขาย ${money(b.subtotal)} • กำไร ${money(b.profitTotal)}</small>
-              ${Number(b.creditAmount || 0) > 0 ? `<small>ยอดค้างบิลนี้: ${money(b.creditAmount)}</small>` : ""}
-              ${b.status === "cancelled" && b.cancelReason ? `<small>ยกเลิก: ${b.cancelReason}</small>` : ""}
-            </div>
-            <div class="row-actions">
-              <button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>
-              <button class="small-btn" onclick="copyBillText('${b.id}')">คัดลอก</button>
-            </div>
-          </div>
-        `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🧾</div><strong>ยังไม่มีบิลของลูกค้านี้</strong><small>เมื่อขายให้ลูกค้าคนนี้ บิลจะแสดงที่นี่</small></div></div>`}
-      </div>
-    </div>
+    ${renderCustomerHistoryContent(c)}
 
     <div class="panel">
       <div class="panel-head">
@@ -1030,7 +1171,7 @@ function renderCustomerDetail() {
         <span class="hint">รายการรับเงินที่ผูกกับลูกค้านี้</span>
       </div>
       <div class="stack-list">
-        ${payments.map(p => {
+        ${payments.slice(0, 12).map(p => {
           const b = state.bills.find(x => x.id === p.billId);
           return `
             <div class="list-item customer-payment-row">
@@ -1060,6 +1201,113 @@ window.openCustomerDetail = (id) => {
   }
   switchTab("customerDetail");
 };
+
+
+window.setCustomerHistoryView = (view) => {
+  if ($("customerHistoryView")) $("customerHistoryView").value = view;
+  renderCustomerDetail();
+};
+
+function setCustomerHistoryRange(kind) {
+  const now = new Date();
+  if (kind === "today") {
+    $("customerHistoryFrom").value = today();
+    $("customerHistoryTo").value = today();
+  } else if (kind === "7days") {
+    $("customerHistoryFrom").value = addDays(now, -6);
+    $("customerHistoryTo").value = today();
+  } else if (kind === "month") {
+    const r = monthRange(now);
+    $("customerHistoryFrom").value = r.start;
+    $("customerHistoryTo").value = r.end;
+  } else if (kind === "prevMonth") {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const r = monthRange(d);
+    $("customerHistoryFrom").value = r.start;
+    $("customerHistoryTo").value = r.end;
+  }
+  renderCustomerDetail();
+}
+
+function clearCustomerHistoryFilters() {
+  ["customerHistoryFrom", "customerHistoryTo", "customerHistoryItemSearch"].forEach(id => { if ($(id)) $(id).value = ""; });
+  if ($("customerHistoryView")) $("customerHistoryView").value = "overview";
+  if ($("customerHistoryIncludeCancelled")) $("customerHistoryIncludeCancelled").checked = false;
+  renderCustomerDetail();
+}
+
+function customerHistoryText() {
+  const c = state.customers.find(x => x.id === selectedCustomerDetailId);
+  if (!c) return "";
+  const stats = customerHistoryStats(c.id);
+  const summary = customerProductSummary(c.id);
+  const lines = [
+    `สรุปการซื้อของลูกค้า: ${c.name}`,
+    `ช่วงวันที่: ${customerHistoryRangeText()}`,
+    "------------------------------",
+    `จำนวนบิล: ${stats.billCount}`,
+    `จำนวนรายการ: ${stats.itemCount}`,
+    `ยอดซื้อรวม: ${money(stats.sales)} บาท`,
+    `กำไรรวม: ${money(stats.profit)} บาท`,
+    `ยอดค้าง: ${money(customerDebt(c.id))} บาท`,
+    "------------------------------",
+    "สินค้าที่ซื้อ:"
+  ];
+  summary.forEach((row, idx) => lines.push(`${idx + 1}. ${row.name} ${money(row.qty)} = ${money(row.revenue)} บาท`));
+  return lines.join("\n");
+}
+
+async function copyCustomerHistory() {
+  const text = customerHistoryText();
+  if (!text) return alert("กรุณาเลือกลูกค้า");
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("คัดลอกสรุปลูกค้าแล้ว");
+  } catch {
+    prompt("คัดลอกสรุปลูกค้า:", text);
+  }
+}
+
+function printCustomerHistory() {
+  const c = state.customers.find(x => x.id === selectedCustomerDetailId);
+  if (!c) return alert("กรุณาเลือกลูกค้า");
+  const stats = customerHistoryStats(c.id);
+  const summary = customerProductSummary(c.id);
+  $("printArea").innerHTML = `
+    <div class="print-close">
+      <h1>ประวัติการซื้อ: ${c.name}</h1>
+      <div class="muted">ช่วงวันที่ ${customerHistoryRangeText()}</div>
+      <div class="line"><span>จำนวนบิล</span><strong>${stats.billCount}</strong></div>
+      <div class="line"><span>จำนวนรายการ</span><strong>${stats.itemCount}</strong></div>
+      <div class="line"><span>ยอดซื้อรวม</span><strong>${money(stats.sales)}</strong></div>
+      <div class="line total"><span>กำไรรวม</span><strong>${money(stats.profit)}</strong></div>
+      <h3>สรุปสินค้า</h3>
+      ${summary.map(row => `<div class="line"><span>${row.name} (${money(row.qty)})</span><strong>${money(row.revenue)}</strong></div>`).join("") || `<div class="muted">ไม่มีข้อมูลสินค้า</div>`}
+    </div>
+  `;
+  window.print();
+}
+
+function exportCustomerHistoryCsv() {
+  const c = state.customers.find(x => x.id === selectedCustomerDetailId);
+  if (!c) return alert("กรุณาเลือกลูกค้า");
+  const rows = [["customer", "date", "billNo", "product", "qty", "unitPrice", "discount", "revenue", "cost", "profit", "status"]];
+  customerHistoryItems(c.id).forEach(item => rows.push([
+    c.name,
+    item.bill.date,
+    item.bill.billNo,
+    item.productNameSnapshot || productById(item.productId)?.name || "-",
+    item.qty,
+    item.unitPrice,
+    item.discount || 0,
+    item.revenue,
+    item.cost,
+    item.profit,
+    item.bill.status
+  ]));
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+  download(`khaikhong-customer-history-${c.name}-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
+}
 
 window.quickPaymentCustomer = (id) => {
   $("paymentCustomer").value = id;
@@ -2583,7 +2831,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.7", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.2.8", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3235,6 +3483,28 @@ $("billSearch7DaysBtn")?.addEventListener("click", () => setBillSearchRange("7da
 $("billSearchMonthBtn")?.addEventListener("click", () => setBillSearchRange("month"));
 $("billSearchClearBtn")?.addEventListener("click", clearBillSearch);
 $("exportBillSearchCsvBtn")?.addEventListener("click", exportBillSearchCsv);
+
+
+["customerHistoryFrom", "customerHistoryTo", "customerHistoryItemSearch", "customerHistoryView", "customerHistoryIncludeCancelled"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderCustomerDetail);
+  if ($(id)) $(id).addEventListener("change", renderCustomerDetail);
+});
+$("customerHistoryTodayBtn")?.addEventListener("click", () => setCustomerHistoryRange("today"));
+$("customerHistory7DaysBtn")?.addEventListener("click", () => setCustomerHistoryRange("7days"));
+$("customerHistoryMonthBtn")?.addEventListener("click", () => setCustomerHistoryRange("month"));
+$("customerHistoryPrevMonthBtn")?.addEventListener("click", () => setCustomerHistoryRange("prevMonth"));
+$("customerHistoryClearBtn")?.addEventListener("click", clearCustomerHistoryFilters);
+$("copyCustomerHistoryBtn")?.addEventListener("click", copyCustomerHistory);
+$("printCustomerHistoryBtn")?.addEventListener("click", printCustomerHistory);
+$("exportCustomerHistoryCsvBtn")?.addEventListener("click", exportCustomerHistoryCsv);
+
+$("moreSearchInput")?.addEventListener("input", () => {
+  const q = ($("moreSearchInput").value || "").toLowerCase().trim();
+  document.querySelectorAll("#moreGrid .more-card").forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.classList.toggle("hidden-by-search", q && !text.includes(q));
+  });
+});
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

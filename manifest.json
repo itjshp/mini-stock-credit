@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.2.7 Bill Search Center with date, customer, item, status filters",
+  "description": "Khaikhong v2.2.8 Customer Purchase History and improved More UX",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

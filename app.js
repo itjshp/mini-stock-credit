@@ -1,9 +1,9 @@
 const DB_NAME = "khaikhong-v2-db";
-const DB_VERSION = 1;
-const STORES = ["products","customers","bills","bill_items","payments","stock_movements","settings"];
+const DB_VERSION = 2;
+const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","settings"];
 
 let db;
-let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], settings: [] };
+let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
 let selectedCustomerDetailId = "";
@@ -104,6 +104,8 @@ async function loadState() {
   state.customers.sort((a, b) => (a.name || "").localeCompare(b.name || "", "th"));
   state.bills.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.stock_movements.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+  state.stock_lots.sort((a, b) => `${a.date || ""} ${a.createdAt || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""}`));
+  state.bill_item_lots.sort((a, b) => `${a.billId || ""} ${a.productId || ""}`.localeCompare(`${b.billId || ""} ${b.productId || ""}`));
   state.payments.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
   renderAll();
@@ -176,6 +178,108 @@ function productCategoryLabel(p) {
   return (p?.category || "").trim() || "ไม่ระบุ";
 }
 
+
+function lotSortValue(x) {
+  return `${x.date || ""} ${x.createdAt || ""} ${x.id || ""}`;
+}
+
+function productLots(productId, includeEmpty = false) {
+  return (state.stock_lots || [])
+    .filter(l => l.productId === productId && (includeEmpty || Number(l.remainingQty || 0) > 0.000001))
+    .sort((a, b) => lotSortValue(a).localeCompare(lotSortValue(b)));
+}
+
+function itemLotUsages(billItemId) {
+  return (state.bill_item_lots || [])
+    .filter(x => x.billItemId === billItemId)
+    .sort((a, b) => `${a.lotDate || ""} ${a.createdAt || ""}`.localeCompare(`${b.lotDate || ""} ${b.createdAt || ""}`));
+}
+
+function lotLabel(lot) {
+  if (!lot) return "ไม่พบล็อต";
+  return lot.lotNo || `${lot.date || "-"} @ ${money(lot.unitCost || 0)}`;
+}
+
+function fifoCostEstimate(productId, qty) {
+  let need = Number(qty || 0);
+  if (need <= 0) return 0;
+  const p = productById(productId);
+  const lots = productLots(productId).map(l => ({ ...l }));
+  let cost = 0;
+
+  for (const lot of lots) {
+    if (need <= 0) break;
+    const take = Math.min(need, Number(lot.remainingQty || 0));
+    cost += take * Number(lot.unitCost || 0);
+    need -= take;
+  }
+
+  if (need > 0) cost += need * Number(p?.avgCost || 0);
+  return cost;
+}
+
+function fifoUnitCostEstimate(productId, qty) {
+  const q = Number(qty || 0);
+  return q > 0 ? fifoCostEstimate(productId, q) / q : 0;
+}
+
+function refreshCartItemFifoCost(item) {
+  if (!item) return item;
+  item.unitCost = fifoUnitCostEstimate(item.productId, item.qty);
+  item.fifoCostEstimate = Number(item.qty || 0) * Number(item.unitCost || 0);
+  return item;
+}
+
+function refreshCartFifoCosts() {
+  cart = cart.map(item => refreshCartItemFifoCost(item));
+}
+
+function billItemLotBreakdownText(itemId) {
+  const rows = itemLotUsages(itemId);
+  if (!rows.length) return "";
+  return rows.map(r => `${money(r.qty)} x ${money(r.unitCost)} (${r.lotNo || r.lotDate || "FIFO"})`).join(" • ");
+}
+
+function billItemLotBreakdownHtml(item) {
+  const text = billItemLotBreakdownText(item.id);
+  if (text) return `<small class="fifo-breakdown">FIFO: ${text}</small>`;
+  return `<small class="fifo-muted">FIFO: ใช้ต้นทุน ${money(item.unitCost || 0)} ต่อหน่วย</small>`;
+}
+
+function renderProductLotsHtml(productId) {
+  const p = productById(productId);
+  const lots = productLots(productId, true);
+  const openLots = lots.filter(l => Number(l.remainingQty || 0) > 0.000001);
+  const fifoValue = openLots.reduce((sum, l) => sum + Number(l.remainingQty || 0) * Number(l.unitCost || 0), 0);
+
+  return `
+    <div class="panel fifo-lot-panel">
+      <div class="panel-head">
+        <div>
+          <h3>ล็อตต้นทุน FIFO คงเหลือ</h3>
+          <span class="hint">ระบบจะขายจากล็อตที่รับเข้าก่อนโดยอัตโนมัติ</span>
+        </div>
+        <span class="fifo-lot-chip">มูลค่าคงเหลือ ${money(fifoValue)} บาท</span>
+      </div>
+      <div class="stack-list">
+        ${openLots.map(l => `
+          <div class="list-item fifo-lot-row">
+            <div>
+              <strong>${l.lotNo || "FIFO Lot"}</strong>
+              <small>${l.date || "-"} • ${l.sourceType || "-"} • ${l.note || "-"}</small>
+              <small>รับเข้า ${money(l.originalQty)} ${p?.unit || ""} • ใช้ไป ${money(Number(l.originalQty || 0) - Number(l.remainingQty || 0))} ${p?.unit || ""}</small>
+            </div>
+            <div>
+              <div class="money">${money(l.remainingQty)} ${p?.unit || ""}</div>
+              <small>ทุน ${money(l.unitCost)} / ${p?.unit || ""}</small>
+            </div>
+          </div>
+        `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">📦</div><strong>ยังไม่มีล็อตคงเหลือ</strong><small>ซื้อเข้า/Import สต็อกเริ่มต้นเพื่อสร้างล็อต FIFO</small></div></div>`}
+      </div>
+    </div>
+  `;
+}
+
 function productById(id) {
   return state.products.find(p => p.id === id);
 }
@@ -227,109 +331,257 @@ async function incrementBillNo() {
 async function recomputeInventory() {
   const products = await getAll("products");
   const movements = (await getAll("stock_movements"))
-    .sort((a, b) => `${a.date || ""} ${a.createdAt || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""}`));
-
-  const map = new Map(products.map(p => [p.id, { ...p, stockQty: 0, avgCost: 0 }]));
-
-  for (const m of movements) {
-    const p = map.get(m.productId);
-    if (!p) continue;
-
-    const inQty = Number(m.qtyIn || 0);
-    const outQty = Number(m.qtyOut || 0);
-    const unitCost = Number(m.unitCost || 0);
-
-    // ปรับทุนเฉลี่ยโดยไม่เปลี่ยนจำนวนสต็อก
-    if (m.type === "cost_adjust") {
-      if (unitCost >= 0) p.avgCost = unitCost;
-      continue;
-    }
-
-    if (inQty > 0) {
-      // ถ้าเคยมีสต็อกติดลบจากข้อมูลเก่า ห้ามใช้จำนวนติดลบไปถ่วงทุน
-      const currentQty = Number(p.stockQty || 0);
-      const oldQtyForCost = Math.max(0, currentQty);
-      const oldVal = oldQtyForCost * Number(p.avgCost || 0);
-      const costQty = oldQtyForCost + inQty;
-      p.avgCost = costQty > 0 ? (oldVal + inQty * unitCost) / costQty : 0;
-      p.stockQty = currentQty + inQty;
-    }
-
-    if (outQty > 0) {
-      p.stockQty = Number(p.stockQty || 0) - outQty;
-    }
-  }
-
-  for (const p of map.values()) {
-    await put("products", { ...p, updatedAt: new Date().toISOString() });
-  }
-}
-
-
-async function rebuildCostSnapshots() {
-  const products = await getAll("products");
-  const movements = (await getAll("stock_movements"))
-    .sort((a, b) => `${a.date || ""} ${a.createdAt || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""}`));
+    .sort((a, b) => `${a.date || ""} ${a.createdAt || ""} ${a.id || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""} ${b.id || ""}`));
   const items = await getAll("bill_items");
+  const bills = await getAll("bills");
 
-  const sim = new Map(products.map(p => [p.id, { qty: 0, avgCost: 0 }]));
+  const lotsByProduct = new Map(products.map(p => [p.id, []]));
+  const netQty = new Map(products.map(p => [p.id, 0]));
+  const newLots = [];
+  const newUsages = [];
   const itemsToUpdate = new Map();
+  const saleUsageByBillProduct = new Map();
+
+  const productMap = new Map(products.map(p => [p.id, p]));
+  const billMap = new Map(bills.map(b => [b.id, b]));
+
+  function pushLot({ productId, qty, unitCost, movement, sourceType, note, originLotId = "" }) {
+    const q = Number(qty || 0);
+    if (q <= 0) return null;
+
+    const list = lotsByProduct.get(productId) || [];
+    const lotNo = `${sourceType || movement?.type || "LOT"}-${String(list.length + 1).padStart(4, "0")}`;
+    const lot = {
+      id: uid(),
+      productId,
+      lotNo,
+      sourceType: sourceType || movement?.type || "lot",
+      sourceId: movement?.id || "",
+      refId: movement?.refId || "",
+      originLotId,
+      date: movement?.date || today(),
+      originalQty: q,
+      remainingQty: q,
+      unitCost: Number(unitCost || 0),
+      note: note || movement?.note || "",
+      createdAt: movement?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    list.push(lot);
+    lotsByProduct.set(productId, list);
+    newLots.push(lot);
+    return lot;
+  }
+
+  function allocateFifo(productId, qty, movement) {
+    let need = Number(qty || 0);
+    const allocations = [];
+    const lots = (lotsByProduct.get(productId) || [])
+      .sort((a, b) => `${a.date || ""} ${a.createdAt || ""} ${a.id || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""} ${b.id || ""}`));
+
+    for (const lot of lots) {
+      if (need <= 0) break;
+      const remain = Number(lot.remainingQty || 0);
+      if (remain <= 0) continue;
+
+      const take = Math.min(need, remain);
+      lot.remainingQty = remain - take;
+      lot.updatedAt = new Date().toISOString();
+      allocations.push({
+        lotId: lot.id,
+        lotNo: lot.lotNo,
+        lotDate: lot.date,
+        qty: take,
+        unitCost: Number(lot.unitCost || 0),
+        cost: take * Number(lot.unitCost || 0),
+        originLotId: lot.originLotId || ""
+      });
+      need -= take;
+    }
+
+    if (need > 0.000001) {
+      const p = productMap.get(productId);
+      const fallbackCost = Number(movement?.unitCost || p?.avgCost || 0);
+      allocations.push({
+        lotId: "",
+        lotNo: "SHORTAGE/FALLBACK",
+        lotDate: movement?.date || "",
+        qty: need,
+        unitCost: fallbackCost,
+        cost: need * fallbackCost,
+        originLotId: ""
+      });
+    }
+
+    return allocations;
+  }
+
+  function rememberSaleUsage(billId, productId, usage) {
+    const key = `${billId}|${productId}`;
+    const rows = saleUsageByBillProduct.get(key) || [];
+    rows.push(usage);
+    saleUsageByBillProduct.set(key, rows);
+  }
 
   for (const m of movements) {
-    const p = sim.get(m.productId);
-    if (!p) continue;
+    const productId = m.productId;
+    if (!productMap.has(productId)) continue;
 
     const inQty = Number(m.qtyIn || 0);
     const outQty = Number(m.qtyOut || 0);
+    const currentNet = Number(netQty.get(productId) || 0);
 
     if (m.type === "cost_adjust") {
-      p.avgCost = Number(m.unitCost || 0);
-      await put("stock_movements", { ...m, unitCost: p.avgCost, updatedAt: new Date().toISOString() });
+      const lots = lotsByProduct.get(productId) || [];
+      lots.filter(l => Number(l.remainingQty || 0) > 0).forEach(l => {
+        l.unitCost = Number(m.unitCost || 0);
+        l.note = `${l.note || ""} | ปรับทุน ${m.date || ""}`.trim();
+        l.updatedAt = new Date().toISOString();
+      });
       continue;
     }
 
     if (inQty > 0) {
-      const unitCost = Number(m.unitCost || 0);
-      const oldQtyForCost = Math.max(0, Number(p.qty || 0));
-      const oldVal = oldQtyForCost * Number(p.avgCost || 0);
-      const costQty = oldQtyForCost + inQty;
-      p.avgCost = costQty > 0 ? (oldVal + inQty * unitCost) / costQty : 0;
-      p.qty = Number(p.qty || 0) + inQty;
+      netQty.set(productId, currentNet + inQty);
+
+      if (m.type === "sale_cancel" && m.refId) {
+        const key = `${m.refId}|${productId}`;
+        const originalUsages = saleUsageByBillProduct.get(key) || [];
+        let remainingReturn = inQty;
+
+        for (const u of originalUsages) {
+          if (remainingReturn <= 0) break;
+          const q = Math.min(Number(u.qty || 0), remainingReturn);
+          pushLot({
+            productId,
+            qty: q,
+            unitCost: Number(u.unitCost || 0),
+            movement: m,
+            sourceType: "return",
+            note: `คืนจากยกเลิกบิล ${billMap.get(m.refId)?.billNo || ""}`,
+            originLotId: u.lotId || ""
+          });
+          remainingReturn -= q;
+        }
+
+        if (remainingReturn > 0.000001) {
+          pushLot({
+            productId,
+            qty: remainingReturn,
+            unitCost: Number(m.unitCost || 0),
+            movement: m,
+            sourceType: "return",
+            note: m.note || "คืนจากยกเลิกบิล"
+          });
+        }
+      } else {
+        pushLot({
+          productId,
+          qty: inQty,
+          unitCost: Number(m.unitCost || 0),
+          movement: m,
+          sourceType: m.type || "in",
+          note: m.note || ""
+        });
+      }
+
       continue;
     }
 
     if (outQty > 0) {
-      const saleCost = Number(p.avgCost || 0);
-
-      if (m.type === "sale" || m.type === "adjust_out") {
-        await put("stock_movements", { ...m, unitCost: saleCost, updatedAt: new Date().toISOString() });
-      }
+      netQty.set(productId, currentNet - outQty);
+      const allocations = allocateFifo(productId, outQty, m);
 
       if (m.type === "sale" && m.refType === "bill" && m.refId) {
-        items
-          .filter(item => item.billId === m.refId && item.productId === m.productId)
-          .forEach(item => {
-            const updated = {
-              ...item,
-              unitCost: saleCost,
-              cost: Number(item.qty || 0) * saleCost,
-              grossRevenue: Number(item.grossRevenue ?? (Number(item.qty || 0) * Number(item.unitPrice || 0))),
-              discount: Number(item.discount || 0),
-              profit: Number(item.revenue || 0) - Number(item.qty || 0) * saleCost
+        const saleItems = items.filter(item => item.billId === m.refId && item.productId === productId);
+        let queue = allocations.map(a => ({ ...a }));
+
+        for (const item of saleItems) {
+          let need = Number(item.qty || 0);
+          const itemUsages = [];
+
+          while (need > 0.000001 && queue.length) {
+            const first = queue[0];
+            const take = Math.min(need, Number(first.qty || 0));
+            const usage = {
+              id: uid(),
+              billId: item.billId,
+              billItemId: item.id,
+              productId: item.productId,
+              lotId: first.lotId,
+              lotNo: first.lotNo,
+              lotDate: first.lotDate,
+              qty: take,
+              unitCost: Number(first.unitCost || 0),
+              cost: take * Number(first.unitCost || 0),
+              createdAt: new Date().toISOString()
             };
-            itemsToUpdate.set(item.id, updated);
+            itemUsages.push(usage);
+            newUsages.push(usage);
+            rememberSaleUsage(item.billId, item.productId, usage);
+
+            first.qty = Number(first.qty || 0) - take;
+            need -= take;
+            if (first.qty <= 0.000001) queue.shift();
+          }
+
+          const itemCost = itemUsages.reduce((sum, u) => sum + Number(u.cost || 0), 0);
+          const unitCost = Number(item.qty || 0) > 0 ? itemCost / Number(item.qty || 0) : Number(item.unitCost || 0);
+          const revenue = Number(item.revenue || 0);
+          itemsToUpdate.set(item.id, {
+            ...item,
+            unitCost,
+            cost: itemCost,
+            fifoCostMode: true,
+            fifoUpdatedAt: new Date().toISOString(),
+            profit: revenue - itemCost
           });
+        }
       }
 
-      p.qty = Number(p.qty || 0) - outQty;
+      // บันทึก unitCost ของ stock movement เป็น weighted cost ของการตัด FIFO
+      const moveCost = allocations.reduce((sum, a) => sum + Number(a.cost || 0), 0);
+      const moveUnitCost = outQty > 0 ? moveCost / outQty : Number(m.unitCost || 0);
+      if (m.type === "sale" || m.type === "adjust_out") {
+        await put("stock_movements", { ...m, unitCost: moveUnitCost, updatedAt: new Date().toISOString() });
+      }
     }
   }
 
-  for (const item of itemsToUpdate.values()) {
-    await put("bill_items", item);
+  await clearStore("stock_lots");
+  await clearStore("bill_item_lots");
+
+  for (const lot of newLots) await put("stock_lots", lot);
+  for (const usage of newUsages) await put("bill_item_lots", usage);
+  for (const item of itemsToUpdate.values()) await put("bill_items", item);
+
+  const lotSummary = new Map();
+  for (const lot of newLots) {
+    if (Number(lot.remainingQty || 0) <= 0) continue;
+    const cur = lotSummary.get(lot.productId) || { qty: 0, value: 0 };
+    cur.qty += Number(lot.remainingQty || 0);
+    cur.value += Number(lot.remainingQty || 0) * Number(lot.unitCost || 0);
+    lotSummary.set(lot.productId, cur);
+  }
+
+  for (const p of products) {
+    const summary = lotSummary.get(p.id) || { qty: 0, value: 0 };
+    const movementQty = Number(netQty.get(p.id) || 0);
+    const avgCost = summary.qty > 0 ? summary.value / summary.qty : Number(p.avgCost || 0);
+    await put("products", {
+      ...p,
+      stockQty: movementQty,
+      avgCost,
+      costMethod: "FIFO",
+      updatedAt: new Date().toISOString()
+    });
   }
 
   await recalcBills();
+}
+
+async function rebuildCostSnapshots() {
   await recomputeInventory();
 }
 
@@ -445,6 +697,7 @@ function cartTotals() {
   const maxBillDiscount = Math.max(0, gross - itemDiscountTotal);
   const billDiscount = Math.min(Math.max(Number($("billDiscount")?.value || 0), 0), maxBillDiscount);
   const subtotal = Math.max(0, gross - itemDiscountTotal - billDiscount);
+  refreshCartFifoCosts();
   const cost = cart.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.unitCost || 0), 0);
 
   return {
@@ -476,7 +729,7 @@ function renderSale() {
   $("quickProducts").innerHTML = products.map(p => `
     <button class="product-tile" onclick="addProductToCart('${p.id}')" type="button">
       <strong>${p.name}</strong>
-      <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน ${money(p.avgCost)}</small><span class="product-category-line">หมวดหมู่: ${productCategoryLabel(p)}</span>
+      <small>เหลือ ${money(p.stockQty)} ${p.unit || ""} • ทุน FIFO ถัดไป ${money(fifoUnitCostEstimate(p.id, 1))}</small><span class="product-category-line">หมวดหมู่: ${productCategoryLabel(p)}</span>
       <div class="tile-price">
         <span class="${isWholesaleCustomer($('billCustomer')?.value || '') ? 'wholesale-price' : 'retail-price'}">${isWholesaleCustomer($('billCustomer')?.value || '') ? 'ส่ง' : 'ปลีก'} ${money(salePriceForProduct(p))}</span>
         <span>${Number(p.stockQty || 0) <= Number(p.minStock || 0) && Number(p.minStock || 0) > 0 ? "ใกล้หมด" : "พร้อมขาย"}</span>
@@ -515,8 +768,8 @@ window.addProductToCart = (id) => {
   if (!p || p.isArchived) return;
 
   const exist = cart.find(i => i.productId === id);
-  if (exist) exist.qty += 1;
-  else cart.push({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: salePriceForProduct(p), unitCost: Number(p.avgCost || 0), discount: 0 });
+  if (exist) { exist.qty += 1; refreshCartItemFifoCost(exist); }
+  else cart.push(refreshCartItemFifoCost({ productId: id, name: p.name, unit: p.unit || "", qty: 1, unitPrice: salePriceForProduct(p), unitCost: Number(p.avgCost || 0), discount: 0 }));
 
   renderSale();
   showToast(`เพิ่ม ${p.name} ลงบิล`);
@@ -526,6 +779,7 @@ window.changeCartQty = (id, delta) => {
   const item = cart.find(i => i.productId === id);
   if (!item) return;
   item.qty = Math.max(0.01, Number(item.qty || 0) + delta);
+  refreshCartItemFifoCost(item);
   renderSale();
 };
 
@@ -558,6 +812,7 @@ async function saveBill() {
   const billId = uid();
   const billNo = nextBillNo();
   const date = $("billDate").value || today();
+  refreshCartFifoCosts();
   const totals = cartTotals();
   const subtotal = totals.subtotal;
   const costTotal = totals.cost;
@@ -806,7 +1061,7 @@ function renderProductDetail() {
 
       <div class="product-detail-kpis">
         <div><span>สต็อกคงเหลือ</span><strong>${money(p.stockQty)} ${p.unit || ""}</strong></div>
-        <div><span>ทุนเฉลี่ย</span><strong>${money(p.avgCost)}</strong></div>
+        <div><span>ทุน FIFO เฉลี่ยคงเหลือ</span><strong>${money(p.avgCost)}</strong></div>
         <div><span>ราคาปลีก</span><strong>${money(p.price)}</strong></div><div><span>ราคาส่ง</span><strong class="wholesale-price">${money(productWholesalePrice(p))}</strong></div>
         <div><span>สถานะ</span><strong class="${lowStock ? "low" : "ok-stock"}">${lowStock ? "ใกล้หมด" : "ปกติ"}</strong></div>
         <div><span>จำนวนขาย</span><strong>${money(soldQty)} ${p.unit || ""}</strong></div>
@@ -815,6 +1070,8 @@ function renderProductDetail() {
         <div><span>จำนวนบิล</span><strong>${activeItems.length.toLocaleString("th-TH")}</strong></div>
       </div>
     </div>
+
+    ${renderProductLotsHtml(p.id)}
 
     <div class="product-history-grid">
       <div class="panel">
@@ -1419,12 +1676,12 @@ window.deletePurchase = async (id) => {
   const m = state.stock_movements.find(x => x.id === id && x.type === "purchase");
   if (!m) return;
 
-  if (!confirm(`ลบรายการซื้อเข้า?\n\nสินค้า: ${productById(m.productId)?.name || "-"}\nวันที่: ${m.date}\nจำนวน: ${money(m.qtyIn)}\n\nระบบจะคำนวณสต็อกและทุนเฉลี่ยใหม่`)) return;
+  if (!confirm(`ลบรายการซื้อเข้า?\n\nสินค้า: ${productById(m.productId)?.name || "-"}\nวันที่: ${m.date}\nจำนวน: ${money(m.qtyIn)}\n\nระบบจะคำนวณสต็อกและ FIFO ใหม่`)) return;
 
   await del("stock_movements", id);
   await rebuildCostSnapshots();
   await loadState();
-  showToast("ลบรายการซื้อเข้าและคำนวณทุนใหม่แล้ว");
+  showToast("ลบรายการซื้อเข้าและคำนวณ FIFO ใหม่แล้ว");
 };
 
 
@@ -2348,7 +2605,7 @@ function renderBillDetail() {
           <div class="bill-item-row">
             <div>
               <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
-              <small>จำนวน ${money(item.qty)} • ราคาขาย ${money(item.unitPrice)} • ต้นทุน ${money(item.unitCost)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>
+              <small>จำนวน ${money(item.qty)} • ราคาขาย ${money(item.unitPrice)} • ต้นทุนเฉลี่ยจาก FIFO ${money(item.unitCost)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>${billItemLotBreakdownHtml(item)}
             </div>
             <div class="bill-item-price">
               <strong>${money(item.revenue)}</strong>
@@ -2559,7 +2816,7 @@ $("purchaseForm").addEventListener("submit", async (e) => {
   resetPurchaseForm();
   await rebuildCostSnapshots();
   await loadState();
-  showToast(editId ? "อัปเดตซื้อเข้าและคำนวณทุนใหม่แล้ว" : "บันทึกซื้อเข้าแล้ว");
+  showToast(editId ? "อัปเดตซื้อเข้าและคำนวณ FIFO ใหม่แล้ว" : "บันทึกซื้อเข้าแล้ว");
 });
 
 $("cancelPurchaseEditBtn").addEventListener("click", resetPurchaseForm);
@@ -2832,7 +3089,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.2.9", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.0", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3090,12 +3347,12 @@ if ($("resetSettingsBtn")) $("resetSettingsBtn").addEventListener("click", rende
 
 
 async function repairAllCosts() {
-  if (!confirm("ตรวจ/ซ่อมทุนและกำไรทั้งหมด?\n\nระบบจะคำนวณต้นทุนขายจากประวัติซื้อเข้า/ปรับทุนใหม่ และอัปเดตกำไรของบิลทั้งหมด")) return;
-  await rebuildCostSnapshots();
+  if (!confirm("ตรวจ/ซ่อม FIFO ทั้งระบบ?\\n\\nระบบจะสร้างล็อตต้นทุนใหม่จากประวัติซื้อเข้า/สต็อกเริ่มต้น และคำนวณต้นทุนขาย/กำไรของบิลทั้งหมดใหม่")) return;
+  await recomputeInventory();
   await loadState();
-  showToast("ตรวจ/ซ่อมทุนเรียบร้อยแล้ว");
+  showToast("ตรวจ/ซ่อม FIFO เรียบร้อยแล้ว");
   if ($("testResults")) {
-    showTestResults([{ status: "info", title: "ตรวจ/ซ่อมทุนเรียบร้อย", detail: "ระบบคำนวณต้นทุนขาย กำไรบิล สต็อก และทุนเฉลี่ยใหม่แล้ว" }, ...runSystemChecks()]);
+    showTestResults([{ status: "info", title: "ตรวจ/ซ่อม FIFO เรียบร้อย", detail: "ระบบสร้างล็อตต้นทุน คำนวณต้นทุนขาย กำไรบิล สต็อก และทุน FIFO คงเหลือใหม่แล้ว" }, ...runSystemChecks()]);
   }
 }
 
@@ -3473,6 +3730,7 @@ $("copyLowStockBtn")?.addEventListener("click", copyLowStockList);
 $("printLowStockBtn")?.addEventListener("click", printLowStockList);
 
 $("repairCostsBtn")?.addEventListener("click", repairAllCosts);
+$("repairFifoBtn")?.addEventListener("click", repairAllCosts);
 
 ["billSearchText", "billSearchItem", "billSearchFrom", "billSearchTo", "billSearchCustomer", "billSearchStatus", "billSearchPaymentType"].forEach(id => {
   if ($(id)) $(id).addEventListener("input", renderBillSearch);
@@ -3533,6 +3791,8 @@ function betaCounts() {
     billsActive: state.bills.filter(b => b.status !== "cancelled").length,
     payments: state.payments.length,
     movements: state.stock_movements.length,
+    stockLots: (state.stock_lots || []).length,
+    billItemLots: (state.bill_item_lots || []).length,
     lowStock: lowStockProducts ? lowStockProducts().length : 0
   };
 }
@@ -3696,6 +3956,8 @@ function diagnosticText() {
     `Active bills: ${d.activeBills}`,
     `Payments: ${d.payments}`,
     `Stock movements: ${d.movements}`,
+    `Stock lots: ${d.stockLots}`,
+    `Bill item lots: ${d.billItemLots}`,
     `Last Backup: ${d.lastBackup}`,
     `Generated: ${d.generatedAt}`,
     `User Agent: ${d.userAgent}`

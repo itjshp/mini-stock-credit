@@ -1927,3 +1927,41 @@ textarea{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.0: FIFO Cost Lots */
+.fifo-lot-panel{
+  border-top:5px solid #7c3aed;
+}
+.fifo-lot-row{
+  border-left:5px solid #7c3aed;
+}
+.fifo-lot-row.empty-lot{
+  border-left-color:#94a3b8;
+  opacity:.72;
+}
+.fifo-lot-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#f5f3ff;
+  color:#6d28d9;
+  font-size:12px;
+  font-weight:1000;
+}
+.fifo-breakdown{
+  display:block;
+  margin-top:5px;
+  color:#6d28d9;
+  font-weight:900;
+}
+.fifo-muted{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-weight:850;
+}
+.fifo-repair-card{
+  border-color:#ddd6fe;
+  background:linear-gradient(180deg,#fff,#f5f3ff)!important;
+}

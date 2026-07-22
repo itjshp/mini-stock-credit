@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.8 PIN Lock and Backup Restore Safety",
+  "description": "Khaikhong v2.3.9 fixes PIN Lock false lock and emergency reset",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

@@ -4084,7 +4084,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.8", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.9", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5150,15 +5150,42 @@ function pinSettings() {
   return state.settings.find(s => s.id === "pin") || { id: "pin", enabled: false, autoLock: "on", pinHash: "" };
 }
 
+function isValidPinHash(hash) {
+  return typeof hash === "string" && /^[a-f0-9]{64}$/i.test(hash);
+}
+
+function hasRealPinConfigured() {
+  const p = pinSettings();
+  return p.enabled === true && isValidPinHash(p.pinHash);
+}
+
 async function hashText(text) {
-  const data = new TextEncoder().encode(text);
+  const data = new TextEncoder().encode(String(text || ""));
   const digest = await crypto.subtle.digest("SHA-256", data);
   return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
 function isPinEnabled() {
+  return hasRealPinConfigured();
+}
+
+async function repairInvalidPinConfig() {
   const p = pinSettings();
-  return !!(p.enabled && p.pinHash);
+  if (p.id === "pin" && (p.enabled === true || p.enabled === "true") && !isValidPinHash(p.pinHash)) {
+    await put("settings", {
+      ...p,
+      enabled: false,
+      autoLock: p.autoLock || "on",
+      pinHash: "",
+      repairedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    await loadState();
+    sessionStorage.setItem("khaikhongPinUnlocked", "1");
+    hidePinLock();
+    return true;
+  }
+  return false;
 }
 
 function renderPinSettings() {
@@ -5173,7 +5200,10 @@ function renderPinSettings() {
 }
 
 function showPinLock() {
-  if (!isPinEnabled()) return;
+  if (!isPinEnabled()) {
+    hidePinLock();
+    return;
+  }
   $("pinLockOverlay")?.classList.remove("hidden-field");
   setTimeout(() => $("pinUnlockInput")?.focus(), 80);
 }
@@ -5201,6 +5231,7 @@ async function savePinSettings() {
     updatedAt: new Date().toISOString()
   });
 
+  sessionStorage.removeItem("khaikhongPinUnlocked");
   if ($("pinNew")) $("pinNew").value = "";
   if ($("pinConfirm")) $("pinConfirm").value = "";
   await loadState();
@@ -5210,31 +5241,32 @@ async function savePinSettings() {
 
 async function disablePinSettings() {
   const p = pinSettings();
-  if (!isPinEnabled()) return alert("ยังไม่ได้เปิดใช้ PIN");
+  if (!isPinEnabled()) {
+    await forceResetPin("ยังไม่ได้เปิดใช้ PIN");
+    return;
+  }
+
   const typed = prompt("ปิดใช้ PIN Lock?\n\nกรุณาใส่ PIN ปัจจุบันเพื่อยืนยัน:");
   if (typed === null) return;
   if (await hashText(typed) !== p.pinHash) return alert("PIN ไม่ถูกต้อง");
 
-  await put("settings", {
-    ...p,
-    enabled: false,
-    disabledAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
-
-  await loadState();
-  renderPinSettings();
-  hidePinLock();
-  showToast("ปิดใช้ PIN Lock แล้ว");
+  await forceResetPin("ปิดใช้ PIN Lock แล้ว");
 }
 
 async function unlockWithPin() {
   const p = pinSettings();
+
+  if (!isPinEnabled()) {
+    hidePinLock();
+    return;
+  }
+
   const typed = ($("pinUnlockInput")?.value || "").trim();
   if (!typed) {
     if ($("pinUnlockError")) $("pinUnlockError").textContent = "กรุณาใส่ PIN";
     return;
   }
+
   if (await hashText(typed) === p.pinHash) {
     hidePinLock();
   } else {
@@ -5242,38 +5274,58 @@ async function unlockWithPin() {
   }
 }
 
+async function forceResetPin(message = "Reset PIN แล้ว") {
+  try {
+    const p = pinSettings();
+    await put("settings", {
+      ...p,
+      id: "pin",
+      enabled: false,
+      autoLock: p.autoLock || "on",
+      pinHash: "",
+      emergencyResetAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    await loadState();
+  } catch (err) {
+    console.error("forceResetPin failed", err);
+  }
+
+  sessionStorage.setItem("khaikhongPinUnlocked", "1");
+  hidePinLock();
+  renderPinSettings();
+  showToast(message);
+}
+
 async function emergencyResetPin() {
   if (!confirm("ลืม PIN?\n\nระบบจะ Reset เฉพาะ PIN บนเครื่องนี้ ข้อมูลขาย/สินค้า/ลูกค้ายังอยู่เหมือนเดิม\n\nยืนยัน Reset PIN?")) return;
   if (!confirm("ยืนยันอีกครั้ง: ปิด PIN Lock และกลับเข้าแอป?")) return;
-
-  const p = pinSettings();
-  await put("settings", {
-    ...p,
-    enabled: false,
-    emergencyResetAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
-
-  await loadState();
-  hidePinLock();
-  renderPinSettings();
-  showToast("Reset PIN แล้ว");
+  await forceResetPin("Reset PIN แล้ว");
 }
 
-function maybeAutoLockOnStart() {
+async function maybeAutoLockOnStart() {
+  const url = new URL(location.href);
+  if (url.searchParams.get("resetPin") === "1") {
+    await forceResetPin("Reset PIN ผ่านลิงก์ฉุกเฉินแล้ว");
+    url.searchParams.delete("resetPin");
+    history.replaceState({}, "", url.toString());
+    return;
+  }
+
+  const repaired = await repairInvalidPinConfig();
+  if (repaired) {
+    showToast("ตรวจพบค่า PIN ผิดรูปแบบ และปิด PIN ให้แล้ว");
+    return;
+  }
+
   const p = pinSettings();
   if (isPinEnabled() && p.autoLock !== "off" && sessionStorage.getItem("khaikhongPinUnlocked") !== "1") {
     showPinLock();
+  } else {
+    hidePinLock();
   }
 }
 
-
-$("savePinBtn")?.addEventListener("click", savePinSettings);
-$("disablePinBtn")?.addEventListener("click", disablePinSettings);
-$("lockNowBtn")?.addEventListener("click", showPinLock);
-$("unlockPinBtn")?.addEventListener("click", unlockWithPin);
-$("pinUnlockInput")?.addEventListener("keydown", e => { if (e.key === "Enter") unlockWithPin(); });
-$("resetPinEmergencyBtn")?.addEventListener("click", emergencyResetPin);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

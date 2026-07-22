@@ -2488,3 +2488,12 @@ textarea{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.9: PIN Safety Fix */
+.pin-rescue-note{
+  display:block;
+  color:#0f766e;
+  font-weight:950;
+  margin-top:8px;
+}

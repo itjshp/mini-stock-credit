@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.14 • Clean Beta UX • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.15 • Local Users • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -628,54 +628,62 @@
 <section id="security" class="page">
   <div class="page-head">
     <div>
-      <h2>ความปลอดภัย / Privacy Mode</h2>
-      <p>ใช้โหมดซ่อนยอดเงินเมื่อต้องการเปิดหน้าจอให้ผู้อื่นดู โดยไม่แสดงยอดขาย กำไร และลูกหนี้ชัดเจน</p>
+      <h2>ผู้ใช้งาน / สิทธิ์การเข้าถึง</h2>
+      <p>ตั้งโหมดผู้ใช้งานในเครื่องนี้ เพื่อให้แต่ละบทบาทเห็นเมนูและข้อมูลเท่าที่จำเป็น</p>
     </div>
     <div class="form-actions">
-      <button id="privacyModeBtn" class="primary-btn" type="button">เปิดโหมดซ่อนยอดเงิน</button><button id="lockNowBtn" class="soft-btn" type="button">ปิดการล็อกแอป</button>
-      <button class="soft-btn" data-open-tab="backup" type="button">ไป Backup</button>
+      <button id="resetRoleBtn" class="soft-btn" type="button">กลับเป็นเจ้าของร้าน</button>
+      <button class="soft-btn" data-open-tab="backup" type="button">Backup</button>
     </div>
   </div>
 
-  <div class="panel security-panel">
+  <div class="panel user-role-panel">
     <div class="panel-head">
       <div>
-        <h3>สถานะ PIN Lock</h3>
-        <span id="pinStatusText" class="hint">กำลังตรวจสอบ...</span>
+        <h3>ผู้ใช้งานปัจจุบัน</h3>
+        <span id="currentRoleText" class="hint">กำลังตรวจสอบ...</span>
       </div>
-      <span id="pinStatusBadge" class="pin-badge">ยังไม่เปิดใช้</span>
+      <span id="currentRoleBadge" class="role-badge">เจ้าของร้าน</span>
     </div>
 
-    <div class="security-notice">
-      โหมดซ่อนยอดเงินช่วยเบลอยอดขาย กำไร ต้นทุน และลูกหนี้บนหน้าจอ ข้อมูลยังอยู่ในเครื่องนี้เหมือนเดิม ควร Backup เป็นประจำ
+    <div class="role-notice">
+      ระบบนี้เป็นสิทธิ์แบบ Local-first สำหรับช่วง Beta ยังไม่ใช่ Login Cloud จริง เหมาะสำหรับแยกหน้าจอและลดการเห็นข้อมูลสำคัญ เช่น กำไร ต้นทุน รายงาน และระบบตั้งค่า
     </div>
 
-    <div class="security-grid">
-      <label>ตั้ง PIN ใหม่ 4-6 หลัก<input id="pinNew" type="password" inputmode="numeric" maxlength="6" placeholder="เช่น 123456"></label>
-      <label>ยืนยัน PIN<input id="pinConfirm" type="password" inputmode="numeric" maxlength="6" placeholder="ใส่ซ้ำอีกครั้ง"></label>
-      <label>ล็อกอัตโนมัติเมื่อเปิดแอป
-        <select id="pinAutoLock">
-          <option value="on">เปิด</option>
-          <option value="off">ปิด</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="form-actions">
-      <button id="savePinBtn" class="primary-btn" type="button">บันทึก / เปิดใช้ PIN</button>
-      <button id="disablePinBtn" class="danger-btn" type="button">ปิดใช้ PIN</button>
+    <div class="role-grid">
+      <button class="role-card" data-role="owner" type="button">
+        <span>👑</span>
+        <strong>เจ้าของร้าน</strong>
+        <small>เห็นทุกเมนู ยอดขาย กำไร ต้นทุน Backup ตั้งค่า และปิดรอบ</small>
+      </button>
+      <button class="role-card" data-role="manager" type="button">
+        <span>🧑‍💼</span>
+        <strong>ผู้จัดการ</strong>
+        <small>ขาย รับเงิน ลูกค้า รายงานพื้นฐาน สต็อก และตรวจนับ</small>
+      </button>
+      <button class="role-card" data-role="cashier" type="button">
+        <span>🧾</span>
+        <strong>แคชเชียร์</strong>
+        <small>ขายของ รับเงิน ค้นหาบิล และดูข้อมูลลูกค้าแบบจำกัด</small>
+      </button>
+      <button class="role-card" data-role="stock" type="button">
+        <span>📦</span>
+        <strong>สต็อก</strong>
+        <small>ซื้อเข้า สินค้าใกล้หมด ตรวจนับ ปรับสต็อก และดูสินค้า</small>
+      </button>
     </div>
   </div>
 
   <div class="panel">
     <div class="panel-head">
-      <h3>คำแนะนำ</h3>
+      <h3>สิทธิ์ของแต่ละบทบาท</h3>
+      <span class="hint">ใช้เพื่อทดลองกับร้านจริงก่อนทำระบบ Login/Cloud ในอนาคต</span>
     </div>
-    <div class="close-rules-grid">
-      <div>✅ ควรตั้ง PIN ก่อนให้ร้านจริงทดลอง</div>
-      <div>✅ อย่าลืม PIN เพราะไม่มี Server กลางสำหรับกู้คืน</div>
-      <div>✅ ถ้าลืม PIN ต้อง Reset PIN เฉพาะเครื่องนี้</div>
-      <div>✅ ควร Backup ข้อมูลก่อนเปิดใช้กับร้านจริง</div>
+    <div class="role-permission-grid">
+      <div><strong>เจ้าของร้าน</strong><small>ทุกเมนู / ทุกข้อมูล / Backup / ปิดรอบ / ตั้งค่า</small></div>
+      <div><strong>ผู้จัดการ</strong><small>ขาย / รับเงิน / ลูกค้า / สต็อก / รายงานบางส่วน</small></div>
+      <div><strong>แคชเชียร์</strong><small>ขาย / รับเงิน / ค้นหาบิล / ไม่เห็นกำไรและต้นทุน</small></div>
+      <div><strong>สต็อก</strong><small>สินค้า / ซื้อเข้า / ตรวจนับ / ปรับสต็อก / ไม่เห็นยอดขายและกำไร</small></div>
     </div>
   </div>
 </section>

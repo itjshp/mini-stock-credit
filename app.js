@@ -3632,6 +3632,7 @@ function renderBackupStatus() {
 }
 
 function switchTab(id) {
+  if (typeof enforceRoleBeforeSwitch === "function" && !enforceRoleBeforeSwitch(id)) return;
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === id));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === id));
   if (id === "closePeriod") {
@@ -4085,7 +4086,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.14", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.15", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5066,7 +5067,7 @@ const moreMenuItems = [
 
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
-  { group: "system", icon: "🔐", title: "ความปลอดภัย", hint: "ซ่อนยอดเงิน / ความเป็นส่วนตัว", tab: "security", keywords: "privacy ซ่อนยอดเงิน ความปลอดภัย รหัสผ่าน" },
+  { group: "system", icon: "👥", title: "ผู้ใช้งาน / สิทธิ์", hint: "บทบาท / จำกัดเมนู / ซ่อนกำไร", tab: "security", keywords: "user role permission สิทธิ์ ผู้ใช้งาน แคชเชียร์" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
   { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
   { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
@@ -5355,6 +5356,130 @@ async function maybeAutoLockOnStart() {
 
   await silentDisablePinForBeta();
 }
+
+
+/* v2.3.15: Local Users & Permissions */
+const ROLE_CONFIG = {
+  owner: {
+    name: "เจ้าของร้าน",
+    badge: "เจ้าของร้าน",
+    canSeeMoney: true,
+    canSeeCost: true,
+    allowedTabs: "all"
+  },
+  manager: {
+    name: "ผู้จัดการ",
+    badge: "ผู้จัดการ",
+    canSeeMoney: true,
+    canSeeCost: false,
+    allowedTabs: ["sale","products","customers","summary","more","payments","ledger","debtAging","billSearch","reports","purchase","lowStock","stockCount","adjust","guide","about"]
+  },
+  cashier: {
+    name: "แคชเชียร์",
+    badge: "แคชเชียร์",
+    canSeeMoney: true,
+    canSeeCost: false,
+    allowedTabs: ["sale","customers","summary","more","payments","ledger","debtAging","billSearch","guide","about"]
+  },
+  stock: {
+    name: "สต็อก",
+    badge: "สต็อก",
+    canSeeMoney: false,
+    canSeeCost: true,
+    allowedTabs: ["products","summary","more","purchase","lowStock","stockCount","adjust","billSearch","guide","about"]
+  }
+};
+
+function currentRole() {
+  const role = localStorage.getItem("khaikhongCurrentRole") || "owner";
+  return ROLE_CONFIG[role] ? role : "owner";
+}
+
+function roleConfig(role = currentRole()) {
+  return ROLE_CONFIG[role] || ROLE_CONFIG.owner;
+}
+
+function canAccessTab(tabId) {
+  const cfg = roleConfig();
+  return cfg.allowedTabs === "all" || cfg.allowedTabs.includes(tabId);
+}
+
+function setCurrentRole(role) {
+  if (!ROLE_CONFIG[role]) return;
+  localStorage.setItem("khaikhongCurrentRole", role);
+  applyRolePermissions();
+  renderRoleSettings();
+  showToast(`เปลี่ยนเป็นบทบาท ${ROLE_CONFIG[role].name} แล้ว`);
+}
+
+function resetRoleOwner() {
+  setCurrentRole("owner");
+}
+
+function maskSensitiveForRole() {
+  const cfg = roleConfig();
+  document.body.classList.toggle("role-hide-cost", !cfg.canSeeCost);
+  document.body.classList.toggle("role-hide-money", !cfg.canSeeMoney);
+}
+
+function applyRolePermissions() {
+  const role = currentRole();
+  const cfg = roleConfig(role);
+
+  document.body.dataset.role = role;
+  maskSensitiveForRole();
+
+  document.querySelectorAll("[data-tab]").forEach(btn => {
+    const tabId = btn.dataset.tab;
+    if (!tabId) return;
+    btn.classList.toggle("role-hidden", !canAccessTab(tabId));
+  });
+
+  document.querySelectorAll("[data-open-tab]").forEach(btn => {
+    const tabId = btn.dataset.openTab;
+    if (!tabId) return;
+    btn.classList.toggle("role-hidden", !canAccessTab(tabId));
+  });
+
+  if ($("currentRoleText")) $("currentRoleText").textContent = `กำลังใช้งานในบทบาท: ${cfg.name}`;
+  if ($("currentRoleBadge")) $("currentRoleBadge").textContent = cfg.badge;
+
+  // ถ้าหน้าปัจจุบันไม่อนุญาต ให้เด้งไปหน้าที่เหมาะสม
+  const activePage = document.querySelector(".page.active");
+  if (activePage && !canAccessTab(activePage.id)) {
+    if (canAccessTab("sale")) switchTab("sale");
+    else if (canAccessTab("products")) switchTab("products");
+    else switchTab("summary");
+  }
+}
+
+function renderRoleSettings() {
+  if (!$("currentRoleText")) return;
+  const role = currentRole();
+  const cfg = roleConfig(role);
+  $("currentRoleText").textContent = `กำลังใช้งานในบทบาท: ${cfg.name}`;
+  $("currentRoleBadge").textContent = cfg.badge;
+  document.querySelectorAll(".role-card").forEach(card => {
+    card.classList.toggle("active", card.dataset.role === role);
+  });
+}
+
+function enforceRoleBeforeSwitch(tabId) {
+  if (canAccessTab(tabId)) return true;
+  alert(`บทบาท ${roleConfig().name} ไม่มีสิทธิ์เข้าเมนูนี้\n\nถ้าต้องการใช้งาน ให้เปลี่ยนบทบาทเป็นเจ้าของร้านหรือผู้จัดการ`);
+  return false;
+}
+
+// ปิด Privacy Mode เดิม ไม่ให้ทำงานต่อ
+function isPrivacyMode() { return false; }
+function applyPrivacyMode() { document.body.classList.remove("privacy-mode"); }
+function togglePrivacyMode() { alert("โหมดซ่อนยอดเงินถูกแทนที่ด้วยระบบผู้ใช้งาน/สิทธิ์แล้ว"); }
+
+
+document.querySelectorAll(".role-card").forEach(card => {
+  card.addEventListener("click", () => setCurrentRole(card.dataset.role || "owner"));
+});
+$("resetRoleBtn")?.addEventListener("click", resetRoleOwner);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

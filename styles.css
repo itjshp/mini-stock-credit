@@ -2534,3 +2534,141 @@ textarea{
   background:#ffedd5!important;
   color:#c2410c!important;
 }
+
+
+/* v2.3.15: Local Users & Permissions */
+.user-role-panel{
+  border-top:5px solid #0f766e;
+}
+.role-notice{
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1d4ed8;
+  border-radius:18px;
+  padding:14px;
+  font-weight:900;
+  line-height:1.55;
+  margin-bottom:14px;
+}
+.role-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+.role-card{
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:24px;
+  background:#fff;
+  padding:18px;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 12px 26px rgba(15,23,42,.05);
+}
+.role-card.active{
+  outline:4px solid rgba(0,139,122,.18);
+  border-color:#008b7a;
+}
+.role-card span{
+  width:52px;
+  height:52px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  background:#e8f7f3;
+  font-size:28px;
+  margin-bottom:12px;
+}
+.role-card strong{
+  display:block;
+  font-size:22px;
+  margin-bottom:6px;
+}
+.role-card small{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+  line-height:1.5;
+}
+.role-badge{
+  display:inline-flex;
+  border-radius:999px;
+  padding:6px 12px;
+  background:#e8f7f3;
+  color:#0f766e;
+  font-weight:1000;
+}
+.role-permission-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+.role-permission-grid div{
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:18px;
+  background:#fff;
+  padding:14px;
+}
+.role-permission-grid strong{
+  display:block;
+  margin-bottom:5px;
+}
+.role-permission-grid small{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+}
+.role-hidden{
+  display:none!important;
+}
+
+/* ซ่อนเฉพาะต้นทุน/กำไรสำหรับบทบาทที่ไม่ควรเห็น */
+.role-hide-cost .product-profit,
+.role-hide-cost [id*="Profit"],
+.role-hide-cost #cartProfit,
+.role-hide-cost .fifo-breakdown,
+.role-hide-cost .fifo-lot-panel,
+.role-hide-cost .stock-count-summary,
+.role-hide-cost .close-period-summary div:nth-child(3),
+.role-hide-cost .close-period-summary div:nth-child(4),
+.role-hide-cost .bill-search-summary div:nth-child(3),
+.role-hide-cost .bill-search-summary div:nth-child(4){
+  filter: blur(7px);
+  user-select:none;
+}
+.role-hide-cost .product-profit::after,
+.role-hide-cost #cartProfit::after{
+  content:"";
+}
+
+.role-hide-money .money,
+.role-hide-money .dashboard-card strong,
+.role-hide-money .summary-card strong{
+  filter: blur(7px);
+  user-select:none;
+}
+
+body[data-role="cashier"]::before,
+body[data-role="stock"]::before,
+body[data-role="manager"]::before{
+  content:"โหมด: " attr(data-role);
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  z-index:9999;
+  background:#101827;
+  color:#fff;
+  padding:8px 12px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:12px;
+}
+
+@media(max-width:980px){
+  .role-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .role-grid,
+  .role-permission-grid{
+    grid-template-columns:1fr;
+  }
+}

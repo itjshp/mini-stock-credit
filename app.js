@@ -3645,7 +3645,7 @@ function switchTab(id) {
     try { resetMoreMenu(); } catch (err) { console.error("resetMoreMenu failed", err); }
   }
   if (id === "security") {
-    try { renderPinSettings(); } catch (err) { console.error("renderPinSettings failed", err); }
+    try { renderPinSettings(); renderRoleSettings(); applyRolePermissions(); } catch (err) { console.error("renderRoleSettings failed", err); }
   }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -4086,7 +4086,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.15", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.16", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5083,7 +5083,9 @@ function moreCategoryTitle(category) {
 }
 
 function renderMoreMenuCard(item) {
-  const actionAttr = item.action ? `data-more-action="${item.action}"` : `data-open-tab="${item.tab}"`;
+  const actionAttr = item.action
+    ? `data-more-action="${item.action}" onclick="${item.action === 'repairFifo' ? 'repairAllCosts()' : ''}"`
+    : `data-open-tab="${item.tab}" onclick="switchTab('${item.tab}')"`;
   return `
     <button class="more-card" ${actionAttr} type="button">
       <span>${item.icon}</span>
@@ -5480,6 +5482,37 @@ document.querySelectorAll(".role-card").forEach(card => {
   card.addEventListener("click", () => setCurrentRole(card.dataset.role || "owner"));
 });
 $("resetRoleBtn")?.addEventListener("click", resetRoleOwner);
+
+
+/* v2.3.16: More Menu Dynamic Click Fix
+   เมนูย่อยในหน้าเพิ่มเติมถูกสร้างด้วย JS ภายหลัง จึงต้องใช้ event delegation */
+if (!window.__khaikhongMoreDelegatedClick) {
+  window.__khaikhongMoreDelegatedClick = true;
+
+  document.addEventListener("click", (event) => {
+    const actionBtn = event.target.closest("[data-more-action]");
+    if (actionBtn) {
+      const action = actionBtn.dataset.moreAction;
+      if (action === "repairFifo") {
+        event.preventDefault();
+        if (typeof repairAllCosts === "function") repairAllCosts();
+      }
+      return;
+    }
+
+    const tabBtn = event.target.closest("[data-open-tab]");
+    if (!tabBtn) return;
+
+    const tabId = tabBtn.dataset.openTab;
+    if (!tabId) return;
+
+    // ป้องกันปุ่มที่อยู่ใน dynamic more menu ไม่ตอบสนอง
+    event.preventDefault();
+    if (typeof switchTab === "function") {
+      switchTab(tabId);
+    }
+  });
+}
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.15 Local Users and Permissions, privacy mode removed",
+  "description": "Khaikhong v2.3.16 fixes dynamic More menu clicks and user permissions navigation",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

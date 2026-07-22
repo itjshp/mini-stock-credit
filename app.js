@@ -4086,7 +4086,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.16", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.17", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5514,6 +5514,333 @@ if (!window.__khaikhongMoreDelegatedClick) {
   });
 }
 
+
+/* v2.3.17: Users & Permission Builder */
+const PERMISSION_TEMPLATES = {
+  owner:   { sale:true, customers:true, payments:true, reports:true, stock:true, system:true, cost:true },
+  manager: { sale:true, customers:true, payments:true, reports:true, stock:true, system:false, cost:false },
+  cashier: { sale:true, customers:true, payments:true, reports:false, stock:false, system:false, cost:false },
+  stock:   { sale:false, customers:false, payments:false, reports:false, stock:true, system:false, cost:true }
+};
+
+const PERMISSION_LABELS = {
+  sale: "ขาย",
+  customers: "ลูกค้า",
+  payments: "รับเงิน",
+  reports: "รายงาน",
+  stock: "สต็อก",
+  system: "ระบบ",
+  cost: "ต้นทุน/กำไร"
+};
+
+const TAB_PERMISSION_MAP = {
+  sale: "sale",
+  products: "stock",
+  customers: "customers",
+  summary: "reports",
+  payments: "payments",
+  ledger: "customers",
+  debtAging: "payments",
+  billSearch: "reports",
+  reports: "reports",
+  purchase: "stock",
+  lowStock: "stock",
+  stockCount: "stock",
+  adjust: "stock",
+  closePeriod: "system",
+  backup: "system",
+  settings: "system",
+  gettingStarted: "system",
+  testCenter: "system",
+  guide: "system",
+  about: "system",
+  security: "always",
+  more: "always",
+  productDetail: "stock",
+  customerDetail: "customers",
+  billDetail: "reports"
+};
+
+function roleName(role) {
+  return ROLE_CONFIG?.[role]?.name || ({ owner:"เจ้าของร้าน", manager:"ผู้จัดการ", cashier:"แคชเชียร์", stock:"สต็อก" }[role] || role);
+}
+
+function defaultLocalUsers() {
+  return [{
+    id: "owner",
+    name: "เจ้าของร้าน",
+    role: "owner",
+    enabled: true,
+    permissions: { ...PERMISSION_TEMPLATES.owner },
+    protected: true,
+    createdAt: new Date().toISOString()
+  }];
+}
+
+function getLocalUsers() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("khaikhongLocalUsersV2") || "null");
+    if (Array.isArray(parsed) && parsed.length) {
+      const hasOwner = parsed.some(u => u.id === "owner");
+      return hasOwner ? parsed : [...defaultLocalUsers(), ...parsed];
+    }
+  } catch {}
+  return defaultLocalUsers();
+}
+
+function saveLocalUsers(users) {
+  localStorage.setItem("khaikhongLocalUsersV2", JSON.stringify(users));
+}
+
+function ensureLocalUsers() {
+  const users = getLocalUsers();
+  saveLocalUsers(users);
+  const activeId = localStorage.getItem("khaikhongActiveUserId");
+  const activeOk = users.some(u => u.id === activeId && u.enabled !== false);
+  if (!activeOk) localStorage.setItem("khaikhongActiveUserId", "owner");
+  // เคลียร์ role เดิมที่เคยทำให้ติด manager
+  if (!localStorage.getItem("khaikhongUsersMigrated2317")) {
+    localStorage.setItem("khaikhongActiveUserId", "owner");
+    localStorage.removeItem("khaikhongCurrentRole");
+    localStorage.setItem("khaikhongUsersMigrated2317", "1");
+  }
+}
+
+function activeUser() {
+  ensureLocalUsers();
+  const users = getLocalUsers();
+  const id = localStorage.getItem("khaikhongActiveUserId") || "owner";
+  return users.find(u => u.id === id && u.enabled !== false) || users.find(u => u.id === "owner") || defaultLocalUsers()[0];
+}
+
+function currentRole() {
+  return activeUser().role || "owner";
+}
+
+function roleConfig(role = currentRole()) {
+  const u = activeUser();
+  return {
+    ...(ROLE_CONFIG?.[role] || ROLE_CONFIG.owner),
+    name: u.name || roleName(role),
+    badge: roleName(role),
+    canSeeCost: !!u.permissions?.cost,
+    canSeeMoney: !!(u.permissions?.sale || u.permissions?.payments || u.permissions?.reports || u.permissions?.customers)
+  };
+}
+
+function canAccessTab(tabId) {
+  const perm = TAB_PERMISSION_MAP[tabId] || "system";
+  if (perm === "always") return true;
+  const u = activeUser();
+  return !!u.permissions?.[perm];
+}
+
+function setActiveUser(id) {
+  const users = getLocalUsers();
+  const u = users.find(x => x.id === id && x.enabled !== false);
+  if (!u) return alert("ผู้ใช้นี้ถูกปิดใช้งานหรือไม่พบข้อมูล");
+  localStorage.setItem("khaikhongActiveUserId", id);
+  applyRolePermissions();
+  renderRoleSettings();
+  showToast(`เปลี่ยนผู้ใช้งานเป็น ${u.name}`);
+}
+
+function setCurrentRole(role) {
+  // เก็บไว้เพื่อ compatibility: เปลี่ยนเป็น owner เท่านั้นถ้ากดจากระบบเก่า
+  if (role === "owner") setActiveUser("owner");
+}
+
+function resetRoleOwner() {
+  setActiveUser("owner");
+}
+
+function resetLocalUserForm() {
+  if ($("localUserId")) $("localUserId").value = "";
+  if ($("localUserName")) $("localUserName").value = "";
+  if ($("localUserRole")) $("localUserRole").value = "cashier";
+  if ($("localUserEnabled")) $("localUserEnabled").value = "true";
+  setPermissionCheckboxes(PERMISSION_TEMPLATES.cashier);
+}
+
+function setPermissionCheckboxes(perms) {
+  document.querySelectorAll("[data-perm]").forEach(cb => {
+    cb.checked = !!perms[cb.dataset.perm];
+  });
+}
+
+function getPermissionCheckboxes() {
+  const out = {};
+  document.querySelectorAll("[data-perm]").forEach(cb => {
+    out[cb.dataset.perm] = !!cb.checked;
+  });
+  return out;
+}
+
+function applyRoleTemplateToForm() {
+  const role = $("localUserRole")?.value || "cashier";
+  setPermissionCheckboxes(PERMISSION_TEMPLATES[role] || PERMISSION_TEMPLATES.cashier);
+}
+
+function editLocalUser(id) {
+  const u = getLocalUsers().find(x => x.id === id);
+  if (!u) return;
+  $("localUserId").value = u.id;
+  $("localUserName").value = u.name || "";
+  $("localUserRole").value = u.role || "cashier";
+  $("localUserEnabled").value = String(u.enabled !== false);
+  setPermissionCheckboxes(u.permissions || PERMISSION_TEMPLATES[u.role] || {});
+  switchTab("security");
+}
+
+function saveLocalUserFromForm() {
+  const users = getLocalUsers();
+  const id = $("localUserId")?.value || `u-${Date.now()}`;
+  const old = users.find(u => u.id === id);
+  const name = ($("localUserName")?.value || "").trim();
+  const role = $("localUserRole")?.value || "cashier";
+  const enabled = $("localUserEnabled")?.value !== "false";
+  const permissions = getPermissionCheckboxes();
+
+  if (!name) return alert("กรุณาใส่ชื่อผู้ใช้งาน");
+
+  const user = {
+    ...(old || {}),
+    id,
+    name,
+    role,
+    enabled: id === "owner" ? true : enabled,
+    permissions: id === "owner" ? { ...PERMISSION_TEMPLATES.owner } : permissions,
+    protected: id === "owner",
+    updatedAt: new Date().toISOString(),
+    createdAt: old?.createdAt || new Date().toISOString()
+  };
+
+  const next = old ? users.map(u => u.id === id ? user : u) : [...users, user];
+  saveLocalUsers(next);
+  renderRoleSettings();
+  resetLocalUserForm();
+  showToast("บันทึกผู้ใช้งานแล้ว");
+}
+
+function deleteLocalUserFromForm() {
+  const id = $("localUserId")?.value;
+  if (!id) return alert("กรุณาเลือกผู้ใช้งานที่ต้องการลบ");
+  if (id === "owner") return alert("ลบเจ้าของร้านไม่ได้");
+  const users = getLocalUsers();
+  const u = users.find(x => x.id === id);
+  if (!u) return;
+  if (!confirm(`ลบผู้ใช้งาน ${u.name}?`)) return;
+  saveLocalUsers(users.filter(x => x.id !== id));
+  if (localStorage.getItem("khaikhongActiveUserId") === id) localStorage.setItem("khaikhongActiveUserId", "owner");
+  resetLocalUserForm();
+  renderRoleSettings();
+  applyRolePermissions();
+  showToast("ลบผู้ใช้งานแล้ว");
+}
+
+function resetAllLocalUsers() {
+  if (!confirm("รีเซ็ตผู้ใช้งานทั้งหมดกลับเป็นเจ้าของร้านคนเดียว?")) return;
+  saveLocalUsers(defaultLocalUsers());
+  localStorage.setItem("khaikhongActiveUserId", "owner");
+  localStorage.removeItem("khaikhongCurrentRole");
+  resetLocalUserForm();
+  renderRoleSettings();
+  applyRolePermissions();
+  showToast("รีเซ็ตผู้ใช้งานแล้ว");
+}
+
+function renderLocalUsersList() {
+  const list = $("localUsersList");
+  if (!list) return;
+  const activeId = localStorage.getItem("khaikhongActiveUserId") || "owner";
+  const users = getLocalUsers();
+
+  list.innerHTML = users.map(u => {
+    const perms = Object.keys(PERMISSION_LABELS).map(k => {
+      const ok = !!u.permissions?.[k];
+      return `<span class="user-perm-chip ${ok ? "" : "no"}">${ok ? "✓" : "×"} ${PERMISSION_LABELS[k]}</span>`;
+    }).join("");
+
+    return `
+      <div class="list-item ${u.id === "owner" ? "user-row-owner" : ""} ${u.enabled === false ? "user-row-disabled" : ""}">
+        <div>
+          <strong>${u.name} ${u.id === activeId ? "• กำลังใช้งาน" : ""}</strong>
+          <small>${roleName(u.role)} • ${u.enabled === false ? "ปิดใช้งาน" : "เปิดใช้งาน"}</small>
+          <div>${perms}</div>
+        </div>
+        <div class="row-actions">
+          <button class="small-btn" onclick="setActiveUser('${u.id}')">ใช้งาน</button>
+          <button class="small-btn small-edit" onclick="editLocalUser('${u.id}')">แก้ไข</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRoleSettings() {
+  ensureLocalUsers();
+  const user = activeUser();
+  if ($("currentRoleText")) $("currentRoleText").textContent = `กำลังใช้งาน: ${user.name} • ${roleName(user.role)}`;
+  if ($("currentRoleBadge")) $("currentRoleBadge").textContent = roleName(user.role);
+  if ($("activeUserRoleText")) $("activeUserRoleText").value = roleName(user.role);
+  if ($("activeUserStatusText")) $("activeUserStatusText").value = user.enabled === false ? "ปิดใช้งาน" : "เปิดใช้งาน";
+
+  const sel = $("activeUserSelect");
+  if (sel) {
+    const users = getLocalUsers().filter(u => u.enabled !== false);
+    sel.innerHTML = users.map(u => `<option value="${u.id}">${u.name} • ${roleName(u.role)}</option>`).join("");
+    sel.value = user.id;
+  }
+
+  renderLocalUsersList();
+  document.querySelectorAll(".role-card").forEach(card => {
+    card.classList.toggle("active", card.dataset.role === user.role);
+  });
+}
+
+function applyRolePermissions() {
+  ensureLocalUsers();
+  const user = activeUser();
+  const perms = user.permissions || {};
+  document.body.dataset.role = user.role || "owner";
+  document.body.dataset.roleLabel = roleName(user.role);
+  document.body.classList.toggle("role-hide-cost", !perms.cost);
+  document.body.classList.toggle("role-hide-money", !(perms.sale || perms.payments || perms.reports || perms.customers));
+
+  document.querySelectorAll("[data-tab]").forEach(btn => {
+    const tabId = btn.dataset.tab;
+    if (!tabId) return;
+    btn.classList.toggle("role-hidden", !canAccessTab(tabId));
+  });
+
+  document.querySelectorAll("[data-open-tab]").forEach(btn => {
+    const tabId = btn.dataset.openTab;
+    if (!tabId) return;
+    btn.classList.toggle("role-hidden", !canAccessTab(tabId));
+  });
+
+  renderRoleSettings();
+}
+
+function enforceRoleBeforeSwitch(tabId) {
+  if (canAccessTab(tabId)) return true;
+  alert(`ผู้ใช้งาน ${activeUser().name} ไม่มีสิทธิ์เข้าเมนูนี้\n\nถ้าต้องการใช้งาน ให้เปลี่ยนเป็นเจ้าของร้านในหน้า ผู้ใช้งาน / สิทธิ์`);
+  return false;
+}
+
+window.editLocalUser = editLocalUser;
+window.setActiveUser = setActiveUser;
+
+
+$("activeUserSelect")?.addEventListener("change", e => setActiveUser(e.target.value));
+$("quickOwnerBtn")?.addEventListener("click", () => setActiveUser("owner"));
+$("resetUsersBtn")?.addEventListener("click", resetAllLocalUsers);
+$("newUserBtn")?.addEventListener("click", resetLocalUserForm);
+$("saveLocalUserBtn")?.addEventListener("click", saveLocalUserFromForm);
+$("deleteLocalUserBtn")?.addEventListener("click", deleteLocalUserFromForm);
+$("applyRoleTemplateBtn")?.addEventListener("click", applyRoleTemplateToForm);
+$("localUserRole")?.addEventListener("change", applyRoleTemplateToForm);
+
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
@@ -5534,6 +5861,8 @@ window.addEventListener("load", () => {
     try {
       if (typeof maybeAutoLockOnStart === "function") {
         await maybeAutoLockOnStart();
+  resetLocalUserForm();
+  applyRolePermissions();
       }
     } catch (err) {
       console.error("khaikhongPinBootSafety failed", err);

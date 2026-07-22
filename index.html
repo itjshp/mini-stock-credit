@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.16 • More Click Fix • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.17 • Permission Builder • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -629,11 +629,11 @@
   <div class="page-head">
     <div>
       <h2>ผู้ใช้งาน / สิทธิ์การเข้าถึง</h2>
-      <p>ตั้งโหมดผู้ใช้งานในเครื่องนี้ เพื่อให้แต่ละบทบาทเห็นเมนูและข้อมูลเท่าที่จำเป็น</p>
+      <p>สร้างผู้ใช้งานและติ๊กสิทธิ์เองได้ เริ่มต้นระบบจะเป็นเจ้าของร้านเสมอ</p>
     </div>
     <div class="form-actions">
-      <button id="resetRoleBtn" class="soft-btn" type="button">กลับเป็นเจ้าของร้าน</button>
-      <button class="soft-btn" data-open-tab="backup" type="button">Backup</button>
+      <button id="quickOwnerBtn" class="primary-btn" type="button">กลับเป็นเจ้าของร้าน</button>
+      <button id="resetUsersBtn" class="soft-btn" type="button">รีเซ็ตผู้ใช้งาน</button>
     </div>
   </div>
 
@@ -647,43 +647,89 @@
     </div>
 
     <div class="role-notice">
-      ระบบนี้เป็นสิทธิ์แบบ Local-first สำหรับช่วง Beta ยังไม่ใช่ Login Cloud จริง เหมาะสำหรับแยกหน้าจอและลดการเห็นข้อมูลสำคัญ เช่น กำไร ต้นทุน รายงาน และระบบตั้งค่า
+      ตอนนี้เป็นระบบผู้ใช้งานแบบ Local-first สำหรับช่วง Beta ยังไม่ใช่ Login Cloud จริง ใช้เพื่อแยกเมนู ลดการเห็นต้นทุน/กำไร และทดสอบ workflow กับร้านจริง
     </div>
 
-    <div class="role-grid">
-      <button class="role-card" data-role="owner" type="button">
-        <span>👑</span>
-        <strong>เจ้าของร้าน</strong>
-        <small>เห็นทุกเมนู ยอดขาย กำไร ต้นทุน Backup ตั้งค่า และปิดรอบ</small>
-      </button>
-      <button class="role-card" data-role="manager" type="button">
-        <span>🧑‍💼</span>
-        <strong>ผู้จัดการ</strong>
-        <small>ขาย รับเงิน ลูกค้า รายงานพื้นฐาน สต็อก และตรวจนับ</small>
-      </button>
-      <button class="role-card" data-role="cashier" type="button">
-        <span>🧾</span>
-        <strong>แคชเชียร์</strong>
-        <small>ขายของ รับเงิน ค้นหาบิล และดูข้อมูลลูกค้าแบบจำกัด</small>
-      </button>
-      <button class="role-card" data-role="stock" type="button">
-        <span>📦</span>
-        <strong>สต็อก</strong>
-        <small>ซื้อเข้า สินค้าใกล้หมด ตรวจนับ ปรับสต็อก และดูสินค้า</small>
-      </button>
+    <div class="user-switch-grid">
+      <label>เลือกผู้ใช้งาน
+        <select id="activeUserSelect"></select>
+      </label>
+      <label>บทบาทปัจจุบัน
+        <input id="activeUserRoleText" readonly>
+      </label>
+      <label>สถานะ
+        <input id="activeUserStatusText" readonly>
+      </label>
     </div>
   </div>
 
   <div class="panel">
     <div class="panel-head">
-      <h3>สิทธิ์ของแต่ละบทบาท</h3>
-      <span class="hint">ใช้เพื่อทดลองกับร้านจริงก่อนทำระบบ Login/Cloud ในอนาคต</span>
+      <div>
+        <h3>สร้าง / แก้ไขผู้ใช้งาน</h3>
+        <span class="hint">เลือกบทบาทเพื่อใช้เป็น template แล้วปรับสิทธิ์ได้เอง</span>
+      </div>
+      <button id="newUserBtn" class="soft-btn" type="button">+ ผู้ใช้ใหม่</button>
+    </div>
+
+    <div class="user-form-grid">
+      <input id="localUserId" type="hidden">
+      <label>ชื่อผู้ใช้งาน<input id="localUserName" placeholder="เช่น แคชเชียร์ 1 / พี่แนน"></label>
+      <label>บทบาทเริ่มต้น
+        <select id="localUserRole">
+          <option value="owner">เจ้าของร้าน</option>
+          <option value="manager">ผู้จัดการ</option>
+          <option value="cashier">แคชเชียร์</option>
+          <option value="stock">สต็อก</option>
+        </select>
+      </label>
+      <label>สถานะ
+        <select id="localUserEnabled">
+          <option value="true">เปิดใช้งาน</option>
+          <option value="false">ปิดใช้งาน</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="permission-builder">
+      <h3>เลือกสิทธิ์ที่ทำได้</h3>
+      <div class="permission-grid">
+        <label><input type="checkbox" data-perm="sale"> ขายของ</label>
+        <label><input type="checkbox" data-perm="customers"> ลูกค้า / สมุดบัญชี</label>
+        <label><input type="checkbox" data-perm="payments"> รับเงิน / ลูกหนี้</label>
+        <label><input type="checkbox" data-perm="reports"> รายงาน / ค้นหาบิล</label>
+        <label><input type="checkbox" data-perm="stock"> สินค้า / สต็อก</label>
+        <label><input type="checkbox" data-perm="system"> ระบบ / Backup / ตั้งค่า</label>
+        <label><input type="checkbox" data-perm="cost"> เห็นต้นทุน / กำไร</label>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="saveLocalUserBtn" class="primary-btn" type="button">บันทึกผู้ใช้งาน</button>
+      <button id="deleteLocalUserBtn" class="danger-btn" type="button">ลบผู้ใช้งาน</button>
+      <button id="applyRoleTemplateBtn" class="soft-btn" type="button">ใช้สิทธิ์ตามบทบาท</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>รายชื่อผู้ใช้งาน</h3>
+      <span class="hint">กดแก้ไขเพื่อปรับสิทธิ์ หรือกดใช้งานเพื่อสลับผู้ใช้</span>
+    </div>
+    <div id="localUsersList" class="stack-list"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>คำอธิบายสิทธิ์</h3>
     </div>
     <div class="role-permission-grid">
-      <div><strong>เจ้าของร้าน</strong><small>ทุกเมนู / ทุกข้อมูล / Backup / ปิดรอบ / ตั้งค่า</small></div>
-      <div><strong>ผู้จัดการ</strong><small>ขาย / รับเงิน / ลูกค้า / สต็อก / รายงานบางส่วน</small></div>
-      <div><strong>แคชเชียร์</strong><small>ขาย / รับเงิน / ค้นหาบิล / ไม่เห็นกำไรและต้นทุน</small></div>
-      <div><strong>สต็อก</strong><small>สินค้า / ซื้อเข้า / ตรวจนับ / ปรับสต็อก / ไม่เห็นยอดขายและกำไร</small></div>
+      <div><strong>ขายของ</strong><small>เข้าเมนูขายของและบันทึกบิล</small></div>
+      <div><strong>ลูกค้า / สมุดบัญชี</strong><small>ดูและจัดการลูกค้า ยอดค้าง และประวัติการซื้อ</small></div>
+      <div><strong>รับเงิน / ลูกหนี้</strong><small>รับเงินลูกหนี้ ดูลูกหนี้ครบกำหนด</small></div>
+      <div><strong>รายงาน / ค้นหาบิล</strong><small>ดูรายงาน สรุป ค้นหาบิลย้อนหลัง</small></div>
+      <div><strong>สินค้า / สต็อก</strong><small>สินค้า ซื้อเข้า ตรวจนับ ปรับสต็อก FIFO</small></div>
+      <div><strong>ระบบ</strong><small>Backup ตั้งค่า ปิดรอบ คู่มือ และเครื่องมือระบบ</small></div>
     </div>
   </div>
 </section>

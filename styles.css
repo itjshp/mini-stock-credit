@@ -2648,7 +2648,7 @@ textarea{
 body[data-role="cashier"]::before,
 body[data-role="stock"]::before,
 body[data-role="manager"]::before{
-  content:"โหมด: " attr(data-role);
+  content:"ผู้ใช้: " attr(data-role-label);
   position:fixed;
   right:16px;
   bottom:16px;
@@ -2669,6 +2669,67 @@ body[data-role="manager"]::before{
 @media(max-width:720px){
   .role-grid,
   .role-permission-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* v2.3.17: Users & Permission Builder */
+.user-switch-grid,
+.user-form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+}
+.permission-builder{
+  margin-top:16px;
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:24px;
+  padding:16px;
+  background:#fff;
+}
+.permission-builder h3{
+  margin-top:0;
+}
+.permission-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.permission-grid label{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:18px;
+  padding:12px;
+  background:#f9fffd;
+  font-weight:900;
+}
+.user-row-owner{
+  border-left:5px solid #0f766e;
+}
+.user-row-disabled{
+  opacity:.55;
+}
+.user-perm-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#e8f7f3;
+  color:#0f766e;
+  font-size:12px;
+  font-weight:1000;
+  margin:3px 3px 0 0;
+}
+.user-perm-chip.no{
+  background:#fee2e2;
+  color:#991b1b;
+}
+@media(max-width:900px){
+  .user-switch-grid,
+  .user-form-grid,
+  .permission-grid{
     grid-template-columns:1fr;
   }
 }

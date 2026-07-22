@@ -2831,3 +2831,65 @@ body[data-role="manager"]::before{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.19: Excel Legacy Import */
+.legacy-excel-card{
+  border-color:#bbf7d0;
+  background:linear-gradient(180deg,#fff,#f0fdf4)!important;
+}
+.legacy-excel-preview-panel{
+  border-top:5px solid #16a34a;
+}
+.legacy-preview-summary{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-top:14px;
+}
+.legacy-preview-summary div{
+  background:#101827;
+  color:#fff;
+  border-radius:20px;
+  padding:14px;
+}
+.legacy-preview-summary span{
+  display:block;
+  opacity:.85;
+  font-size:12px;
+  font-weight:950;
+}
+.legacy-preview-summary strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+.legacy-warning-list{
+  display:grid;
+  gap:8px;
+  margin:14px 0;
+}
+.legacy-warning{
+  border:1px solid #fed7aa;
+  background:#fff7ed;
+  color:#9a3412;
+  border-radius:16px;
+  padding:12px;
+  font-weight:900;
+}
+.legacy-preview-row{
+  border-left:5px solid #16a34a;
+}
+.legacy-preview-row.warn{
+  border-left-color:#f97316;
+}
+@media(max-width:980px){
+  .legacy-preview-summary{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .legacy-preview-summary{
+    grid-template-columns:1fr;
+  }
+}

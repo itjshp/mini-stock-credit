@@ -4262,6 +4262,547 @@ if ($("paymentBill")) if ($("paymentBill")) $("paymentBill").addEventListener("c
 });
 
 
+
+/* v2.3.19: Excel Legacy Import (.xlsx) */
+let legacyExcelPreviewData = null;
+
+function normalizeCellText(v) {
+  return String(v ?? "").replace(/\s+/g, " ").trim();
+}
+
+function legacyNumber(v, fallback = 0) {
+  if (v === null || v === undefined || v === "") return fallback;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const cleaned = String(v).replace(/,/g, "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function legacyDate(v) {
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+
+  if (typeof v === "number") {
+    // Excel serial normally around 30000-60000. Values like 244450 in legacy sheets are treated as unknown codes.
+    if (v > 30000 && v < 70000) {
+      const utc = Math.round((v - 25569) * 86400 * 1000);
+      return new Date(utc).toISOString().slice(0, 10);
+    }
+    return today();
+  }
+
+  const s = normalizeCellText(v);
+  if (!s) return today();
+
+  const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (iso) return `${iso[1]}-${String(iso[2]).padStart(2, "0")}-${String(iso[3]).padStart(2, "0")}`;
+
+  const th = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if (th) {
+    let y = Number(th[3]);
+    if (y < 100) y += 2500;
+    if (y > 2400) y -= 543;
+    return `${y}-${String(th[2]).padStart(2, "0")}-${String(th[1]).padStart(2, "0")}`;
+  }
+
+  return today();
+}
+
+function colLettersToIndex(ref) {
+  const letters = String(ref || "").replace(/[0-9]/g, "").toUpperCase();
+  let n = 0;
+  for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return Math.max(0, n - 1);
+}
+
+async function inflateRaw(bytes) {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("Browser นี้ยังไม่รองรับ DecompressionStream จึงอ่าน .xlsx ไม่ได้ กรุณาใช้ Chrome/Edge เวอร์ชันใหม่ หรือ Save as CSV ก่อน");
+  }
+  const ds = new DecompressionStream("deflate-raw");
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function unzipXlsx(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let eocd = -1;
+  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 70000); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error("ไม่พบโครงสร้าง ZIP ของไฟล์ .xlsx");
+
+  const totalEntries = view.getUint16(eocd + 10, true);
+  const cdOffset = view.getUint32(eocd + 16, true);
+  const entries = {};
+  let ptr = cdOffset;
+
+  for (let i = 0; i < totalEntries; i++) {
+    if (view.getUint32(ptr, true) !== 0x02014b50) break;
+
+    const method = view.getUint16(ptr + 10, true);
+    const compressedSize = view.getUint32(ptr + 20, true);
+    const nameLen = view.getUint16(ptr + 28, true);
+    const extraLen = view.getUint16(ptr + 30, true);
+    const commentLen = view.getUint16(ptr + 32, true);
+    const localOffset = view.getUint32(ptr + 42, true);
+    const name = new TextDecoder().decode(bytes.slice(ptr + 46, ptr + 46 + nameLen));
+
+    const localNameLen = view.getUint16(localOffset + 26, true);
+    const localExtraLen = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + localNameLen + localExtraLen;
+    const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+
+    let data;
+    if (method === 0) data = compressed;
+    else if (method === 8) data = await inflateRaw(compressed);
+    else throw new Error(`ไฟล์ ${name} ใช้ compression method ${method} ที่ระบบยังไม่รองรับ`);
+
+    entries[name] = data;
+    ptr += 46 + nameLen + extraLen + commentLen;
+  }
+
+  return entries;
+}
+
+function xmlString(entries, name) {
+  const data = entries[name];
+  if (!data) return "";
+  return new TextDecoder("utf-8").decode(data);
+}
+
+function parseSharedStrings(xmlText) {
+  if (!xmlText) return [];
+  const xml = new DOMParser().parseFromString(xmlText, "application/xml");
+  return [...xml.getElementsByTagName("si")].map(si => {
+    return [...si.getElementsByTagName("t")].map(t => t.textContent || "").join("");
+  });
+}
+
+function parseXlsxSheet(xmlText, sharedStrings) {
+  const xml = new DOMParser().parseFromString(xmlText, "application/xml");
+  const rows = [];
+  for (const row of [...xml.getElementsByTagName("row")]) {
+    const rIndex = Math.max(0, Number(row.getAttribute("r") || (rows.length + 1)) - 1);
+    const arr = rows[rIndex] || [];
+    for (const c of [...row.getElementsByTagName("c")]) {
+      const ref = c.getAttribute("r") || "";
+      const col = colLettersToIndex(ref);
+      const type = c.getAttribute("t") || "";
+      let value = "";
+
+      if (type === "inlineStr") {
+        value = [...c.getElementsByTagName("t")].map(t => t.textContent || "").join("");
+      } else {
+        const vEl = c.getElementsByTagName("v")[0];
+        const raw = vEl ? (vEl.textContent || "") : "";
+        if (type === "s") value = sharedStrings[Number(raw)] ?? "";
+        else if (type === "b") value = raw === "1";
+        else if (raw !== "" && !Number.isNaN(Number(raw))) value = Number(raw);
+        else value = raw;
+      }
+
+      arr[col] = value;
+    }
+    rows[rIndex] = arr;
+  }
+  return rows;
+}
+
+async function readXlsxFirstSheet(file) {
+  const entries = await unzipXlsx(await file.arrayBuffer());
+  const shared = parseSharedStrings(xmlString(entries, "xl/sharedStrings.xml"));
+  const sheetName = Object.keys(entries).find(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)) || "xl/worksheets/sheet1.xml";
+  const sheetXml = xmlString(entries, sheetName);
+  if (!sheetXml) throw new Error("ไม่พบ worksheet ในไฟล์ Excel");
+  return parseXlsxSheet(sheetXml, shared);
+}
+
+function legacyGroupName(value) {
+  const s = normalizeCellText(value);
+  if (!s) return "";
+  const parts = s.split("/");
+  return normalizeCellText(parts.length > 1 ? parts.slice(1).join("/") : s);
+}
+
+function analyzeLegacyExcelRows(rows, fileName) {
+  const headerIndex = rows.findIndex(r => normalizeCellText(r?.[0]).includes("ชื่อสินค้า"));
+  if (headerIndex < 0) throw new Error("ไม่พบหัวคอลัมน์ 'ชื่อสินค้า' ในไฟล์ Excel");
+
+  const h1 = rows[headerIndex] || [];
+  const h2 = rows[headerIndex + 1] || [];
+  const groups = [];
+
+  for (let c = 0; c < h1.length; c++) {
+    const head = normalizeCellText(h1[c]);
+    if (!head) continue;
+
+    if (head.includes("ยอดขายปลีก")) {
+      groups.push({ key: "retail", name: "ขายปลีก/เงินสด", customerName: "", paymentType: "cash", type: "retail", qtyCol: c, priceCol: c + 1, amountCol: c + 2 });
+    } else if (head.includes("ยอดขายส่ง")) {
+      const name = legacyGroupName(head) || `ลูกค้าขายส่ง ${groups.length + 1}`;
+      groups.push({ key: `wholesale-${name}`, name, customerName: name, paymentType: "credit", type: "wholesale", qtyCol: c, priceCol: c + 1, amountCol: c + 2 });
+    } else if (head.includes("เงินสด") || head.includes("หม่าล่า")) {
+      groups.push({ key: "cash", name: head, customerName: "", paymentType: "cash", type: "cash", qtyCol: c, priceCol: c + 1, amountCol: c + 2 });
+    }
+  }
+
+  const products = [];
+  const customers = new Map();
+  const billMap = new Map();
+  const warnings = [];
+
+  groups.filter(g => g.paymentType === "credit" && g.customerName).forEach(g => {
+    customers.set(g.customerName, { name: g.customerName, type: "ขายส่ง", creditDays: 0, creditLimit: 0, note: `นำเข้าจาก Excel ${fileName}` });
+  });
+
+  for (let r = headerIndex + 2; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const name = normalizeCellText(row[0]);
+    if (!name) continue;
+    if (name.includes("รวม") || name.includes("TOTAL")) continue;
+
+    const openingQty = legacyNumber(row[2], 0);
+    const unitCostFromCol = legacyNumber(row[3], 0);
+    const totalCost = legacyNumber(row[4], 0);
+    const unitCost = unitCostFromCol || (openingQty ? totalCost / openingQty : 0);
+    const remaining = legacyNumber(row[20], openingQty);
+    const date = legacyDate(row[1]);
+
+    if (openingQty <= 0 && totalCost <= 0) {
+      warnings.push(`แถว ${r + 1}: ${name} ไม่มีจำนวน/ทุน ระบบจะข้ามสต็อกเริ่มต้น`);
+    }
+
+    const product = {
+      rowNumber: r + 1,
+      name,
+      unit: "ชิ้น",
+      category: "Legacy Excel",
+      openingQty,
+      remaining,
+      unitCost,
+      totalCost: totalCost || openingQty * unitCost,
+      date,
+      note: `นำเข้าจาก Excel ${fileName} แถว ${r + 1}`,
+      price: 0,
+      wholesalePrice: 0
+    };
+
+    // Detect sale prices and bill items from groups
+    const saleItems = [];
+    for (const g of groups) {
+      const qty = legacyNumber(row[g.qtyCol], 0);
+      const amount = legacyNumber(row[g.amountCol], 0);
+      const priceCell = legacyNumber(row[g.priceCol], 0);
+      const unitPrice = priceCell || (qty ? amount / qty : 0);
+
+      if (qty > 0 || amount > 0) {
+        if (qty <= 0) {
+          warnings.push(`แถว ${r + 1}: ${name} กลุ่ม ${g.name} มียอดเงินแต่ไม่มีจำนวน ระบบจะข้ามรายการขายนี้`);
+          continue;
+        }
+
+        const price = unitPrice || product.price || product.wholesalePrice || unitCost;
+        saleItems.push({ group: g, qty, unitPrice: price, amount: amount || qty * price });
+        if (g.type === "retail" || g.type === "cash") product.price = product.price || price;
+        if (g.type === "wholesale") product.wholesalePrice = product.wholesalePrice || price;
+      }
+    }
+
+    if (!product.price) product.price = product.wholesalePrice || unitCost;
+    if (!product.wholesalePrice) product.wholesalePrice = product.price;
+
+    products.push(product);
+
+    for (const item of saleItems) {
+      const g = item.group;
+      const billKey = `${g.key}|${product.date}`;
+      const bill = billMap.get(billKey) || {
+        key: billKey,
+        date: product.date,
+        groupName: g.name,
+        customerName: g.customerName,
+        paymentType: g.paymentType,
+        type: g.type,
+        items: []
+      };
+      bill.items.push({
+        productName: product.name,
+        rowNumber: product.rowNumber,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        unitCost: product.unitCost,
+        revenue: item.qty * item.unitPrice,
+        cost: item.qty * product.unitCost
+      });
+      billMap.set(billKey, bill);
+    }
+
+    const totalSalesQty = saleItems.reduce((s, x) => s + Number(x.qty || 0), 0);
+    if (openingQty && Math.abs(openingQty - totalSalesQty - remaining) > 0.01) {
+      warnings.push(`แถว ${r + 1}: ${name} จำนวนเริ่มต้น ${money(openingQty)} - ขาย ${money(totalSalesQty)} ไม่ตรงกับคงเหลือ ${money(remaining)}`);
+    }
+  }
+
+  const bills = [...billMap.values()].filter(b => b.items.length);
+  return {
+    fileName,
+    headerRow: headerIndex + 1,
+    groups,
+    products,
+    customers: [...customers.values()],
+    bills,
+    warnings
+  };
+}
+
+function renderLegacyExcelPreview(data) {
+  legacyExcelPreviewData = data;
+  $("legacyExcelPreviewPanel")?.classList.remove("hidden-field");
+  if ($("legacyExcelFileName")) $("legacyExcelFileName").textContent = data.fileName || "-";
+
+  const openingValue = data.products.reduce((s, p) => s + Number(p.openingQty || 0) * Number(p.unitCost || 0), 0);
+  const saleValue = data.bills.reduce((s, b) => s + b.items.reduce((x, i) => x + Number(i.revenue || 0), 0), 0);
+
+  $("legacyExcelPreviewSummary").innerHTML = `
+    <div><span>สินค้า</span><strong>${data.products.length.toLocaleString("th-TH")}</strong></div>
+    <div><span>ลูกค้า</span><strong>${data.customers.length.toLocaleString("th-TH")}</strong></div>
+    <div><span>บิลที่จะสร้าง</span><strong>${data.bills.length.toLocaleString("th-TH")}</strong></div>
+    <div><span>มูลค่าสต็อกเริ่มต้น</span><strong>${money(openingValue)}</strong></div>
+    <div><span>ยอดขายจากไฟล์</span><strong>${money(saleValue)}</strong></div>
+  `;
+
+  $("legacyExcelWarnings").innerHTML = data.warnings.slice(0, 20).map(w => `<div class="legacy-warning">⚠️ ${safeText(w)}</div>`).join("");
+
+  const previewRows = [
+    ...data.products.slice(0, 5).map(p => ({
+      title: p.name,
+      detail: `สินค้า • แถว ${p.rowNumber} • จำนวนเริ่มต้น ${money(p.openingQty)} • คงเหลือใน Excel ${money(p.remaining)} • ทุน/หน่วย ${money(p.unitCost)}`
+    })),
+    ...data.bills.slice(0, 5).map(b => ({
+      title: `${b.paymentType === "credit" ? "บิลเครดิต" : "บิลเงินสด"} ${b.customerName || b.groupName}`,
+      detail: `${b.date} • ${b.items.length} รายการ • ยอด ${money(b.items.reduce((s, i) => s + i.revenue, 0))}`
+    }))
+  ];
+
+  $("legacyExcelPreviewRows").innerHTML = previewRows.map(r => `
+    <div class="list-item legacy-preview-row">
+      <div>
+        <strong>${safeText(r.title)}</strong>
+        <small>${safeText(r.detail)}</small>
+      </div>
+    </div>
+  `).join("") || `<div class="list-item empty-card"><div><strong>ไม่พบข้อมูลที่นำเข้าได้</strong></div></div>`;
+}
+
+async function previewLegacyExcelFile(file) {
+  if (!file) return;
+  try {
+    showToast("กำลังอ่านไฟล์ Excel...");
+    const rows = await readXlsxFirstSheet(file);
+    const data = analyzeLegacyExcelRows(rows, file.name);
+    renderLegacyExcelPreview(data);
+    showToast("อ่านไฟล์ Excel สำเร็จ");
+  } catch (err) {
+    console.error(err);
+    legacyExcelPreviewData = null;
+    alert(`อ่านไฟล์ Excel ไม่สำเร็จ\n\n${err.message || err}`);
+  }
+}
+
+async function importLegacyExcelData() {
+  const data = legacyExcelPreviewData;
+  if (!data) return alert("กรุณาเลือกไฟล์ Excel และรอ Preview ก่อน");
+
+  if (!assertDateUnlocked(today(), "Import Excel เดิม")) return;
+
+  const confirmText = `ยืนยัน Import Excel เดิม?\n\nสินค้า ${data.products.length} รายการ\nลูกค้า ${data.customers.length} คน\nบิล ${data.bills.length} บิล\n\nระบบจะสร้างสินค้า, ลูกค้า, opening stock และบิลจากไฟล์ Excel\nแนะนำให้ Backup ก่อน Import`;
+  if (!confirm(confirmText)) return;
+
+  const importId = `LEGACY-${Date.now()}`;
+  const nowBase = Date.now();
+  const productIdByName = new Map();
+  let createdProducts = 0;
+  let updatedProducts = 0;
+  let createdCustomers = 0;
+  let createdBills = 0;
+  let skippedBills = 0;
+
+  // Products + opening stock
+  for (let i = 0; i < data.products.length; i++) {
+    const row = data.products[i];
+    const existing = state.products.find(p => !p.isArchived && normalizeCellText(p.name) === normalizeCellText(row.name));
+    const productId = existing?.id || uid();
+    productIdByName.set(row.name, productId);
+
+    await put("products", {
+      ...(existing || {}),
+      id: productId,
+      name: row.name,
+      unit: existing?.unit || row.unit || "ชิ้น",
+      category: existing?.category || row.category || "Legacy Excel",
+      price: Number(existing?.price || row.price || row.unitCost || 0),
+      wholesalePrice: Number(existing?.wholesalePrice || row.wholesalePrice || row.price || row.unitCost || 0),
+      minStock: Number(existing?.minStock || 0),
+      note: existing?.note || row.note,
+      stockQty: Number(existing?.stockQty || 0),
+      avgCost: Number(existing?.avgCost || row.unitCost || 0),
+      isArchived: false,
+      createdAt: existing?.createdAt || new Date(nowBase + i).toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    if (existing) updatedProducts += 1;
+    else createdProducts += 1;
+
+    if (row.openingQty > 0 || row.unitCost > 0) {
+      const openingNote = `LEGACY-EXCEL-OPENING:${data.fileName}:${row.name}`;
+      const oldOpening = state.stock_movements.find(m => (m.note || "") === openingNote);
+      await put("stock_movements", {
+        ...(oldOpening || {}),
+        id: oldOpening?.id || uid(),
+        productId,
+        type: "opening",
+        refType: "legacy_excel",
+        refId: importId,
+        date: row.date || today(),
+        qtyIn: Math.max(0, Number(row.openingQty || 0)),
+        qtyOut: 0,
+        unitCost: Math.max(0, Number(row.unitCost || 0)),
+        note: openingNote,
+        createdAt: oldOpening?.createdAt || new Date(nowBase + 1000 + i).toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  await loadState();
+
+  // Customers
+  const customerIdByName = new Map();
+  for (let i = 0; i < data.customers.length; i++) {
+    const row = data.customers[i];
+    const existing = state.customers.find(c => normalizeCellText(c.name) === normalizeCellText(row.name));
+    const customerId = existing?.id || uid();
+    customerIdByName.set(row.name, customerId);
+
+    await put("customers", {
+      ...(existing || {}),
+      id: customerId,
+      name: row.name,
+      type: existing?.type || row.type || "ขายส่ง",
+      phone: existing?.phone || "",
+      creditLimit: Number(existing?.creditLimit || row.creditLimit || 0),
+      creditDays: Number(existing?.creditDays || row.creditDays || 0),
+      note: existing?.note || row.note,
+      createdAt: existing?.createdAt || new Date(nowBase + 2000 + i).toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    if (!existing) createdCustomers += 1;
+  }
+
+  await loadState();
+
+  // Bills
+  let movementCounter = 0;
+  for (const billData of data.bills) {
+    const sourceNote = `LEGACY-EXCEL-BILL:${data.fileName}:${billData.date}:${billData.groupName}`;
+    if (state.bills.some(b => (b.note || "").includes(sourceNote))) {
+      skippedBills += 1;
+      continue;
+    }
+
+    const billId = uid();
+    const billNo = nextBillNo();
+    const customerId = billData.customerName ? (customerIdByName.get(billData.customerName) || state.customers.find(c => c.name === billData.customerName)?.id || "") : "";
+    const subtotal = billData.items.reduce((s, i) => s + Number(i.revenue || 0), 0);
+    const costTotal = billData.items.reduce((s, i) => s + Number(i.cost || 0), 0);
+    const paymentType = billData.paymentType;
+    const paidAmount = paymentType === "cash" ? subtotal : 0;
+    const creditAmount = paymentType === "credit" ? subtotal : 0;
+
+    await put("bills", {
+      id: billId,
+      billNo,
+      date: billData.date || today(),
+      customerId,
+      paymentType,
+      grossTotal: subtotal,
+      itemDiscountTotal: 0,
+      billDiscount: 0,
+      discountTotal: 0,
+      subtotal,
+      costTotal,
+      profitTotal: subtotal - costTotal,
+      paidAmount,
+      initialPaidAmount: paidAmount,
+      creditAmount,
+      status: creditAmount > 0 ? "credit" : "paid",
+      note: `${sourceNote} • Import Excel เดิม`,
+      createdAt: new Date(nowBase + 3000 + createdBills).toISOString()
+    });
+
+    for (const item of billData.items) {
+      const productId = productIdByName.get(item.productName) || state.products.find(p => p.name === item.productName)?.id;
+      if (!productId) continue;
+
+      const billItemId = uid();
+      await put("bill_items", {
+        id: billItemId,
+        billId,
+        productId,
+        productNameSnapshot: item.productName,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        unitCost: item.unitCost,
+        grossRevenue: item.revenue,
+        discount: 0,
+        revenue: item.revenue,
+        cost: item.cost,
+        profit: item.revenue - item.cost
+      });
+
+      await put("stock_movements", {
+        id: uid(),
+        productId,
+        type: "sale",
+        refType: "bill",
+        refId: billId,
+        date: billData.date || today(),
+        qtyIn: 0,
+        qtyOut: item.qty,
+        unitCost: item.unitCost,
+        note: `ขายบิล ${billNo} • ${sourceNote}`,
+        createdAt: new Date(nowBase + 4000 + movementCounter++).toISOString()
+      });
+    }
+
+    await incrementBillNo();
+    createdBills += 1;
+    await loadState();
+  }
+
+  await recomputeInventory();
+  await recalcBills();
+  await loadState();
+
+  await logActivity("BACKUP_IMPORT", `Import Excel เดิม ${data.fileName}`, {
+    refType: "legacy_excel",
+    refId: importId,
+    amount: createdBills,
+    detail: `สินค้าใหม่ ${createdProducts} • อัปเดตสินค้า ${updatedProducts} • ลูกค้าใหม่ ${createdCustomers} • บิลใหม่ ${createdBills} • ข้ามบิลซ้ำ ${skippedBills}`
+  });
+
+  legacyExcelPreviewData = null;
+  if ($("legacyExcelInput")) $("legacyExcelInput").value = "";
+  $("legacyExcelPreviewPanel")?.classList.add("hidden-field");
+  showToast(`Import Excel สำเร็จ: สินค้า ${createdProducts + updatedProducts}, ลูกค้าใหม่ ${createdCustomers}, บิลใหม่ ${createdBills}`);
+}
+
 function parseCsvLine(line) {
   const result = [];
   let current = "";
@@ -4368,7 +4909,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.18", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.19", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5355,6 +5896,7 @@ const moreMenuItems = [
 
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
+  { group: "system stock", icon: "📥", title: "Import Excel เดิม", hint: "นำเข้าข้อมูลจากไฟล์ .xlsx", tab: "backup", keywords: "excel xlsx import legacy นำเข้า ไฟล์เดิม" },
   { group: "system", icon: "👥", title: "ผู้ใช้งาน / สิทธิ์", hint: "บทบาท / จำกัดเมนู / ซ่อนกำไร", tab: "security", keywords: "user role permission สิทธิ์ ผู้ใช้งาน แคชเชียร์" },
   { group: "system report", icon: "🧾", title: "ประวัติการทำรายการ", hint: "ใครทำอะไร / Audit Trail", tab: "activityLog", keywords: "activity log audit ประวัติ ระบบ ใครทำอะไร" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
@@ -6146,6 +6688,13 @@ $("activityClearBtn")?.addEventListener("click", clearActivityFilters);
 $("exportActivityLogCsvBtn")?.addEventListener("click", exportActivityLogCsv);
 $("copyActivitySummaryBtn")?.addEventListener("click", copyActivitySummary);
 $("clearTestActivityLogsBtn")?.addEventListener("click", clearTestActivityLogs);
+
+
+$("legacyExcelInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (file) await previewLegacyExcelFile(file);
+});
+$("confirmLegacyExcelImportBtn")?.addEventListener("click", importLegacyExcelData);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -2372,3 +2372,119 @@ textarea{
     margin-top:10px;
   }
 }
+
+
+/* v2.3.8: PIN Lock + Backup Restore Safety */
+.security-panel{
+  border-top:5px solid #2563eb;
+}
+.security-notice{
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1d4ed8;
+  border-radius:18px;
+  padding:14px;
+  font-weight:900;
+  line-height:1.55;
+  margin-bottom:14px;
+}
+.security-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+}
+.pin-badge{
+  display:inline-flex;
+  border-radius:999px;
+  padding:6px 12px;
+  background:#f1f5f9;
+  color:#475569;
+  font-weight:1000;
+}
+.pin-badge.enabled{
+  background:#dcfce7;
+  color:#047857;
+}
+.pin-lock-overlay{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  background:
+    radial-gradient(circle at 30% 20%,rgba(0,139,122,.24),transparent 30%),
+    rgba(15,23,42,.72);
+  display:grid;
+  place-items:center;
+  padding:20px;
+  backdrop-filter:blur(8px);
+}
+.pin-lock-card{
+  width:min(440px,100%);
+  background:#fff;
+  border-radius:34px;
+  padding:28px;
+  text-align:center;
+  box-shadow:0 30px 80px rgba(15,23,42,.3);
+}
+.pin-lock-logo{
+  width:72px;
+  height:72px;
+  display:grid;
+  place-items:center;
+  border-radius:26px;
+  margin:0 auto 12px;
+  background:#eff6ff;
+  font-size:38px;
+}
+.pin-lock-card h2{
+  margin:0 0 6px;
+}
+.pin-lock-card p{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+}
+.pin-lock-card input{
+  text-align:center;
+  font-size:24px;
+  letter-spacing:8px;
+  margin:12px 0;
+}
+.pin-error{
+  color:#b91c1c;
+  font-weight:950;
+  min-height:24px;
+}
+.pin-actions{
+  justify-content:center;
+}
+.restore-preview{
+  border-top:5px solid #f97316;
+}
+.restore-preview-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+.restore-preview-grid div{
+  background:#101827;
+  color:#fff;
+  border-radius:18px;
+  padding:12px;
+}
+.restore-preview-grid span{
+  display:block;
+  opacity:.85;
+  font-size:12px;
+  font-weight:950;
+}
+.restore-preview-grid strong{
+  display:block;
+  font-size:20px;
+  margin-top:4px;
+}
+@media(max-width:900px){
+  .security-grid,
+  .restore-preview-grid{
+    grid-template-columns:1fr;
+  }
+}

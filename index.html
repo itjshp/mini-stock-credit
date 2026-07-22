@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.7 • Compact Menu • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.8 • PIN & Backup Safety • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="debtAging" class="tab secondary-tab">ลูกหนี้ครบกำหนด</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="closePeriod" class="tab secondary-tab">ปิดรอบ</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="debtAging" class="tab secondary-tab">ลูกหนี้ครบกำหนด</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="closePeriod" class="tab secondary-tab">ปิดรอบ</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="security" class="tab secondary-tab">ความปลอดภัย</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -624,6 +624,62 @@
   </div>
 </section>
 
+
+<section id="security" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ความปลอดภัย / PIN Lock</h2>
+      <p>ตั้งรหัส PIN เพื่อป้องกันคนอื่นเปิดดูยอดขาย กำไร ลูกหนี้ และข้อมูลร้าน</p>
+    </div>
+    <div class="form-actions">
+      <button id="lockNowBtn" class="primary-btn" type="button">ล็อกแอปตอนนี้</button>
+      <button class="soft-btn" data-open-tab="backup" type="button">ไป Backup</button>
+    </div>
+  </div>
+
+  <div class="panel security-panel">
+    <div class="panel-head">
+      <div>
+        <h3>สถานะ PIN Lock</h3>
+        <span id="pinStatusText" class="hint">กำลังตรวจสอบ...</span>
+      </div>
+      <span id="pinStatusBadge" class="pin-badge">ยังไม่เปิดใช้</span>
+    </div>
+
+    <div class="security-notice">
+      PIN Lock เป็นการป้องกันการเปิดดูข้อมูลแบบง่ายบนเครื่องนี้ ไม่ใช่ระบบ Login Cloud ข้อมูลยังคงเก็บใน Browser/IndexedDB เหมือนเดิม
+    </div>
+
+    <div class="security-grid">
+      <label>ตั้ง PIN ใหม่ 4-6 หลัก<input id="pinNew" type="password" inputmode="numeric" maxlength="6" placeholder="เช่น 123456"></label>
+      <label>ยืนยัน PIN<input id="pinConfirm" type="password" inputmode="numeric" maxlength="6" placeholder="ใส่ซ้ำอีกครั้ง"></label>
+      <label>ล็อกอัตโนมัติเมื่อเปิดแอป
+        <select id="pinAutoLock">
+          <option value="on">เปิด</option>
+          <option value="off">ปิด</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button id="savePinBtn" class="primary-btn" type="button">บันทึก / เปิดใช้ PIN</button>
+      <button id="disablePinBtn" class="danger-btn" type="button">ปิดใช้ PIN</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>คำแนะนำ</h3>
+    </div>
+    <div class="close-rules-grid">
+      <div>✅ ควรตั้ง PIN ก่อนให้ร้านจริงทดลอง</div>
+      <div>✅ อย่าลืม PIN เพราะไม่มี Server กลางสำหรับกู้คืน</div>
+      <div>✅ ถ้าลืม PIN ต้อง Reset PIN เฉพาะเครื่องนี้</div>
+      <div>✅ ควร Backup ข้อมูลก่อนเปิดใช้กับร้านจริง</div>
+    </div>
+  </div>
+</section>
+
 <section id="settings" class="page">
   <div class="page-head">
     <div>
@@ -960,6 +1016,22 @@
 </nav>
 
   <div id="numberPadOverlay" class="numpad-overlay hidden"><div class="numpad"><div class="numpad-head"><div><p>POS Number Pad</p><strong id="numpadTargetLabel">ใส่ตัวเลข</strong></div><button id="numpadClose" class="numpad-close">×</button></div><div id="numpadDisplay" class="numpad-display">0</div><div class="numpad-grid"><button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-num="0">0</button><button data-num="00">00</button><button data-num=".">.</button><button id="numpadBack">⌫</button><button id="numpadClear">C</button><button id="numpadOk" class="ok">ตกลง</button></div></div></div>
+
+<div id="pinLockOverlay" class="pin-lock-overlay hidden-field">
+  <div class="pin-lock-card">
+    <div class="pin-lock-logo">🔐</div>
+    <h2>Khaikhong ถูกล็อก</h2>
+    <p>กรุณาใส่ PIN เพื่อเข้าใช้งาน</p>
+    <input id="pinUnlockInput" type="password" inputmode="numeric" maxlength="6" placeholder="PIN 4-6 หลัก">
+    <div id="pinUnlockError" class="pin-error"></div>
+    <div class="form-actions pin-actions">
+      <button id="unlockPinBtn" class="primary-btn" type="button">ปลดล็อก</button>
+      <button id="resetPinEmergencyBtn" class="soft-btn" type="button">ลืม PIN</button>
+    </div>
+    <small>ข้อมูลยังอยู่ในเครื่องนี้ หากลืม PIN สามารถ Reset เฉพาะ PIN ได้ แต่ควร Backup ข้อมูลเป็นประจำ</small>
+  </div>
+</div>
+
 <div id="printArea" class="print-area"></div>
   <div id="toast" class="toast hidden"></div>
 <script src="app.js"></script>

@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.7 compact More menu with category drill-down UX",
+  "description": "Khaikhong v2.3.8 PIN Lock and Backup Restore Safety",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

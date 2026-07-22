@@ -3642,6 +3642,9 @@ function switchTab(id) {
   if (id === "more") {
     try { resetMoreMenu(); } catch (err) { console.error("resetMoreMenu failed", err); }
   }
+  if (id === "security") {
+    try { renderPinSettings(); } catch (err) { console.error("renderPinSettings failed", err); }
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -4029,6 +4032,40 @@ function makeCsv(rows) {
   return "\ufeff" + rows.map(r => r.map(csvEscape).join(",")).join("\n");
 }
 
+
+function backupPreviewData(data) {
+  const stores = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","close_periods","settings"];
+  const counts = {};
+  stores.forEach(s => counts[s] = Array.isArray(data?.[s]) ? data[s].length : 0);
+  return counts;
+}
+
+function backupPreviewText(data) {
+  const c = backupPreviewData(data);
+  return [
+    `App: ${data?.app || "-"}`,
+    `Version: ${data?.version || "-"}`,
+    `Exported: ${data?.exportedAt ? new Date(data.exportedAt).toLocaleString("th-TH") : "-"}`,
+    `สินค้า: ${c.products}`,
+    `ลูกค้า: ${c.customers}`,
+    `บิล: ${c.bills}`,
+    `รายการบิล: ${c.bill_items}`,
+    `รับเงิน: ${c.payments}`,
+    `Stock movement: ${c.stock_movements}`,
+    `FIFO lots: ${c.stock_lots}`,
+    `ปิดรอบ: ${c.close_periods}`
+  ].join("\n");
+}
+
+function confirmRestoreWithPreview(data) {
+  const text = backupPreviewText(data);
+  const ok1 = confirm(`ตรวจไฟล์ Backup ก่อน Restore\n\n${text}\n\nการ Restore จะนำเข้าข้อมูลจากไฟล์นี้ และอาจทับข้อมูลเดิมในเครื่องนี้\n\nต้องการดำเนินการต่อหรือไม่?`);
+  if (!ok1) return false;
+
+  const typed = prompt(`ยืนยัน Restore Backup\n\nพิมพ์คำว่า RESTORE เพื่อยืนยันการนำเข้าข้อมูล:`);
+  return typed === "RESTORE";
+}
+
 function download(filename, content, type = "application/octet-stream") {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -4047,7 +4084,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.7", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.8", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -4754,6 +4791,7 @@ function betaCounts() {
     stockCountItems: (state.stock_count_items || []).length,
     closePeriods: (state.close_periods || []).length,
     currentLockDate: currentLockDate() || "ยังไม่ล็อก",
+    pinEnabled: isPinEnabled() ? "เปิด" : "ปิด",
     lowStock: lowStockProducts ? lowStockProducts().length : 0
   };
 }
@@ -4925,6 +4963,7 @@ function diagnosticText() {
     `Stock count items: ${d.stockCountItems}`,
     `Close periods: ${d.closePeriods}`,
     `Current lock date: ${d.currentLockDate}`,
+    `PIN Lock: ${d.pinEnabled}`,
     `Last Backup: ${d.lastBackup}`,
     `Generated: ${d.generatedAt}`,
     `User Agent: ${d.userAgent}`
@@ -5026,6 +5065,7 @@ const moreMenuItems = [
 
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
+  { group: "system", icon: "🔐", title: "ความปลอดภัย", hint: "PIN Lock / ล็อกแอป", tab: "security", keywords: "pin lock ล็อก ความปลอดภัย รหัสผ่าน" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
   { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
   { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
@@ -5104,6 +5144,136 @@ $("moreBackBtn")?.addEventListener("click", resetMoreMenu);
 $("moreHomeBtn")?.addEventListener("click", resetMoreMenu);
 $("moreSearchBackBtn")?.addEventListener("click", resetMoreMenu);
 $("moreSearchInput")?.addEventListener("input", searchMoreMenu);
+
+
+function pinSettings() {
+  return state.settings.find(s => s.id === "pin") || { id: "pin", enabled: false, autoLock: "on", pinHash: "" };
+}
+
+async function hashText(text) {
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function isPinEnabled() {
+  const p = pinSettings();
+  return !!(p.enabled && p.pinHash);
+}
+
+function renderPinSettings() {
+  if (!$("pinStatusText")) return;
+  const p = pinSettings();
+  $("pinStatusText").textContent = isPinEnabled()
+    ? `เปิดใช้ PIN แล้ว • ล็อกอัตโนมัติ: ${p.autoLock === "on" ? "เปิด" : "ปิด"}`
+    : "ยังไม่ได้เปิดใช้ PIN";
+  $("pinStatusBadge").textContent = isPinEnabled() ? "เปิดใช้แล้ว" : "ยังไม่เปิดใช้";
+  $("pinStatusBadge").classList.toggle("enabled", isPinEnabled());
+  if ($("pinAutoLock")) $("pinAutoLock").value = p.autoLock || "on";
+}
+
+function showPinLock() {
+  if (!isPinEnabled()) return;
+  $("pinLockOverlay")?.classList.remove("hidden-field");
+  setTimeout(() => $("pinUnlockInput")?.focus(), 80);
+}
+
+function hidePinLock() {
+  $("pinLockOverlay")?.classList.add("hidden-field");
+  if ($("pinUnlockInput")) $("pinUnlockInput").value = "";
+  if ($("pinUnlockError")) $("pinUnlockError").textContent = "";
+  sessionStorage.setItem("khaikhongPinUnlocked", "1");
+}
+
+async function savePinSettings() {
+  const pin = ($("pinNew")?.value || "").trim();
+  const confirmPin = ($("pinConfirm")?.value || "").trim();
+  const autoLock = $("pinAutoLock")?.value || "on";
+
+  if (!/^\d{4,6}$/.test(pin)) return alert("PIN ต้องเป็นตัวเลข 4-6 หลัก");
+  if (pin !== confirmPin) return alert("ยืนยัน PIN ไม่ตรงกัน");
+
+  await put("settings", {
+    id: "pin",
+    enabled: true,
+    autoLock,
+    pinHash: await hashText(pin),
+    updatedAt: new Date().toISOString()
+  });
+
+  if ($("pinNew")) $("pinNew").value = "";
+  if ($("pinConfirm")) $("pinConfirm").value = "";
+  await loadState();
+  renderPinSettings();
+  showToast("เปิดใช้ PIN Lock แล้ว");
+}
+
+async function disablePinSettings() {
+  const p = pinSettings();
+  if (!isPinEnabled()) return alert("ยังไม่ได้เปิดใช้ PIN");
+  const typed = prompt("ปิดใช้ PIN Lock?\n\nกรุณาใส่ PIN ปัจจุบันเพื่อยืนยัน:");
+  if (typed === null) return;
+  if (await hashText(typed) !== p.pinHash) return alert("PIN ไม่ถูกต้อง");
+
+  await put("settings", {
+    ...p,
+    enabled: false,
+    disabledAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  await loadState();
+  renderPinSettings();
+  hidePinLock();
+  showToast("ปิดใช้ PIN Lock แล้ว");
+}
+
+async function unlockWithPin() {
+  const p = pinSettings();
+  const typed = ($("pinUnlockInput")?.value || "").trim();
+  if (!typed) {
+    if ($("pinUnlockError")) $("pinUnlockError").textContent = "กรุณาใส่ PIN";
+    return;
+  }
+  if (await hashText(typed) === p.pinHash) {
+    hidePinLock();
+  } else {
+    if ($("pinUnlockError")) $("pinUnlockError").textContent = "PIN ไม่ถูกต้อง";
+  }
+}
+
+async function emergencyResetPin() {
+  if (!confirm("ลืม PIN?\n\nระบบจะ Reset เฉพาะ PIN บนเครื่องนี้ ข้อมูลขาย/สินค้า/ลูกค้ายังอยู่เหมือนเดิม\n\nยืนยัน Reset PIN?")) return;
+  if (!confirm("ยืนยันอีกครั้ง: ปิด PIN Lock และกลับเข้าแอป?")) return;
+
+  const p = pinSettings();
+  await put("settings", {
+    ...p,
+    enabled: false,
+    emergencyResetAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  await loadState();
+  hidePinLock();
+  renderPinSettings();
+  showToast("Reset PIN แล้ว");
+}
+
+function maybeAutoLockOnStart() {
+  const p = pinSettings();
+  if (isPinEnabled() && p.autoLock !== "off" && sessionStorage.getItem("khaikhongPinUnlocked") !== "1") {
+    showPinLock();
+  }
+}
+
+
+$("savePinBtn")?.addEventListener("click", savePinSettings);
+$("disablePinBtn")?.addEventListener("click", disablePinSettings);
+$("lockNowBtn")?.addEventListener("click", showPinLock);
+$("unlockPinBtn")?.addEventListener("click", unlockWithPin);
+$("pinUnlockInput")?.addEventListener("keydown", e => { if (e.key === "Enter") unlockWithPin(); });
+$("resetPinEmergencyBtn")?.addEventListener("click", emergencyResetPin);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

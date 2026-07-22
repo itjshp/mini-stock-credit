@@ -4084,7 +4084,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.10", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.11", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5146,6 +5146,42 @@ $("moreSearchBackBtn")?.addEventListener("click", resetMoreMenu);
 $("moreSearchInput")?.addEventListener("input", searchMoreMenu);
 
 
+
+async function hardResetPinAndCaches(reason = "manual") {
+  try {
+    sessionStorage.setItem("khaikhongPinUnlocked", "1");
+    localStorage.setItem("khaikhongPinEmergencyResetAt", new Date().toISOString());
+    localStorage.setItem("khaikhongPinEmergencyResetReason", reason);
+
+    if (typeof caches !== "undefined") {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+
+    if (navigator.serviceWorker?.getRegistrations) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+
+    if (db) {
+      await put("settings", {
+        id: "pin",
+        enabled: false,
+        autoLock: "on",
+        pinHash: "",
+        emergencyResetAt: new Date().toISOString(),
+        emergencyResetReason: reason,
+        updatedAt: new Date().toISOString()
+      });
+      await loadState();
+    }
+  } catch (err) {
+    console.error("hardResetPinAndCaches failed", err);
+  }
+
+  try { hidePinLock(); } catch {}
+}
+
 function pinSettings() {
   return state.settings.find(s => s.id === "pin") || { id: "pin", enabled: false, autoLock: "on", pinHash: "" };
 }
@@ -5313,7 +5349,8 @@ async function maybeAutoLockOnStart() {
     location.hash.toLowerCase().includes("resetpin");
 
   if (resetRequested) {
-    await forceResetPin("Reset PIN ผ่านลิงก์ฉุกเฉินแล้ว");
+    await hardResetPinAndCaches("url-resetPin");
+    showToast("Reset PIN และ Cache ผ่านลิงก์ฉุกเฉินแล้ว");
     url.searchParams.delete("resetPin");
     url.searchParams.delete("resetpin");
     history.replaceState({}, "", url.pathname + url.search);

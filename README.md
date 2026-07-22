@@ -1,37 +1,42 @@
-# Khaikhong v2.3.10
+# Khaikhong v2.3.11
 
-เวอร์ชันนี้แก้ให้ระบบ Reset PIN ผ่าน `?resetPin=1` ทำงานจริงตอนเปิดแอป
+เวอร์ชันนี้เพิ่มหน้า Rescue สำหรับแก้ PIN Lock และ Cache เก่า
 
-## สาเหตุของปัญหา
+## ปัญหาที่แก้
 
-ใน v2.3.9 มีฟังก์ชัน Reset PIN แล้ว แต่ยังไม่ได้เรียกใช้ตอน Init แอปจริง ทำให้ URL `?resetPin=1` ไม่ทำงานและยังค้างที่หน้าล็อก
+ถ้า Browser ยังโหลดไฟล์เก่าจาก Service Worker/Cache:
+- `?resetPin=1` อาจไม่ทำงาน
+- หน้าล็อก PIN อาจยังขึ้นเหมือนเดิม
+- ปุ่มลืม PIN อาจใช้โค้ดเก่า
 
-## สิ่งที่แก้
+## วิธีแก้ใหม่
 
-1. เรียก `maybeAutoLockOnStart()` หลังโหลดข้อมูลเสร็จ
-2. เพิ่ม Boot Safety อีกรอบหลังหน้าเว็บโหลด เพื่อกัน cache/service worker timing
-3. รองรับรูปแบบ Reset เพิ่มเติม:
-   - `?resetPin=1`
-   - `?resetPin=true`
-   - `?resetpin=1`
-   - `#resetPin`
-4. ปุ่ม ลืม PIN ใช้ confirm ชั้นเดียว แล้ว Reset เฉพาะ PIN ทันที
-5. เพิ่ม Console rescue:
-   - เปิด DevTools Console แล้วพิมพ์ `forceResetKhaikhongPin()`
+หลังอัปโหลด v2.3.11 แล้ว ให้เปิด URL นี้โดยตรง:
 
-## วิธีแก้กรณีติด PIN อยู่ตอนนี้
+`https://itjshp.github.io/mini-stock-credit/reset-pin.html`
 
-1. อัปโหลด v2.3.10 ทับไฟล์เดิมใน GitHub
-2. Commit changes
-3. รอ GitHub Pages deploy 1-3 นาที
-4. เปิด URL จริงของโปรเจกต์ เช่น:
+หน้านี้จะทำงานแยกจาก app.js และจะ:
+1. ปิด PIN ใน IndexedDB
+2. ตั้งค่า session ว่าปลดล็อกแล้ว
+3. ล้าง Cache Storage
+4. Unregister Service Worker
+5. กลับเข้าแอปให้อัตโนมัติ
 
-   `https://itjshp.github.io/mini-stock-credit/?resetPin=1`
+## ถ้า reset-pin.html ยังไม่เข้า
 
-5. กด Enter
-6. ถ้ายังไม่หาย ให้กด Ctrl+F5 หรือปิด/เปิด PWA ใหม่
+ลอง URL สำรอง:
+
+`https://itjshp.github.io/mini-stock-credit/clear-cache.html`
+
+## วิธีอัปเดต
+
+1. แตกไฟล์ zip
+2. อัปโหลดไฟล์ทั้งหมดทับของเดิม รวมถึง `reset-pin.html` และ `clear-cache.html`
+3. Commit changes
+4. รอ GitHub Pages deploy 1-3 นาที
+5. เปิด `reset-pin.html`
+6. หลังระบบพากลับเข้าแอป ให้กด Ctrl+F5 อีกครั้ง
 
 ## หมายเหตุ
 
-ห้ามใช้ `/xxxx/` เพราะเป็นแค่ตัวอย่าง จะขึ้น 404
-ต้องใช้ path จริงของโปรเจกต์ เช่น `/mini-stock-credit/`
+ข้อมูลสินค้า/ลูกค้า/บิลไม่ถูกลบ หน้านี้ Reset เฉพาะ PIN และ Cache เท่านั้น

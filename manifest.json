@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.11 PIN Rescue page and network-first Service Worker",
+  "description": "Khaikhong v2.3.12 disables PIN Lock during beta and adds Privacy Mode",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

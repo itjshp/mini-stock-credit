@@ -14,6 +14,7 @@ let stockCountDraft = {};
 let currentNumberInput = null;
 let numberPadValue = "";
 let deferredPrompt = null;
+const PIN_LOCK_DISABLED = true; // v2.3.12: ปิด PIN Lock ชั่วคราวเพื่อไม่ให้ผู้ใช้ติดหน้าล็อกในช่วง Beta
 
 const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -4084,7 +4085,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.11", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.12", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5182,6 +5183,22 @@ async function hardResetPinAndCaches(reason = "manual") {
   try { hidePinLock(); } catch {}
 }
 
+
+function isPrivacyMode() {
+  return localStorage.getItem("khaikhongPrivacyMode") === "1";
+}
+
+function applyPrivacyMode() {
+  document.body.classList.toggle("privacy-mode", isPrivacyMode());
+  if ($("privacyModeBtn")) $("privacyModeBtn").textContent = isPrivacyMode() ? "ปิดโหมดซ่อนยอดเงิน" : "เปิดโหมดซ่อนยอดเงิน";
+}
+
+function togglePrivacyMode() {
+  localStorage.setItem("khaikhongPrivacyMode", isPrivacyMode() ? "0" : "1");
+  applyPrivacyMode();
+  showToast(isPrivacyMode() ? "เปิดโหมดซ่อนยอดเงินแล้ว" : "ปิดโหมดซ่อนยอดเงินแล้ว");
+}
+
 function pinSettings() {
   return state.settings.find(s => s.id === "pin") || { id: "pin", enabled: false, autoLock: "on", pinHash: "" };
 }
@@ -5202,7 +5219,8 @@ async function hashText(text) {
 }
 
 function isPinEnabled() {
-  return hasRealPinConfigured();
+  // v2.3.12: ปิดระบบ PIN Lock ชั่วคราว เพื่อป้องกันการติดหน้าล็อก
+  return false;
 }
 
 async function repairInvalidPinConfig() {
@@ -5226,22 +5244,16 @@ async function repairInvalidPinConfig() {
 
 function renderPinSettings() {
   if (!$("pinStatusText")) return;
-  const p = pinSettings();
-  $("pinStatusText").textContent = isPinEnabled()
-    ? `เปิดใช้ PIN แล้ว • ล็อกอัตโนมัติ: ${p.autoLock === "on" ? "เปิด" : "ปิด"}`
-    : "ยังไม่ได้เปิดใช้ PIN";
-  $("pinStatusBadge").textContent = isPinEnabled() ? "เปิดใช้แล้ว" : "ยังไม่เปิดใช้";
-  $("pinStatusBadge").classList.toggle("enabled", isPinEnabled());
-  if ($("pinAutoLock")) $("pinAutoLock").value = p.autoLock || "on";
+  $("pinStatusText").textContent = "PIN Lock ถูกพักใช้งานชั่วคราวในช่วง Beta เพื่อป้องกันการติดหน้าล็อก";
+  $("pinStatusBadge").textContent = "พักใช้งาน";
+  $("pinStatusBadge").classList.remove("enabled");
+  if ($("pinAutoLock")) $("pinAutoLock").value = "off";
 }
 
 function showPinLock() {
-  if (!isPinEnabled()) {
-    hidePinLock();
-    return;
-  }
-  $("pinLockOverlay")?.classList.remove("hidden-field");
-  setTimeout(() => $("pinUnlockInput")?.focus(), 80);
+  // v2.3.12: ไม่แสดงหน้า Lock อีก
+  hidePinLock();
+  return;
 }
 
 function hidePinLock() {
@@ -5252,27 +5264,8 @@ function hidePinLock() {
 }
 
 async function savePinSettings() {
-  const pin = ($("pinNew")?.value || "").trim();
-  const confirmPin = ($("pinConfirm")?.value || "").trim();
-  const autoLock = $("pinAutoLock")?.value || "on";
-
-  if (!/^\d{4,6}$/.test(pin)) return alert("PIN ต้องเป็นตัวเลข 4-6 หลัก");
-  if (pin !== confirmPin) return alert("ยืนยัน PIN ไม่ตรงกัน");
-
-  await put("settings", {
-    id: "pin",
-    enabled: true,
-    autoLock,
-    pinHash: await hashText(pin),
-    updatedAt: new Date().toISOString()
-  });
-
-  sessionStorage.removeItem("khaikhongPinUnlocked");
-  if ($("pinNew")) $("pinNew").value = "";
-  if ($("pinConfirm")) $("pinConfirm").value = "";
-  await loadState();
-  renderPinSettings();
-  showToast("เปิดใช้ PIN Lock แล้ว");
+  alert("ตอนนี้ระบบ PIN Lock ถูกพักใช้งานชั่วคราวในช่วง Beta เพื่อป้องกันการติดหน้าล็อก\n\nแนะนำใช้ Backup และปิดรอบแทนก่อน เมื่อระบบนิ่งแล้วค่อยทำ PIN ใหม่แบบปลอดภัยกว่า");
+  await forceResetPin("ปิด PIN Lock ชั่วคราวแล้ว");
 }
 
 async function disablePinSettings() {
@@ -5346,29 +5339,22 @@ async function maybeAutoLockOnStart() {
     url.searchParams.get("resetPin") === "1" ||
     url.searchParams.get("resetPin") === "true" ||
     url.searchParams.get("resetpin") === "1" ||
+    url.searchParams.get("pinOff") === "1" ||
     location.hash.toLowerCase().includes("resetpin");
 
+  // v2.3.12: ไม่ล็อกแอปอีก และพยายามล้างค่า PIN เดิมทุกครั้งที่เริ่มแอป
   if (resetRequested) {
-    await hardResetPinAndCaches("url-resetPin");
-    showToast("Reset PIN และ Cache ผ่านลิงก์ฉุกเฉินแล้ว");
+    await hardResetPinAndCaches("url-reset-or-pinOff");
+    showToast("ปิด PIN และล้าง Cache แล้ว");
     url.searchParams.delete("resetPin");
     url.searchParams.delete("resetpin");
+    url.searchParams.delete("pinOff");
     history.replaceState({}, "", url.pathname + url.search);
     return;
   }
 
-  const repaired = await repairInvalidPinConfig();
-  if (repaired) {
-    showToast("ตรวจพบค่า PIN ผิดรูปแบบ และปิด PIN ให้แล้ว");
-    return;
-  }
-
-  const p = pinSettings();
-  if (isPinEnabled() && p.autoLock !== "off" && sessionStorage.getItem("khaikhongPinUnlocked") !== "1") {
-    showPinLock();
-  } else {
-    hidePinLock();
-  }
+  await forceResetPin("ปิด PIN Lock ชั่วคราวแล้ว");
+  hidePinLock();
 }
 
 window.addEventListener("beforeinstallprompt", (e) => {

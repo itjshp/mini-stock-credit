@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.11 • PIN Rescue • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.12 • PIN Disabled • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -628,11 +628,11 @@
 <section id="security" class="page">
   <div class="page-head">
     <div>
-      <h2>ความปลอดภัย / PIN Lock</h2>
-      <p>ตั้งรหัส PIN เพื่อป้องกันคนอื่นเปิดดูยอดขาย กำไร ลูกหนี้ และข้อมูลร้าน</p>
+      <h2>ความปลอดภัย / Privacy Mode</h2>
+      <p>ช่วง Beta พักระบบ PIN Lock ไว้ก่อน และใช้โหมดซ่อนยอดเงินแทนเพื่อลดความเสี่ยงติดล็อก</p>
     </div>
     <div class="form-actions">
-      <button id="lockNowBtn" class="primary-btn" type="button">ล็อกแอปตอนนี้</button>
+      <button id="privacyModeBtn" class="primary-btn" type="button">เปิดโหมดซ่อนยอดเงิน</button><button id="lockNowBtn" class="soft-btn" type="button">ล็อกแอปตอนนี้</button>
       <button class="soft-btn" data-open-tab="backup" type="button">ไป Backup</button>
     </div>
   </div>
@@ -647,7 +647,7 @@
     </div>
 
     <div class="security-notice">
-      PIN Lock เป็นการป้องกันการเปิดดูข้อมูลแบบง่ายบนเครื่องนี้ ไม่ใช่ระบบ Login Cloud ข้อมูลยังคงเก็บใน Browser/IndexedDB เหมือนเดิม<br>v2.3.9 เพิ่มระบบตรวจค่า PIN ผิดรูปแบบ ถ้ายังไม่เคยตั้ง PIN จริง ระบบจะไม่ล็อกหน้าจอ
+      v2.3.12 พักระบบ PIN Lock ชั่วคราวในช่วง Beta เพื่อป้องกันปัญหาติดหน้าล็อก ข้อมูลยังอยู่ในเครื่องนี้เหมือนเดิม แนะนำใช้ Backup + ปิดรอบ + โหมดซ่อนยอดเงินก่อน
     </div>
 
     <div class="security-grid">

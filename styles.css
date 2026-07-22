@@ -1965,3 +1965,44 @@ textarea{
   border-color:#ddd6fe;
   background:linear-gradient(180deg,#fff,#f5f3ff)!important;
 }
+
+
+/* v2.3.1: Partial Returns */
+.return-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#fff7ed;
+  color:#c2410c;
+  font-size:12px;
+  font-weight:1000;
+}
+.return-panel{
+  border-top:5px solid #f97316;
+}
+.return-row{
+  border-left:5px solid #f97316;
+}
+.returned-note{
+  display:block;
+  margin-top:5px;
+  color:#c2410c;
+  font-weight:950;
+}
+.return-action{
+  background:#fff7ed!important;
+  color:#c2410c!important;
+}
+.return-action:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+.return-summary-box{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#9a3412;
+  border-radius:18px;
+  padding:12px;
+  font-weight:900;
+  margin-top:10px;
+}

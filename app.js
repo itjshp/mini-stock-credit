@@ -1,9 +1,9 @@
 const DB_NAME = "khaikhong-v2-db";
-const DB_VERSION = 2;
-const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","settings"];
+const DB_VERSION = 3;
+const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","settings"];
 
 let db;
-let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], settings: [] };
+let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
 let selectedCustomerDetailId = "";
@@ -106,6 +106,8 @@ async function loadState() {
   state.stock_movements.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.stock_lots.sort((a, b) => `${a.date || ""} ${a.createdAt || ""}`.localeCompare(`${b.date || ""} ${b.createdAt || ""}`));
   state.bill_item_lots.sort((a, b) => `${a.billId || ""} ${a.productId || ""}`.localeCompare(`${b.billId || ""} ${b.productId || ""}`));
+  state.returns.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+  state.return_items.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.payments.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
   renderAll();
@@ -286,6 +288,51 @@ function productById(id) {
 
 function billItems(billId) {
   return state.bill_items.filter(i => i.billId === billId);
+}
+
+
+function returnsForBill(billId) {
+  return (state.returns || []).filter(r => r.billId === billId);
+}
+
+function returnItemsForBill(billId) {
+  return (state.return_items || []).filter(r => r.billId === billId);
+}
+
+function returnItemsForBillItem(billItemId) {
+  return (state.return_items || []).filter(r => r.billItemId === billItemId);
+}
+
+function returnedQtyForItem(billItemId) {
+  return returnItemsForBillItem(billItemId).reduce((sum, r) => sum + Number(r.qty || 0), 0);
+}
+
+function remainingReturnQty(item) {
+  return Math.max(0, Number(item.qty || 0) - returnedQtyForItem(item.id));
+}
+
+function returnTotalsForBill(billId) {
+  const rows = returnItemsForBill(billId);
+  return {
+    qty: rows.reduce((sum, r) => sum + Number(r.qty || 0), 0),
+    revenue: rows.reduce((sum, r) => sum + Number(r.revenue || 0), 0),
+    cost: rows.reduce((sum, r) => sum + Number(r.cost || 0), 0),
+    count: rows.length
+  };
+}
+
+function itemReturnUnitRevenue(item) {
+  return Number(item.qty || 0) > 0 ? Number(item.revenue || 0) / Number(item.qty || 0) : 0;
+}
+
+function itemReturnUnitCost(item) {
+  return Number(item.qty || 0) > 0 ? Number(item.cost || 0) / Number(item.qty || 0) : Number(item.unitCost || 0);
+}
+
+function billReturnSummaryText(billId) {
+  const totals = returnTotalsForBill(billId);
+  if (!totals.count) return "";
+  return `คืนสินค้า ${totals.count} รายการ • ยอดคืน ${money(totals.revenue)} บาท`;
 }
 
 function activeBills() {
@@ -589,22 +636,36 @@ async function recalcBills() {
   const bills = await getAll("bills");
   const items = await getAll("bill_items");
   const payments = await getAll("payments");
+  const returnItems = await getAll("return_items");
 
   for (const b of bills) {
     const its = items.filter(i => i.billId === b.id);
-    const grossTotal = its.reduce((s, i) => s + Number(i.grossRevenue ?? (Number(i.qty || 0) * Number(i.unitPrice || 0))), 0);
-    const itemDiscountTotal = its.reduce((s, i) => s + Number(i.discount || 0), 0);
-    const lineSubtotal = its.reduce((s, i) => s + Number(i.revenue || 0), 0);
-    const billDiscount = Math.min(Math.max(Number(b.billDiscount || 0), 0), Math.max(0, lineSubtotal));
-    const subtotal = Math.max(0, lineSubtotal - billDiscount);
+    const ret = returnItems.filter(r => r.billId === b.id);
 
-    b.grossTotal = grossTotal;
+    const originalGrossTotal = its.reduce((s, i) => s + Number(i.grossRevenue ?? (Number(i.qty || 0) * Number(i.unitPrice || 0))), 0);
+    const itemDiscountTotal = its.reduce((s, i) => s + Number(i.discount || 0), 0);
+    const originalLineSubtotal = its.reduce((s, i) => s + Number(i.revenue || 0), 0);
+    const billDiscount = Math.min(Math.max(Number(b.billDiscount || 0), 0), Math.max(0, originalLineSubtotal));
+    const originalSubtotal = Math.max(0, originalLineSubtotal - billDiscount);
+    const originalCostTotal = its.reduce((s, i) => s + Number(i.cost || 0), 0);
+
+    const returnTotal = ret.reduce((s, r) => s + Number(r.revenue || 0), 0);
+    const returnCostTotal = ret.reduce((s, r) => s + Number(r.cost || 0), 0);
+
+    b.originalGrossTotal = originalGrossTotal;
+    b.originalSubtotal = originalSubtotal;
+    b.originalCostTotal = originalCostTotal;
+    b.returnTotal = returnTotal;
+    b.returnCostTotal = returnCostTotal;
+    b.hasReturns = returnTotal > 0 || ret.length > 0;
+
+    b.grossTotal = Math.max(0, originalGrossTotal - returnTotal);
     b.itemDiscountTotal = itemDiscountTotal;
     b.billDiscount = billDiscount;
     b.discountTotal = itemDiscountTotal + billDiscount;
-    b.subtotal = subtotal;
-    b.costTotal = its.reduce((s, i) => s + Number(i.cost || 0), 0);
-    b.profitTotal = subtotal - Number(b.costTotal || 0);
+    b.subtotal = Math.max(0, originalSubtotal - returnTotal);
+    b.costTotal = Math.max(0, originalCostTotal - returnCostTotal);
+    b.profitTotal = Number(b.subtotal || 0) - Number(b.costTotal || 0);
 
     // เก็บเงินที่รับตอนออกบิลไว้แยกจากเงินที่รับทีหลัง
     if (b.initialPaidAmount === undefined || b.initialPaidAmount === null) {
@@ -621,6 +682,7 @@ async function recalcBills() {
 
       b.paidAmount = Number(b.initialPaidAmount || 0) + linkedPaid;
       b.creditAmount = b.paymentType === "credit" ? Math.max(0, Number(b.subtotal || 0) - Number(b.paidAmount || 0)) : 0;
+      b.refundDue = b.paymentType !== "credit" ? Math.max(0, Number(b.paidAmount || 0) - Number(b.subtotal || 0)) : 0;
       b.status = b.creditAmount > 0 ? (Number(b.paidAmount || 0) > 0 ? "partial" : "credit") : "paid";
     }
 
@@ -906,6 +968,8 @@ async function cancelBill(id) {
   const now = new Date().toISOString();
 
   for (const item of items) {
+    const qtyToReturn = remainingReturnQty(item);
+    if (qtyToReturn <= 0) continue;
     await put("stock_movements", {
       id: uid(),
       productId: item.productId,
@@ -913,9 +977,9 @@ async function cancelBill(id) {
       refType: "bill",
       refId: id,
       date: today(),
-      qtyIn: item.qty,
+      qtyIn: qtyToReturn,
       qtyOut: 0,
-      unitCost: item.unitCost,
+      unitCost: itemReturnUnitCost(item),
       note: `ยกเลิกบิล ${b.billNo}: ${cleanReason}`,
       createdAt: now
     });
@@ -1318,7 +1382,7 @@ function renderCustomerHistoryContent(c) {
       ${stats.bills.map(b => `
         <div class="list-item customer-purchase-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
           <div>
-            <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+            <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)} ${Number(b.returnTotal || 0) > 0 ? `<span class="return-chip">มีคืนสินค้า</span>` : ""}</strong>
             <small>${b.date} • ${billItems(b.id).length} รายการ • ${billItemText(b.id)}</small>
             ${Number(b.creditAmount || 0) > 0 ? `<small class="negative">ยอดค้างบิลนี้ ${money(b.creditAmount)}</small>` : ""}
           </div>
@@ -1361,7 +1425,7 @@ function renderCustomerHistoryContent(c) {
         <div class="stack-list">
           ${stats.bills.slice(0, 5).map(b => `
             <div class="list-item customer-purchase-row ${b.status === "cancelled" ? "cancelled" : (Number(b.creditAmount || 0) > 0 ? "credit" : "")}">
-              <div><strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong><small>${b.date} • ${billItems(b.id).length} รายการ • ${billItemText(b.id)}</small></div>
+              <div><strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)} ${Number(b.returnTotal || 0) > 0 ? `<span class="return-chip">มีคืนสินค้า</span>` : ""}</strong><small>${b.date} • ${billItems(b.id).length} รายการ • ${billItemText(b.id)}</small></div>
               <div class="money">${money(b.subtotal)}</div>
             </div>`).join("") || `<div class="list-item"><div><strong>ไม่พบบิล</strong></div></div>`}
         </div>
@@ -1604,7 +1668,7 @@ function renderSummary() {
 function billRow(b) {
   return `<div class="list-item ${b.status === "cancelled" ? "cancelled-row" : ""}">
     <div>
-      <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+      <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)} ${Number(b.returnTotal || 0) > 0 ? `<span class="return-chip">มีคืนสินค้า</span>` : ""}</strong>
       <small>${b.date} • ${customerName(b.customerId)} • ${billItems(b.id).length} รายการ</small>
       ${b.status === "cancelled" && b.cancelReason ? `<small>เหตุผลยกเลิก: ${b.cancelReason}</small>` : ""}
     </div>
@@ -1944,8 +2008,13 @@ async function deleteCancelledBill(id) {
 
   if (!confirm(`ยืนยันลบถาวร ${b.billNo} อีกครั้ง?`)) return;
 
+  const relatedReturns = state.returns.filter(r => r.billId === id);
+  const relatedReturnIds = relatedReturns.map(r => r.id);
+
+  for (const item of state.return_items.filter(i => i.billId === id || relatedReturnIds.includes(i.returnId))) await del("return_items", item.id);
+  for (const r of relatedReturns) await del("returns", r.id);
   for (const item of state.bill_items.filter(i => i.billId === id)) await del("bill_items", item.id);
-  for (const m of state.stock_movements.filter(m => m.refId === id || (m.note || "").includes(b.billNo))) await del("stock_movements", m.id);
+  for (const m of state.stock_movements.filter(m => m.refId === id || relatedReturnIds.includes(m.refId) || (m.note || "").includes(b.billNo))) await del("stock_movements", m.id);
   for (const p of state.payments.filter(p => p.billId === id)) await del("payments", p.id);
   await del("bills", id);
 
@@ -2051,7 +2120,7 @@ function renderBillSearch() {
     return `
       <div class="list-item bill-search-row ${billSearchClass(b)}">
         <div>
-          <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)}</strong>
+          <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)} ${Number(b.returnTotal || 0) > 0 ? `<span class="return-chip">มีคืนสินค้า</span>` : ""}</strong>
           <div class="bill-meta">
             <span>${b.date || "-"}</span>
             <span>${customerName(b.customerId)}</span>
@@ -2102,7 +2171,7 @@ function clearBillSearch() {
 }
 
 function exportBillSearchCsv() {
-  const rows = [["billNo", "date", "customer", "items", "paymentType", "status", "grossTotal", "discountTotal", "subtotal", "cost", "profit", "creditAmount"]];
+  const rows = [["billNo", "date", "customer", "items", "paymentType", "status", "grossTotal", "discountTotal", "returnTotal", "subtotal", "cost", "profit", "creditAmount"]];
   billSearchRows().forEach(b => {
     rows.push([
       b.billNo,
@@ -2113,6 +2182,7 @@ function exportBillSearchCsv() {
       b.status,
       b.grossTotal || b.subtotal,
       b.discountTotal || 0,
+      b.returnTotal || 0,
       b.subtotal,
       b.costTotal,
       b.profitTotal,
@@ -2378,7 +2448,8 @@ function receiptTextForBill(billId) {
 
   lines.push("--------------------------------");
   if (Number(b.discountTotal || 0) > 0) lines.push(`ส่วนลดรวม: ${money(b.discountTotal)} บาท`);
-  lines.push(`ยอดรวม: ${money(b.subtotal)} บาท`);
+  if (Number(b.returnTotal || 0) > 0) lines.push(`คืนสินค้า: ${money(b.returnTotal)} บาท`);
+  lines.push(`ยอดรวมสุทธิ: ${money(b.subtotal)} บาท`);
   lines.push(`รับเงินแล้ว: ${money(b.paidAmount)} บาท`);
   if (Number(b.creditAmount || 0) > 0) lines.push(`ยอดค้าง: ${money(b.creditAmount)} บาท`);
   if (b.note) lines.push(`หมายเหตุ: ${b.note}`);
@@ -2492,6 +2563,7 @@ function renderReceiptHtml(billId) {
         <div><span>ลูกค้า</span><span>${customerName(b.customerId)}</span></div>
         <div><span>รับเงินแล้ว</span><span class="paid-amount">${money(b.paidAmount)}</span></div>
         ${Number(b.discountTotal || 0) > 0 ? `<div><span>ส่วนลดรวม</span><span class="credit-due">${money(b.discountTotal)}</span></div>` : ""}
+        ${Number(b.returnTotal || 0) > 0 ? `<div><span>คืนสินค้า</span><span class="credit-due">${money(b.returnTotal)}</span></div>` : ""}
         ${Number(b.creditAmount || 0) > 0 ? `<div><span>ยอดค้าง</span><span class="credit-due">${money(b.creditAmount)}</span></div>` : ""}
         <div class="grand"><span>ยอดรวม</span><span>${money(b.subtotal)} บาท</span></div>
       </div>
@@ -2537,7 +2609,8 @@ function printBill(billId) {
         <tbody>${rows}</tbody>
         <tfoot>
           ${Number(b.discountTotal || 0) > 0 ? `<tr><td colspan="2">ส่วนลดรวม</td><td class="right">${money(b.discountTotal)}</td></tr>` : ""}
-          <tr><td colspan="2" class="total">ยอดรวม</td><td class="right total">${money(b.subtotal)}</td></tr>
+          ${Number(b.returnTotal || 0) > 0 ? `<tr><td colspan="2">คืนสินค้า</td><td class="right">${money(b.returnTotal)}</td></tr>` : ""}
+          <tr><td colspan="2" class="total">ยอดรวมสุทธิ</td><td class="right total">${money(b.subtotal)}</td></tr>
           <tr><td colspan="2">รับเงินแล้ว</td><td class="right">${money(b.paidAmount)}</td></tr>
           ${Number(b.creditAmount || 0) > 0 ? `<tr><td colspan="2">ยอดค้าง</td><td class="right">${money(b.creditAmount)}</td></tr>` : ""}
         </tfoot>
@@ -2548,6 +2621,127 @@ function printBill(billId) {
   `;
 
   window.print();
+}
+
+
+async function returnBillItem(billItemId) {
+  const item = state.bill_items.find(x => x.id === billItemId);
+  if (!item) return alert("ไม่พบรายการสินค้าในบิล");
+
+  const b = state.bills.find(x => x.id === item.billId);
+  if (!b) return alert("ไม่พบบิล");
+  if (b.status === "cancelled") return alert("บิลนี้ถูกยกเลิกแล้ว ไม่สามารถรับคืนเพิ่มได้");
+
+  const remain = remainingReturnQty(item);
+  if (remain <= 0) return alert("รายการนี้คืนครบแล้ว");
+
+  const productName = item.productNameSnapshot || productById(item.productId)?.name || "-";
+  const qtyText = prompt(`รับคืนสินค้า: ${productName}\n\nซื้อไป ${money(item.qty)}\nคืนไปแล้ว ${money(returnedQtyForItem(item.id))}\nคงเหลือที่คืนได้ ${money(remain)}\n\nกรุณาใส่จำนวนที่รับคืน`, String(remain));
+  if (qtyText === null) return;
+
+  const qty = Number(qtyText);
+  if (!qty || qty <= 0) return alert("กรุณาใส่จำนวนที่ถูกต้อง");
+  if (qty > remain) return alert(`คืนได้ไม่เกิน ${money(remain)}`);
+
+  const reason = prompt("เหตุผลการคืนสินค้า\n\nตัวอย่าง: ลูกค้าคืนของ / สินค้าเสีย / เปลี่ยนสินค้า / กรอกผิด", "");
+  if (reason === null) return;
+  const cleanReason = reason.trim();
+  if (!cleanReason) return alert("กรุณาใส่เหตุผลการคืนสินค้า");
+
+  const unitRevenue = itemReturnUnitRevenue(item);
+  const unitCost = itemReturnUnitCost(item);
+  const returnRevenue = qty * unitRevenue;
+  const returnCost = qty * unitCost;
+
+  if (!confirm(`ยืนยันรับคืนสินค้า?\n\nบิล: ${b.billNo}\nสินค้า: ${productName}\nจำนวนคืน: ${money(qty)}\nยอดคืน: ${money(returnRevenue)} บาท\n\nระบบจะคืนสต็อกและปรับยอดขาย/กำไรของบิล`)) return;
+
+  const now = new Date().toISOString();
+  const returnId = uid();
+
+  await put("returns", {
+    id: returnId,
+    billId: b.id,
+    billNo: b.billNo,
+    customerId: b.customerId || "",
+    date: today(),
+    reason: cleanReason,
+    totalRevenue: returnRevenue,
+    totalCost: returnCost,
+    status: "completed",
+    createdAt: now
+  });
+
+  await put("return_items", {
+    id: uid(),
+    returnId,
+    billId: b.id,
+    billItemId: item.id,
+    productId: item.productId,
+    productNameSnapshot: productName,
+    qty,
+    unitPrice: item.unitPrice,
+    unitRevenue,
+    unitCost,
+    revenue: returnRevenue,
+    cost: returnCost,
+    reason: cleanReason,
+    date: today(),
+    createdAt: now
+  });
+
+  await put("stock_movements", {
+    id: uid(),
+    productId: item.productId,
+    type: "sale_return",
+    refType: "return",
+    refId: returnId,
+    billId: b.id,
+    date: today(),
+    qtyIn: qty,
+    qtyOut: 0,
+    unitCost,
+    note: `รับคืนจากบิล ${b.billNo}: ${cleanReason}`,
+    createdAt: now
+  });
+
+  await recomputeInventory();
+  selectedBillId = b.id;
+  await loadState();
+  showToast(`รับคืน ${productName} แล้ว`);
+}
+
+window.returnBillItem = returnBillItem;
+
+function renderBillReturnsHtml(billId) {
+  const rows = returnItemsForBill(billId);
+  if (!rows.length) return "";
+
+  return `
+    <div class="panel return-panel">
+      <div class="panel-head">
+        <h3>ประวัติการคืนสินค้า</h3>
+        <span class="hint">${billReturnSummaryText(billId)}</span>
+      </div>
+      <div class="stack-list">
+        ${rows.map(r => {
+          const ret = state.returns.find(x => x.id === r.returnId);
+          return `
+            <div class="list-item return-row">
+              <div>
+                <strong>${r.productNameSnapshot || productById(r.productId)?.name || "-"}</strong>
+                <small>${r.date || ret?.date || "-"} • จำนวนคืน ${money(r.qty)} • เหตุผล: ${r.reason || ret?.reason || "-"}</small>
+                <small>คืนสต็อกด้วยทุน ${money(r.unitCost)} / หน่วย</small>
+              </div>
+              <div>
+                <div class="money">${money(r.revenue)}</div>
+                <small>ลดต้นทุน ${money(r.cost)}</small>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderBillDetail() {
@@ -2585,6 +2779,7 @@ function renderBillDetail() {
         <div><span>ส่วนลด</span><strong class="discount-note">${money(b.discountTotal || 0)}</strong></div>
         <div><span>ต้นทุน</span><strong>${money(b.costTotal)}</strong></div>
         <div><span>กำไร</span><strong class="${Number(b.profitTotal || 0) >= 0 ? "positive" : "negative"}">${money(b.profitTotal)}</strong></div>
+        <div><span>คืนสินค้า</span><strong class="discount-note">${money(b.returnTotal || 0)}</strong></div>
         <div><span>ยอดค้าง</span><strong>${money(b.creditAmount)}</strong></div>
       </div>
 
@@ -2606,15 +2801,19 @@ function renderBillDetail() {
             <div>
               <strong>${item.productNameSnapshot || productById(item.productId)?.name || "-"}</strong>
               <small>จำนวน ${money(item.qty)} • ราคาขาย ${money(item.unitPrice)} • ต้นทุนเฉลี่ยจาก FIFO ${money(item.unitCost)}${Number(item.discount || 0) > 0 ? ` • ลด ${money(item.discount)}` : ""}</small>${billItemLotBreakdownHtml(item)}
+              ${returnedQtyForItem(item.id) > 0 ? `<small class="returned-note">คืนแล้ว ${money(returnedQtyForItem(item.id))} • เหลือคืนได้ ${money(remainingReturnQty(item))}</small>` : ""}
             </div>
             <div class="bill-item-price">
               <strong>${money(item.revenue)}</strong>
               <small class="${Number(item.profit || 0) >= 0 ? "positive" : "negative"}">กำไร ${money(item.profit)}</small>
+              ${!isCancelled && remainingReturnQty(item) > 0 ? `<button class="small-btn return-action" onclick="returnBillItem('${item.id}')">คืนสินค้า</button>` : ""}
             </div>
           </div>
         `).join("") || `<div class="list-item"><div><strong>ไม่มีรายการสินค้าในบิล</strong></div></div>`}
       </div>
     </div>
+
+    ${renderBillReturnsHtml(b.id)}
 
     <div class="panel">
       <div class="panel-head">
@@ -3082,14 +3281,14 @@ function download(filename, content, type = "application/octet-stream") {
 }
 
 $("exportCsvBtn").addEventListener("click", () => {
-  const rows = [["billNo", "date", "customer", "grossTotal", "discountTotal", "subtotal", "cost", "profit", "status"]];
-  filteredBills().forEach(b => rows.push([b.billNo, b.date, customerName(b.customerId), b.grossTotal || b.subtotal, b.discountTotal || 0, b.subtotal, b.costTotal, b.profitTotal, b.status]));
+  const rows = [["billNo", "date", "customer", "grossTotal", "discountTotal", "returnTotal", "subtotal", "cost", "profit", "status"]];
+  filteredBills().forEach(b => rows.push([b.billNo, b.date, customerName(b.customerId), b.grossTotal || b.subtotal, b.discountTotal || 0, b.returnTotal || 0, b.subtotal, b.costTotal, b.profitTotal, b.status]));
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
   download(`khaikhong-v2-report-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.0", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.1", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3793,6 +3992,8 @@ function betaCounts() {
     movements: state.stock_movements.length,
     stockLots: (state.stock_lots || []).length,
     billItemLots: (state.bill_item_lots || []).length,
+    returns: (state.returns || []).length,
+    returnItems: (state.return_items || []).length,
     lowStock: lowStockProducts ? lowStockProducts().length : 0
   };
 }
@@ -3958,6 +4159,8 @@ function diagnosticText() {
     `Stock movements: ${d.movements}`,
     `Stock lots: ${d.stockLots}`,
     `Bill item lots: ${d.billItemLots}`,
+    `Returns: ${d.returns}`,
+    `Return items: ${d.returnItems}`,
     `Last Backup: ${d.lastBackup}`,
     `Generated: ${d.generatedAt}`,
     `User Agent: ${d.userAgent}`

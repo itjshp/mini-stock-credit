@@ -2245,3 +2245,12 @@ textarea{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.5: Close Period UI refresh fix */
+.close-period-refresh-note{
+  display:block;
+  margin-top:5px;
+  color:#0f766e;
+  font-weight:950;
+}

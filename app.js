@@ -771,6 +771,7 @@ function renderAll() {
   renderDailyClose();
   renderLowStockCenter();
   renderMovements();
+  renderClosePeriod();
   renderStockCount();
   renderAdjustments();
   renderLedger();
@@ -1836,7 +1837,7 @@ function renderClosePeriod() {
   const lock = currentLockPeriod();
   const lockDate = currentLockDate();
 
-  if ($("currentLockText")) $("currentLockText").textContent = lock ? `ล็อกข้อมูลถึงวันที่ ${lockDate}` : "ยังไม่มีการล็อกข้อมูลย้อนหลัง";
+  if ($("currentLockText")) $("currentLockText").textContent = lock ? `ล็อกข้อมูลถึงวันที่ ${lockDate} (${lock.closeNo || "รอบปิด"})` : "ยังไม่มีการล็อกข้อมูลย้อนหลัง";
   if ($("currentLockBadge")) {
     $("currentLockBadge").textContent = lock ? `ล็อกถึง ${lockDate}` : "ยังไม่ล็อก";
     $("currentLockBadge").classList.toggle("locked", !!lock);
@@ -1920,6 +1921,7 @@ async function createClosePeriod() {
   if ($("closePeriodNote")) $("closePeriodNote").value = "";
   await loadState();
   switchTab("closePeriod");
+  renderClosePeriod();
   showToast(`ปิดรอบ ${closeNo} แล้ว`);
 }
 
@@ -1951,6 +1953,7 @@ window.reopenClosePeriod = async (id) => {
 
   await loadState();
   switchTab("closePeriod");
+  renderClosePeriod();
   showToast(`ปลดล็อก ${p.closeNo} แล้ว`);
 };
 
@@ -3456,6 +3459,9 @@ function renderBackupStatus() {
 function switchTab(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === id));
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === id));
+  if (id === "closePeriod") {
+    try { renderClosePeriod(); } catch (err) { console.error("renderClosePeriod failed", err); }
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -3861,7 +3867,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.4", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.5", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -4815,6 +4821,7 @@ $("stockCountApplyBtn")?.addEventListener("click", applyStockCount);
 $("closeTodayBtn")?.addEventListener("click", setClosePeriodToday);
 $("closeMonthBtn")?.addEventListener("click", setClosePeriodMonth);
 $("createClosePeriodBtn")?.addEventListener("click", createClosePeriod);
+$("refreshClosePeriodBtn")?.addEventListener("click", async () => { await loadState(); switchTab("closePeriod"); showToast("รีเฟรชสถานะปิดรอบแล้ว"); });
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.6 • Debt Aging • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.7 • Compact Menu • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -863,71 +863,88 @@
   <div class="page-head">
     <div>
       <h2>เพิ่มเติม</h2>
-      <p>จัดเมนูเป็นหมวดหมู่ เพื่อให้หาเมนูที่ต้องการได้ง่ายขึ้น</p>
+      <p>เลือกหมวดก่อน แล้วค่อยเข้าไปดูเมนูย่อย เพื่อลดความรกและใช้งานง่ายขึ้น</p>
     </div>
   </div>
 
-  <div class="panel more-helper-panel">
+  <div class="panel more-helper-panel compact-more-search">
     <div class="panel-head">
       <div>
-        <h3>ค้นหาเมนูที่ต้องการ</h3>
+        <h3>ค้นหาเมนู</h3>
         <span class="hint">พิมพ์คำ เช่น บิล, สต็อก, Backup, ลูกหนี้, รายงาน</span>
       </div>
+      <button id="moreHomeBtn" class="soft-btn" type="button">กลับหน้าเมนูหลัก</button>
     </div>
     <input id="moreSearchInput" class="search-input" placeholder="ค้นหาเมนู เช่น ค้นหาบิล / รับเงิน / ปรับสต็อก">
-    <div class="more-filter-chips">
-      <button class="more-chip active" data-more-filter="all" type="button">ทั้งหมด</button>
-      <button class="more-chip" data-more-filter="daily" type="button">ใช้บ่อย</button>
-      <button class="more-chip" data-more-filter="money" type="button">ขาย/เงิน</button>
-      <button class="more-chip" data-more-filter="stock" type="button">สต็อก</button>
-      <button class="more-chip" data-more-filter="report" type="button">รายงาน</button>
-      <button class="more-chip" data-more-filter="system" type="button">ระบบ</button>
+  </div>
+
+  <div id="moreHomeView" class="more-compact-view">
+    <div class="panel more-section-block">
+      <div class="more-section-head">
+        <h3>⭐ เมนูด่วน</h3>
+        <span>งานที่ใช้บ่อยประจำวัน</span>
+      </div>
+      <div class="more-grid compact-grid">
+        <button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button>
+        <button class="more-card debt-aging-card" data-open-tab="debtAging"><span>⏰</span><strong>ลูกหนี้ครบกำหนด</strong><small>เกินกำหนด / ใกล้ครบ / แจ้งยอด</small></button>
+        <button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button>
+        <button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button>
+      </div>
+    </div>
+
+    <div class="panel more-section-block">
+      <div class="more-section-head">
+        <h3>📂 หมวดเมนู</h3>
+        <span>กดหมวดเพื่อดูเมนูย่อยด้านใน</span>
+      </div>
+      <div class="more-category-grid">
+        <button class="more-category-card" data-more-category="money" type="button">
+          <span>💰</span>
+          <strong>ขาย / เงิน / ลูกหนี้</strong>
+          <small>รับเงิน ยอดค้าง รายงาน ค้นหาบิล</small>
+        </button>
+        <button class="more-category-card" data-more-category="stock" type="button">
+          <span>📦</span>
+          <strong>สต็อก / ต้นทุน</strong>
+          <small>ซื้อเข้า ตรวจนับ ปรับสต็อก FIFO</small>
+        </button>
+        <button class="more-category-card" data-more-category="system" type="button">
+          <span>⚙️</span>
+          <strong>ระบบ / ตั้งค่า / ความปลอดภัย</strong>
+          <small>Backup ปิดรอบ ตั้งค่า คู่มือ</small>
+        </button>
+        <button class="more-category-card" data-more-category="all" type="button">
+          <span>🗂️</span>
+          <strong>เมนูทั้งหมด</strong>
+          <small>ดูทุกเมนูในหน้าเดียวเมื่อจำเป็น</small>
+        </button>
+      </div>
     </div>
   </div>
 
-  <div id="moreMenuBlocks" class="more-menu-blocks">
-    <div class="more-section-block" data-more-section="daily">
-      <div class="more-section-head"><h3>⭐ เมนูใช้บ่อย</h3><span>เมนูที่ควรเปิดใช้ประจำวัน</span></div>
-      <div class="more-grid" id="moreGrid">
-        <button class="more-card" data-more-group="daily money" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button>
-        <button class="more-card debt-aging-card" data-more-group="daily money report" data-open-tab="debtAging"><span>⏰</span><strong>ลูกหนี้ครบกำหนด</strong><small>เกินกำหนด / ใกล้ครบ / แจ้งยอด</small></button>
-        <button class="more-card bill-search-card" data-more-group="daily money report" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button>
-        <button class="more-card stock-count-card" data-more-group="daily stock" data-open-tab="stockCount"><span>📋</span><strong>ตรวจนับสต็อก</strong><small>นับจริง / เทียบระบบ / ปรับอัตโนมัติ</small></button>
+  <div id="moreSubmenuView" class="more-compact-view hidden-field">
+    <div class="panel more-section-block">
+      <div class="more-submenu-head">
+        <div>
+          <h3 id="moreSubmenuTitle">เมนูย่อย</h3>
+          <span id="moreSubmenuHint" class="hint">เลือกเมนูที่ต้องการ</span>
+        </div>
+        <button id="moreBackBtn" class="soft-btn" type="button">← กลับหมวดเมนู</button>
       </div>
+      <div id="moreSubmenuGrid" class="more-grid compact-grid"></div>
     </div>
+  </div>
 
-    <div class="more-section-block" data-more-section="money">
-      <div class="more-section-head"><h3>💰 ขาย / เงิน / ลูกหนี้</h3><span>รับเงิน เครดิต บิล และรายงานขาย</span></div>
-      <div class="more-grid">
-        <button class="more-card" data-more-group="money" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button>
-        <button class="more-card debt-aging-card" data-more-group="money report" data-open-tab="debtAging"><span>⏰</span><strong>ลูกหนี้ครบกำหนด</strong><small>จัดลำดับลูกหนี้ที่ต้องตาม</small></button>
-        <button class="more-card" data-more-group="money report" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button>
-        <button class="more-card bill-search-card" data-more-group="money report" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>ดูบิลย้อนหลัง</small></button>
+  <div id="moreSearchView" class="more-compact-view hidden-field">
+    <div class="panel more-section-block">
+      <div class="more-submenu-head">
+        <div>
+          <h3>ผลการค้นหา</h3>
+          <span id="moreSearchResultText" class="hint">พิมพ์คำค้นหาเพื่อหาเมนู</span>
+        </div>
+        <button id="moreSearchBackBtn" class="soft-btn" type="button">← กลับหน้าเมนูหลัก</button>
       </div>
-    </div>
-
-    <div class="more-section-block" data-more-section="stock">
-      <div class="more-section-head"><h3>📦 สต็อก / ต้นทุน</h3><span>ซื้อเข้า ตรวจนับ FIFO และปรับยอดสินค้า</span></div>
-      <div class="more-grid">
-        <button class="more-card" data-more-group="stock" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button>
-        <button class="more-card low-stock-card" data-more-group="stock" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button>
-        <button class="more-card stock-count-card" data-more-group="stock" data-open-tab="stockCount"><span>📋</span><strong>ตรวจนับสต็อก</strong><small>นับจริง / เทียบระบบ</small></button>
-        <button class="more-card" data-more-group="stock" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button>
-        <button class="more-card fifo-repair-card" data-more-group="stock system" id="repairFifoBtn" type="button"><span>📦</span><strong>ตรวจ/ซ่อม FIFO</strong><small>คำนวณล็อตต้นทุนใหม่</small></button>
-      </div>
-    </div>
-
-    <div class="more-section-block" data-more-section="system">
-      <div class="more-section-head"><h3>⚙️ ระบบ / ตั้งค่า / ความปลอดภัย</h3><span>Backup, ปิดรอบ, คู่มือ และเครื่องมือทดสอบ</span></div>
-      <div class="more-grid">
-        <button class="more-card close-period-card" data-more-group="system" data-open-tab="closePeriod"><span>🔐</span><strong>ปิดรอบ / ล็อกย้อนหลัง</strong><small>ล็อกบิล สต็อก และยอดย้อนหลัง</small></button>
-        <button class="more-card" data-more-group="system" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button>
-        <button class="more-card beta-ready-card" data-more-group="system" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button>
-        <button class="more-card" data-more-group="system" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button>
-        <button class="more-card" data-more-group="system" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button>
-        <button class="more-card about-card" data-more-group="system" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button>
-        <button class="more-card test-card" data-more-group="system" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button>
-      </div>
+      <div id="moreSearchGrid" class="more-grid compact-grid"></div>
     </div>
   </div>
 </section>

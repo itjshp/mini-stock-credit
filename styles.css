@@ -2285,3 +2285,90 @@ textarea{
 .debt-meta span{display:inline-flex;border-radius:999px;padding:4px 8px;background:#f1f5f9;color:#475569;font-size:12px;font-weight:900}
 @media(max-width:1100px){.debt-aging-grid,.debt-aging-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.more-section-head{display:block}.debt-aging-grid,.debt-aging-summary{grid-template-columns:1fr}}
+
+
+/* v2.3.7: Compact More Menu UX */
+.more-compact-view{
+  display:grid;
+  gap:18px;
+}
+.more-category-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+}
+.more-category-card{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:28px;
+  padding:22px;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(0,139,122,.09),transparent 32%),
+    linear-gradient(135deg,#ffffff,#f4fffb);
+  text-align:left;
+  cursor:pointer;
+  min-height:116px;
+  box-shadow:0 16px 38px rgba(15,23,42,.06);
+  transition:.16s ease;
+}
+.more-category-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 22px 48px rgba(15,23,42,.09);
+}
+.more-category-card span{
+  width:56px;
+  height:56px;
+  border-radius:20px;
+  display:grid;
+  place-items:center;
+  background:#e8f7f3;
+  font-size:28px;
+  flex:0 0 auto;
+}
+.more-category-card strong{
+  display:block;
+  font-size:22px;
+  margin-bottom:5px;
+}
+.more-category-card small{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+}
+.compact-grid{
+  grid-template-columns:repeat(4,1fr);
+}
+.more-submenu-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  margin-bottom:14px;
+}
+.more-submenu-head h3{
+  margin:0;
+}
+.compact-more-search{
+  border-top:5px solid #0f766e;
+}
+.more-card.hidden-by-search{
+  display:none!important;
+}
+@media(max-width:1100px){
+  .compact-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .more-category-grid,
+  .compact-grid{
+    grid-template-columns:1fr;
+  }
+  .more-submenu-head{
+    display:block;
+  }
+  .more-submenu-head .soft-btn{
+    margin-top:10px;
+  }
+}

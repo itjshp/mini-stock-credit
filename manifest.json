@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.6 Debt Aging and grouped More menu UX",
+  "description": "Khaikhong v2.3.7 compact More menu with category drill-down UX",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

@@ -3639,6 +3639,9 @@ function switchTab(id) {
   if (id === "debtAging") {
     try { renderDebtAging(); } catch (err) { console.error("renderDebtAging failed", err); }
   }
+  if (id === "more") {
+    try { resetMoreMenu(); } catch (err) { console.error("resetMoreMenu failed", err); }
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -4044,7 +4047,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.6", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.7", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -4715,32 +4718,6 @@ $("printCustomerHistoryBtn")?.addEventListener("click", printCustomerHistory);
 $("exportCustomerHistoryCsvBtn")?.addEventListener("click", exportCustomerHistoryCsv);
 
 
-let activeMoreFilter = "all";
-
-function filterMoreMenu() {
-  const q = ($("moreSearchInput")?.value || "").toLowerCase().trim();
-  document.querySelectorAll("#moreMenuBlocks .more-card").forEach(card => {
-    const text = card.textContent.toLowerCase();
-    const groups = (card.dataset.moreGroup || "").split(/\s+/);
-    const matchText = !q || text.includes(q);
-    const matchGroup = activeMoreFilter === "all" || groups.includes(activeMoreFilter);
-    card.classList.toggle("hidden-by-search", !(matchText && matchGroup));
-  });
-
-  document.querySelectorAll("#moreMenuBlocks .more-section-block").forEach(section => {
-    const visibleCards = [...section.querySelectorAll(".more-card")].some(card => !card.classList.contains("hidden-by-search"));
-    section.classList.toggle("hidden-by-search", !visibleCards);
-  });
-}
-
-$("moreSearchInput")?.addEventListener("input", filterMoreMenu);
-document.querySelectorAll(".more-chip").forEach(chip => {
-  chip.addEventListener("click", () => {
-    activeMoreFilter = chip.dataset.moreFilter || "all";
-    document.querySelectorAll(".more-chip").forEach(x => x.classList.toggle("active", x === chip));
-    filterMoreMenu();
-  });
-});
 
 
 
@@ -5032,6 +5009,101 @@ $("debtDueSoonBtn")?.addEventListener("click", () => setDebtAgingStatus("dueSoon
 $("debtClearBtn")?.addEventListener("click", clearDebtAgingFilters);
 $("copyDebtSummaryBtn")?.addEventListener("click", copyDebtSummary);
 $("exportDebtAgingCsvBtn")?.addEventListener("click", exportDebtAgingCsv);
+
+
+const moreMenuItems = [
+  { group: "money", icon: "💵", title: "รับเงิน", hint: "รับชำระลูกหนี้", tab: "payments", keywords: "รับเงิน ลูกหนี้ ชำระ เครดิต" },
+  { group: "money", icon: "📒", title: "ยอดค้าง", hint: "สมุดบัญชีลูกค้า", tab: "ledger", keywords: "ยอดค้าง ลูกหนี้ สมุดบัญชี เครดิต" },
+  { group: "money", icon: "⏰", title: "ลูกหนี้ครบกำหนด", hint: "เกินกำหนด / ใกล้ครบ / แจ้งยอด", tab: "debtAging", keywords: "ลูกหนี้ ครบกำหนด เกินกำหนด แจ้งยอด เครดิต" },
+  { group: "money report", icon: "📊", title: "รายงาน", hint: "ยอดขาย / กำไร", tab: "reports", keywords: "รายงาน ยอดขาย กำไร export" },
+  { group: "money report", icon: "🔎", title: "ค้นหาบิล", hint: "วันที่ / ลูกค้า / เลขบิล / สินค้า", tab: "billSearch", keywords: "บิล ค้นหา เลขบิล ลูกค้า สินค้า" },
+
+  { group: "stock", icon: "📦", title: "ซื้อเข้า", hint: "เพิ่มสต็อก / บันทึกต้นทุน", tab: "purchase", keywords: "ซื้อเข้า รับเข้า สต็อก ต้นทุน" },
+  { group: "stock", icon: "⚠️", title: "สินค้าใกล้หมด", hint: "ดูรายการที่ควรซื้อเพิ่ม", tab: "lowStock", keywords: "ใกล้หมด สต็อกขั้นต่ำ ซื้อเพิ่ม" },
+  { group: "stock", icon: "📋", title: "ตรวจนับสต็อก", hint: "นับจริง / เทียบระบบ", tab: "stockCount", keywords: "ตรวจนับ สต็อก นับจริง ปรับอัตโนมัติ" },
+  { group: "stock", icon: "🧮", title: "ปรับสต็อก", hint: "ของเสีย / ของหาย / นับแล้วไม่ตรง", tab: "adjust", keywords: "ปรับสต็อก ของเสีย ของหาย ปรับเพิ่ม ปรับลด" },
+  { group: "stock system", icon: "📦", title: "ตรวจ/ซ่อม FIFO", hint: "คำนวณล็อตต้นทุนใหม่", action: "repairFifo", keywords: "fifo ต้นทุน lot ล็อต ซ่อมทุน" },
+
+  { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
+  { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
+  { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
+  { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
+  { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
+  { group: "system", icon: "🛡️", title: "เกี่ยวกับแอป", hint: "Privacy / Local-first / เวอร์ชัน", tab: "about", keywords: "เกี่ยวกับ privacy local first version" },
+  { group: "system", icon: "🧪", title: "ทดสอบระบบ", hint: "Auto Test / ตรวจสูตร / ล้างข้อมูล TEST", tab: "testCenter", keywords: "ทดสอบ test auto ล้างข้อมูล" }
+];
+
+function moreCategoryTitle(category) {
+  if (category === "money") return "💰 ขาย / เงิน / ลูกหนี้";
+  if (category === "stock") return "📦 สต็อก / ต้นทุน";
+  if (category === "system") return "⚙️ ระบบ / ตั้งค่า / ความปลอดภัย";
+  return "🗂️ เมนูทั้งหมด";
+}
+
+function renderMoreMenuCard(item) {
+  const actionAttr = item.action ? `data-more-action="${item.action}"` : `data-open-tab="${item.tab}"`;
+  return `
+    <button class="more-card" ${actionAttr} type="button">
+      <span>${item.icon}</span>
+      <strong>${item.title}</strong>
+      <small>${item.hint}</small>
+    </button>
+  `;
+}
+
+function bindMoreDynamicActions(root = document) {
+  root.querySelectorAll("[data-more-action='repairFifo']").forEach(btn => {
+    btn.addEventListener("click", repairAllCosts);
+  });
+}
+
+function showMoreView(view) {
+  ["moreHomeView", "moreSubmenuView", "moreSearchView"].forEach(id => $(id)?.classList.add("hidden-field"));
+  $(view)?.classList.remove("hidden-field");
+}
+
+function openMoreCategory(category = "all") {
+  const items = category === "all"
+    ? moreMenuItems
+    : moreMenuItems.filter(item => (item.group || "").split(/\s+/).includes(category));
+
+  if ($("moreSubmenuTitle")) $("moreSubmenuTitle").textContent = moreCategoryTitle(category);
+  if ($("moreSubmenuHint")) $("moreSubmenuHint").textContent = `มี ${items.length} เมนูในหมวดนี้`;
+  if ($("moreSubmenuGrid")) {
+    $("moreSubmenuGrid").innerHTML = items.map(renderMoreMenuCard).join("");
+    bindMoreDynamicActions($("moreSubmenuGrid"));
+  }
+  showMoreView("moreSubmenuView");
+}
+
+function resetMoreMenu() {
+  if ($("moreSearchInput")) $("moreSearchInput").value = "";
+  showMoreView("moreHomeView");
+}
+
+function searchMoreMenu() {
+  const q = ($("moreSearchInput")?.value || "").toLowerCase().trim();
+  if (!q) {
+    showMoreView("moreHomeView");
+    return;
+  }
+
+  const rows = moreMenuItems.filter(item => `${item.title} ${item.hint} ${item.keywords || ""}`.toLowerCase().includes(q));
+  if ($("moreSearchResultText")) $("moreSearchResultText").textContent = rows.length ? `พบ ${rows.length} เมนู` : "ไม่พบเมนูที่ค้นหา";
+  if ($("moreSearchGrid")) {
+    $("moreSearchGrid").innerHTML = rows.map(renderMoreMenuCard).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🔎</div><strong>ไม่พบเมนู</strong><small>ลองค้นหาด้วยคำอื่น เช่น บิล, สต็อก, Backup</small></div></div>`;
+    bindMoreDynamicActions($("moreSearchGrid"));
+  }
+  showMoreView("moreSearchView");
+}
+
+document.querySelectorAll(".more-category-card").forEach(card => {
+  card.addEventListener("click", () => openMoreCategory(card.dataset.moreCategory || "all"));
+});
+$("moreBackBtn")?.addEventListener("click", resetMoreMenu);
+$("moreHomeBtn")?.addEventListener("click", resetMoreMenu);
+$("moreSearchBackBtn")?.addEventListener("click", resetMoreMenu);
+$("moreSearchInput")?.addEventListener("input", searchMoreMenu);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

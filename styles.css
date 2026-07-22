@@ -2134,3 +2134,9 @@ textarea{
     width:100%;
   }
 }
+
+
+/* v2.3.3: Product Detail Fix */
+.product-detail-error{
+  border-left:5px solid #b91c1c;
+}

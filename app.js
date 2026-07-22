@@ -1172,16 +1172,18 @@ function renderProductDetail() {
         </div>
         <div class="stack-list">
           ${movements.slice(0, 30).map(m => {
+            const isCost = m.type === "cost_adjust";
             const isIn = Number(m.qtyIn || 0) > 0;
-            const cls = m.type === "sale_cancel" ? "product-move-cancel" : (isIn ? "product-move-in" : "product-move-out");
-            const qty = isIn ? m.qtyIn : m.qtyOut;
+            const cls = isCost ? "cost-adjust" : (m.type === "sale_cancel" || m.type === "sale_return" ? "product-move-cancel" : (isIn ? "product-move-in" : "product-move-out"));
+            const qty = isCost ? 0 : (isIn ? Number(m.qtyIn || 0) : Number(m.qtyOut || 0));
+            const label = isCost ? `ปรับทุน ${money(m.unitCost || 0)}` : `${isIn ? "+" : "-"}${money(qty)}`;
             return `
               <div class="list-item ${cls}">
                 <div>
-                  <strong>${m.type}</strong>
-                  <small>${m.date} • ${m.note || "-"} • ทุน ${money(m.unitCost || 0)}</small>
+                  <strong>${m.type || "-"}</strong>
+                  <small>${m.date || "-"} • ${m.note || "-"} • ทุน ${money(m.unitCost || 0)}</small>
                 </div>
-                <div class="money ${isCost ? "product-profit" : (isIn ? "positive" : "negative")}">${isCost ? "ทุน " + money(m.unitCost || 0) : (isIn ? "+" : "-") + money(qty)}</div>
+                <div class="money ${isCost ? "product-profit" : (isIn ? "positive" : "negative")}">${label}</div>
               </div>
             `;
           }).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติสต็อก</strong></div></div>`}
@@ -1193,12 +1195,21 @@ function renderProductDetail() {
 
 window.openProductDetail = (id) => {
   selectedProductId = id;
-  renderProductDetail();
   if (!$("productDetail")) {
     alert("ไม่พบหน้ารายละเอียดสินค้า กรุณาอัปเดต index.html ให้ครบ");
     return;
   }
   switchTab("productDetail");
+  try {
+    renderProductDetail();
+  } catch (err) {
+    console.error("openProductDetail failed", err);
+    const wrap = $("productDetailContent");
+    if (wrap) {
+      wrap.innerHTML = `<div class="panel"><div class="list-item"><div><strong>เปิดรายละเอียดสินค้าไม่ได้</strong><small>${String(err?.message || err)}</small></div></div></div>`;
+    }
+    alert("เปิดรายละเอียดสินค้าไม่ได้ กรุณากดตรวจ/ซ่อม FIFO หรือส่ง Feedback ให้ผู้พัฒนา");
+  }
 };
 
 window.quickPurchaseProduct = (id) => {
@@ -3633,7 +3644,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.2", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.3", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

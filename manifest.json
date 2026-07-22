@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.2 Stock Count / Physical Inventory with FIFO-aware adjustments",
+  "description": "Khaikhong v2.3.3 fixes product detail button and stock history rendering",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

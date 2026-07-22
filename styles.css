@@ -2006,3 +2006,131 @@ textarea{
   font-weight:900;
   margin-top:10px;
 }
+
+
+/* v2.3.2: Stock Count / Physical Inventory */
+.stock-count-card{
+  border-color:#bfdbfe;
+  background:linear-gradient(180deg,#fff,#eff6ff)!important;
+}
+.stock-count-filter{
+  border-top:5px solid #2563eb;
+}
+.stock-count-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+  align-items:end;
+}
+.stock-count-toggle{
+  align-self:center;
+  background:#fff;
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:18px;
+  padding:12px;
+}
+.stock-count-summary{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-top:14px;
+}
+.stock-count-summary div{
+  background:#101827;
+  color:#fff;
+  border-radius:20px;
+  padding:14px;
+}
+.stock-count-summary span{
+  display:block;
+  font-size:12px;
+  opacity:.85;
+  font-weight:950;
+}
+.stock-count-summary strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+.stock-count-rows{
+  display:grid;
+  gap:10px;
+}
+.stock-count-row{
+  border-left:5px solid #94a3b8;
+}
+.stock-count-row.count-ok{
+  border-left-color:#16a34a;
+}
+.stock-count-row.count-in{
+  border-left-color:#2563eb;
+}
+.stock-count-row.count-out{
+  border-left-color:#f97316;
+}
+.stock-count-row-grid{
+  display:grid;
+  grid-template-columns:1.3fr .8fr .8fr 1fr;
+  gap:10px;
+  align-items:center;
+  width:100%;
+}
+.stock-count-input{
+  max-width:160px;
+}
+.stock-count-note{
+  min-width:180px;
+}
+.stock-diff-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:1000;
+  background:#f1f5f9;
+  color:#475569;
+}
+.stock-diff-chip.in{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+.stock-diff-chip.out{
+  background:#ffedd5;
+  color:#c2410c;
+}
+.stock-diff-chip.ok{
+  background:#dcfce7;
+  color:#047857;
+}
+.stock-count-detail{
+  margin-top:12px;
+}
+.stock-count-history-row{
+  border-left:5px solid #2563eb;
+}
+.stock-count-history-row.deleted{
+  opacity:.6;
+}
+@media(max-width:1100px){
+  .stock-count-filter-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+  .stock-count-summary{
+    grid-template-columns:repeat(2,1fr);
+  }
+  .stock-count-row-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:720px){
+  .stock-count-filter-grid,
+  .stock-count-summary,
+  .stock-count-row-grid{
+    grid-template-columns:1fr;
+  }
+  .stock-count-input,
+  .stock-count-note{
+    max-width:none;
+    width:100%;
+  }
+}

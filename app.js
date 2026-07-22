@@ -1,14 +1,16 @@
 const DB_NAME = "khaikhong-v2-db";
-const DB_VERSION = 3;
-const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","settings"];
+const DB_VERSION = 4;
+const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","settings"];
 
 let db;
-let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], settings: [] };
+let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], stock_counts: [], stock_count_items: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
 let selectedCustomerDetailId = "";
 let selectedProductId = "";
 let selectedBillId = "";
+let selectedStockCountId = "";
+let stockCountDraft = {};
 let currentNumberInput = null;
 let numberPadValue = "";
 let deferredPrompt = null;
@@ -108,6 +110,8 @@ async function loadState() {
   state.bill_item_lots.sort((a, b) => `${a.billId || ""} ${a.productId || ""}`.localeCompare(`${b.billId || ""} ${b.productId || ""}`));
   state.returns.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.return_items.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+  state.stock_counts.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
+  state.stock_count_items.sort((a, b) => `${a.stockCountId || ""} ${a.productId || ""}`.localeCompare(`${b.stockCountId || ""} ${b.productId || ""}`));
   state.payments.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
   renderAll();
@@ -710,6 +714,7 @@ function renderAll() {
   renderDailyClose();
   renderLowStockCenter();
   renderMovements();
+  renderStockCount();
   renderAdjustments();
   renderLedger();
   renderPayments();
@@ -727,6 +732,7 @@ function renderAll() {
 function renderCategoryOptions() {
   setCategoryOptions("productCategoryFilter");
   setCategoryOptions("saleCategoryFilter");
+  setCategoryOptions("stockCountCategoryFilter");
 }
 
 function renderSelects() {
@@ -1748,6 +1754,345 @@ window.deletePurchase = async (id) => {
   showToast("ลบรายการซื้อเข้าและคำนวณ FIFO ใหม่แล้ว");
 };
 
+
+
+function stockCountDomId(id) {
+  return String(id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function stockCountDraftValue(productId) {
+  const v = stockCountDraft[productId]?.countedQty;
+  return v === undefined || v === null ? "" : v;
+}
+
+function parseStockCountValue(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function stockCountRowsForView() {
+  const q = ($("stockCountSearch")?.value || "").toLowerCase().trim();
+  const category = $("stockCountCategoryFilter")?.value || "";
+  const onlyDiff = !!$("stockCountOnlyDiff")?.checked;
+
+  return activeProducts()
+    .filter(p => !category || (p.category || "") === category)
+    .filter(p => !q || `${p.name || ""} ${p.category || ""} ${p.unit || ""} ${p.note || ""}`.toLowerCase().includes(q))
+    .filter(p => {
+      if (!onlyDiff) return true;
+      const counted = parseStockCountValue(stockCountDraftValue(p.id));
+      if (counted === null) return false;
+      return Math.abs(counted - Number(p.stockQty || 0)) > 0.000001;
+    });
+}
+
+function stockCountDraftRows() {
+  return Object.keys(stockCountDraft)
+    .map(productId => {
+      const p = productById(productId);
+      if (!p) return null;
+      const countedQty = parseStockCountValue(stockCountDraft[productId]?.countedQty);
+      if (countedQty === null) return null;
+      const systemQty = Number(p.stockQty || 0);
+      const diffQty = countedQty - systemQty;
+      const unitCost = Number(p.avgCost || 0);
+      return {
+        productId,
+        productNameSnapshot: p.name,
+        categorySnapshot: p.category || "",
+        unitSnapshot: p.unit || "",
+        systemQty,
+        countedQty,
+        diffQty,
+        unitCost,
+        diffValue: diffQty * unitCost,
+        note: stockCountDraft[productId]?.note || ""
+      };
+    })
+    .filter(Boolean);
+}
+
+function stockCountDiffClass(diffQty) {
+  if (diffQty > 0.000001) return "in";
+  if (diffQty < -0.000001) return "out";
+  return "ok";
+}
+
+function stockCountDiffLabel(diffQty, unit = "") {
+  if (diffQty > 0.000001) return `+${money(diffQty)} ${unit}`;
+  if (diffQty < -0.000001) return `-${money(Math.abs(diffQty))} ${unit}`;
+  return `ตรง ${unit || ""}`.trim();
+}
+
+function renderStockCountSummary() {
+  const el = $("stockCountSummary");
+  if (!el) return;
+
+  const rows = stockCountDraftRows();
+  const changed = rows.filter(r => Math.abs(r.diffQty) > 0.000001);
+  const inQty = changed.filter(r => r.diffQty > 0).reduce((s, r) => s + r.diffQty, 0);
+  const outQty = changed.filter(r => r.diffQty < 0).reduce((s, r) => s + Math.abs(r.diffQty), 0);
+  const value = changed.reduce((s, r) => s + r.diffValue, 0);
+
+  el.innerHTML = `
+    <div><span>กรอกแล้ว</span><strong>${rows.length.toLocaleString("th-TH")}</strong></div>
+    <div><span>รายการต่าง</span><strong>${changed.length.toLocaleString("th-TH")}</strong></div>
+    <div><span>ปรับเพิ่ม</span><strong>${money(inQty)}</strong></div>
+    <div><span>ปรับลด</span><strong>${money(outQty)}</strong></div>
+    <div><span>ผลต่างมูลค่า</span><strong>${money(value)}</strong></div>
+  `;
+}
+
+function updateStockCountLine(productId) {
+  const p = productById(productId);
+  if (!p) return;
+
+  const counted = parseStockCountValue(stockCountDraftValue(productId));
+  const safe = stockCountDomId(productId);
+  const row = $("stockCountRow-" + safe);
+  const diffEl = $("stockCountDiff-" + safe);
+  const valueEl = $("stockCountValue-" + safe);
+
+  row?.classList.remove("count-ok", "count-in", "count-out");
+
+  if (counted === null) {
+    if (diffEl) {
+      diffEl.className = "stock-diff-chip";
+      diffEl.textContent = "ยังไม่กรอก";
+    }
+    if (valueEl) valueEl.textContent = "มูลค่าผลต่าง 0.00";
+    renderStockCountSummary();
+    return;
+  }
+
+  const diff = counted - Number(p.stockQty || 0);
+  const cls = stockCountDiffClass(diff);
+  row?.classList.add(cls === "in" ? "count-in" : cls === "out" ? "count-out" : "count-ok");
+
+  if (diffEl) {
+    diffEl.className = `stock-diff-chip ${cls}`;
+    diffEl.textContent = stockCountDiffLabel(diff, p.unit || "");
+  }
+  if (valueEl) valueEl.textContent = `มูลค่าผลต่าง ${money(diff * Number(p.avgCost || 0))}`;
+
+  renderStockCountSummary();
+}
+
+window.updateStockCountDraft = (productId, field, value) => {
+  const draft = stockCountDraft[productId] || {};
+  draft[field] = value;
+  stockCountDraft[productId] = draft;
+  updateStockCountLine(productId);
+};
+
+function renderStockCountRows() {
+  const list = $("stockCountRows");
+  if (!list) return;
+
+  const rows = stockCountRowsForView();
+  if ($("stockCountRowsText")) $("stockCountRowsText").textContent = `แสดง ${rows.length.toLocaleString("th-TH")} รายการ`;
+
+  list.innerHTML = rows.map(p => {
+    const safe = stockCountDomId(p.id);
+    const counted = stockCountDraftValue(p.id);
+    const diff = parseStockCountValue(counted) === null ? null : Number(counted) - Number(p.stockQty || 0);
+    const cls = diff === null ? "" : (stockCountDiffClass(diff) === "in" ? "count-in" : stockCountDiffClass(diff) === "out" ? "count-out" : "count-ok");
+    const note = stockCountDraft[p.id]?.note || "";
+    return `
+      <div id="stockCountRow-${safe}" class="list-item stock-count-row ${cls}">
+        <div class="stock-count-row-grid">
+          <div>
+            <strong>${p.name}</strong>
+            <small>${productCategoryLabel(p)} • หน่วย ${p.unit || "-"} • ทุน FIFO ${money(p.avgCost || 0)}</small>
+          </div>
+          <div>
+            <small>ยอดในระบบ</small>
+            <div class="money">${money(p.stockQty)} ${p.unit || ""}</div>
+          </div>
+          <label>นับจริง
+            <input class="stock-count-input" data-keypad="true" type="number" min="0" step="0.01" value="${counted}" oninput="updateStockCountDraft('${p.id}', 'countedQty', this.value)">
+          </label>
+          <div>
+            <span id="stockCountDiff-${safe}" class="stock-diff-chip ${diff === null ? "" : stockCountDiffClass(diff)}">${diff === null ? "ยังไม่กรอก" : stockCountDiffLabel(diff, p.unit || "")}</span>
+            <small id="stockCountValue-${safe}">มูลค่าผลต่าง ${money(diff === null ? 0 : diff * Number(p.avgCost || 0))}</small>
+            <input class="stock-count-note" placeholder="หมายเหตุรายการนี้" value="${note}" oninput="updateStockCountDraft('${p.id}', 'note', this.value)">
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">📋</div><strong>ไม่พบสินค้า</strong><small>ลองล้างตัวกรองหรือเพิ่มสินค้าในระบบก่อน</small></div></div>`;
+
+  renderStockCountSummary();
+}
+
+function renderStockCountHistory() {
+  const list = $("stockCountHistory");
+  const detail = $("stockCountDetail");
+  if (!list) return;
+
+  const rows = (state.stock_counts || []).slice(0, 20);
+  list.innerHTML = rows.map(c => `
+    <div class="list-item stock-count-history-row">
+      <div>
+        <strong>${c.countNo || "STOCK-COUNT"} ${c.status === "deleted" ? "• ลบแล้ว" : ""}</strong>
+        <small>${c.date || "-"} • ${c.countedItems || 0} รายการ • ต่าง ${c.changedItems || 0} รายการ • ${c.note || "-"}</small>
+        <small>ปรับเพิ่ม ${money(c.diffInQty || 0)} • ปรับลด ${money(c.diffOutQty || 0)} • มูลค่าผลต่าง ${money(c.diffValue || 0)}</small>
+      </div>
+      <div class="row-actions">
+        <button class="small-btn" onclick="openStockCountDetail('${c.id}')">ดูรายละเอียด</button>
+        <button class="small-btn small-danger" onclick="deleteStockCount('${c.id}')">ลบ/ย้อนรายการ</button>
+      </div>
+    </div>
+  `).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติการตรวจนับ</strong><small>เมื่อบันทึกตรวจนับ รายการจะแสดงที่นี่</small></div></div>`;
+
+  if (!detail) return;
+  const selected = state.stock_counts.find(c => c.id === selectedStockCountId);
+  if (!selected) {
+    detail.innerHTML = "";
+    return;
+  }
+
+  const items = state.stock_count_items.filter(i => i.stockCountId === selected.id);
+  detail.innerHTML = `
+    <div class="panel stock-count-filter">
+      <div class="panel-head">
+        <h3>รายละเอียด ${selected.countNo}</h3>
+        <span class="hint">${selected.date} • ${selected.note || "-"}</span>
+      </div>
+      <div class="stack-list">
+        ${items.map(i => `
+          <div class="list-item ${i.diffQty > 0 ? "count-in" : i.diffQty < 0 ? "count-out" : "count-ok"}">
+            <div>
+              <strong>${i.productNameSnapshot || productById(i.productId)?.name || "-"}</strong>
+              <small>${i.categorySnapshot || "-"} • ยอดระบบ ${money(i.systemQty)} ${i.unitSnapshot || ""} • นับจริง ${money(i.countedQty)} ${i.unitSnapshot || ""}</small>
+              ${i.note ? `<small>หมายเหตุ: ${i.note}</small>` : ""}
+            </div>
+            <div>
+              <span class="stock-diff-chip ${stockCountDiffClass(i.diffQty)}">${stockCountDiffLabel(i.diffQty, i.unitSnapshot || "")}</span>
+              <small>มูลค่า ${money(i.diffValue || 0)}</small>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderStockCount() {
+  if (!$("stockCountRows")) return;
+  if ($("stockCountDate") && !$("stockCountDate").value) $("stockCountDate").value = today();
+  renderStockCountRows();
+  renderStockCountHistory();
+}
+
+window.fillStockCountWithSystem = () => {
+  stockCountRowsForView().forEach(p => {
+    stockCountDraft[p.id] = {
+      ...(stockCountDraft[p.id] || {}),
+      countedQty: String(Number(p.stockQty || 0))
+    };
+  });
+  renderStockCount();
+};
+
+window.clearStockCountDraft = () => {
+  if (!confirm("ล้างจำนวนที่กรอกในหน้าตรวจนับนี้?")) return;
+  stockCountDraft = {};
+  renderStockCount();
+};
+
+async function applyStockCount() {
+  const rows = stockCountDraftRows();
+
+  if (!rows.length) return alert("ยังไม่ได้กรอกจำนวนที่นับจริง");
+
+  const invalid = rows.find(r => r.countedQty < 0);
+  if (invalid) return alert(`จำนวนที่นับจริงห้ามติดลบ: ${invalid.productNameSnapshot}`);
+
+  const changed = rows.filter(r => Math.abs(r.diffQty) > 0.000001);
+  if (!changed.length && !confirm("ยอดที่นับจริงตรงกับระบบทั้งหมด ต้องการบันทึกผลตรวจนับไว้หรือไม่?")) return;
+
+  const date = $("stockCountDate")?.value || today();
+  const note = $("stockCountNote")?.value.trim() || "ตรวจนับสต็อก";
+  const countId = uid();
+  const countNo = `SC-${date.replaceAll("-", "")}-${String((state.stock_counts || []).length + 1).padStart(4, "0")}`;
+  const now = new Date().toISOString();
+
+  const diffInQty = changed.filter(r => r.diffQty > 0).reduce((s, r) => s + r.diffQty, 0);
+  const diffOutQty = changed.filter(r => r.diffQty < 0).reduce((s, r) => s + Math.abs(r.diffQty), 0);
+  const diffValue = changed.reduce((s, r) => s + r.diffValue, 0);
+
+  await put("stock_counts", {
+    id: countId,
+    countNo,
+    date,
+    note,
+    countedItems: rows.length,
+    changedItems: changed.length,
+    diffInQty,
+    diffOutQty,
+    diffValue,
+    status: "completed",
+    createdAt: now
+  });
+
+  for (const row of rows) {
+    await put("stock_count_items", {
+      id: uid(),
+      stockCountId: countId,
+      countNo,
+      date,
+      ...row,
+      createdAt: now
+    });
+  }
+
+  for (const row of changed) {
+    await put("stock_movements", {
+      id: uid(),
+      productId: row.productId,
+      type: row.diffQty > 0 ? "adjust_in" : "adjust_out",
+      refType: "stock_count",
+      refId: countId,
+      date,
+      qtyIn: row.diffQty > 0 ? row.diffQty : 0,
+      qtyOut: row.diffQty < 0 ? Math.abs(row.diffQty) : 0,
+      unitCost: row.unitCost,
+      note: `${countNo}: ${note}${row.note ? " • " + row.note : ""}`,
+      createdAt: now
+    });
+  }
+
+  await recomputeInventory();
+  stockCountDraft = {};
+  selectedStockCountId = countId;
+  if ($("stockCountNote")) $("stockCountNote").value = "";
+  await loadState();
+  switchTab("stockCount");
+  showToast(`บันทึกตรวจนับ ${countNo} แล้ว`);
+}
+
+window.openStockCountDetail = (id) => {
+  selectedStockCountId = id;
+  renderStockCountHistory();
+};
+
+window.deleteStockCount = async (id) => {
+  const c = state.stock_counts.find(x => x.id === id);
+  if (!c) return alert("ไม่พบรายการตรวจนับ");
+
+  if (!confirm(`ลบ/ย้อนรายการตรวจนับ ${c.countNo}?\n\nระบบจะลบรายการปรับสต็อกที่เกิดจากการตรวจนับนี้ และคำนวณ FIFO ใหม่`)) return;
+
+  for (const item of state.stock_count_items.filter(i => i.stockCountId === id)) await del("stock_count_items", item.id);
+  for (const m of state.stock_movements.filter(m => m.refType === "stock_count" && m.refId === id)) await del("stock_movements", m.id);
+  await del("stock_counts", id);
+
+  if (selectedStockCountId === id) selectedStockCountId = "";
+  await recomputeInventory();
+  await loadState();
+  showToast(`ลบ/ย้อนรายการตรวจนับ ${c.countNo} แล้ว`);
+};
 
 function renderAdjustments() {
   const list = $("adjustList");
@@ -2901,7 +3246,7 @@ function switchTab(id) {
 document.querySelectorAll(".tab,[data-open-tab]").forEach(el => el.addEventListener("click", () => switchTab(el.dataset.tab || el.dataset.openTab)));
 
 function setDates() {
-  ["billDate", "purchaseDate", "paymentDate", "adjustDate"].forEach(id => $(id).value = today());
+  ["billDate", "purchaseDate", "paymentDate", "adjustDate", "stockCountDate"].forEach(id => { if ($(id)) $(id).value = today(); });
 }
 
 $("paymentType").addEventListener("change", () => {
@@ -3288,7 +3633,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.1", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.2", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3994,6 +4339,8 @@ function betaCounts() {
     billItemLots: (state.bill_item_lots || []).length,
     returns: (state.returns || []).length,
     returnItems: (state.return_items || []).length,
+    stockCounts: (state.stock_counts || []).length,
+    stockCountItems: (state.stock_count_items || []).length,
     lowStock: lowStockProducts ? lowStockProducts().length : 0
   };
 }
@@ -4161,6 +4508,8 @@ function diagnosticText() {
     `Bill item lots: ${d.billItemLots}`,
     `Returns: ${d.returns}`,
     `Return items: ${d.returnItems}`,
+    `Stock counts: ${d.stockCounts}`,
+    `Stock count items: ${d.stockCountItems}`,
     `Last Backup: ${d.lastBackup}`,
     `Generated: ${d.generatedAt}`,
     `User Agent: ${d.userAgent}`
@@ -4214,6 +4563,15 @@ $("betaExportBackupBtn")?.addEventListener("click", () => $("exportBackupBtn")?.
 ["feedbackPage", "feedbackType", "feedbackMessage"].forEach(id => {
   if ($(id)) $(id).addEventListener("input", renderDiagnosticCards);
 });
+
+
+["stockCountSearch", "stockCountCategoryFilter", "stockCountOnlyDiff"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderStockCountRows);
+  if ($(id)) $(id).addEventListener("change", renderStockCountRows);
+});
+$("stockCountFillSystemBtn")?.addEventListener("click", fillStockCountWithSystem);
+$("stockCountClearBtn")?.addEventListener("click", clearStockCountDraft);
+$("stockCountApplyBtn")?.addEventListener("click", applyStockCount);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

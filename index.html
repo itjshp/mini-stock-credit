@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.1 • Returns • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.2 • Stock Count • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -309,6 +309,63 @@
   <div class="panel"><div class="table-wrap"><table><thead><tr><th>บิล</th><th>วันที่</th><th>ลูกค้า</th><th>ยอดขาย</th><th>กำไร</th><th>สถานะ</th><th></th></tr></thead><tbody id="reportBills"></tbody></table></div></div>
 </section>
 
+
+
+<section id="stockCount" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ตรวจนับสต็อก</h2>
+      <p>ใส่จำนวนที่นับจริง ระบบจะเทียบกับยอดในระบบและสร้างรายการปรับสต็อกให้อัตโนมัติ</p>
+    </div>
+    <div class="form-actions">
+      <button id="stockCountFillSystemBtn" class="soft-btn" type="button">เติมจากยอดระบบ</button>
+      <button id="stockCountClearBtn" class="soft-btn" type="button">ล้างที่กรอก</button>
+      <button id="stockCountApplyBtn" class="primary-btn" type="button">บันทึกตรวจนับ</button>
+    </div>
+  </div>
+
+  <div class="panel stock-count-filter">
+    <div class="panel-head">
+      <h3>ตัวกรองและรายละเอียดการตรวจนับ</h3>
+      <span class="hint">แนะนำให้ Backup ก่อนตรวจนับจริง</span>
+    </div>
+    <div class="stock-count-filter-grid">
+      <label>วันที่ตรวจนับ<input id="stockCountDate" type="date"></label>
+      <label>ค้นหาสินค้า<input id="stockCountSearch" placeholder="ชื่อสินค้า / หมวดหมู่"></label>
+      <label>หมวดหมู่<select id="stockCountCategoryFilter"><option value="">ทุกหมวดหมู่</option></select></label>
+      <label>หมายเหตุรอบตรวจนับ<input id="stockCountNote" placeholder="เช่น ตรวจนับสิ้นวัน / ตรวจนับสิ้นเดือน"></label>
+      <label class="toggle-label stock-count-toggle">
+        <span>แสดงเฉพาะรายการที่ต่าง</span>
+        <input id="stockCountOnlyDiff" type="checkbox">
+      </label>
+    </div>
+
+    <div id="stockCountSummary" class="stock-count-summary">
+      <div><span>กรอกแล้ว</span><strong>0</strong></div>
+      <div><span>รายการต่าง</span><strong>0</strong></div>
+      <div><span>ปรับเพิ่ม</span><strong>0.00</strong></div>
+      <div><span>ปรับลด</span><strong>0.00</strong></div>
+      <div><span>ผลต่างมูลค่า</span><strong>0.00</strong></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>รายการสินค้าเพื่อตรวจนับ</h3>
+      <span id="stockCountRowsText" class="hint">กำลังตรวจสอบ...</span>
+    </div>
+    <div id="stockCountRows" class="stock-count-rows"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>ประวัติการตรวจนับ</h3>
+      <span class="hint">ลบรายการตรวจนับได้ ระบบจะย้อนปรับสต็อกและคำนวณ FIFO ใหม่</span>
+    </div>
+    <div id="stockCountHistory" class="stack-list"></div>
+    <div id="stockCountDetail" class="stock-count-detail"></div>
+  </div>
+</section>
 
 <section id="adjust" class="page">
   <div class="page-head">
@@ -686,7 +743,7 @@
     <input id="moreSearchInput" class="search-input" placeholder="ค้นหาเมนู เช่น ค้นหาบิล / รับเงิน / ปรับสต็อก">
   </div>
 
-  <div class="more-grid" id="moreGrid"><button class="more-card fifo-repair-card" id="repairFifoBtn" type="button"><span>📦</span><strong>ตรวจ/ซ่อม FIFO</strong><small>คำนวณล็อตต้นทุนใหม่</small></button><button class="more-card beta-ready-card" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+  <div class="more-grid" id="moreGrid"><button class="more-card fifo-repair-card" id="repairFifoBtn" type="button"><span>📦</span><strong>ตรวจ/ซ่อม FIFO</strong><small>คำนวณล็อตต้นทุนใหม่</small></button><button class="more-card beta-ready-card" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card stock-count-card" data-open-tab="stockCount"><span>📋</span><strong>ตรวจนับสต็อก</strong><small>นับจริง / เทียบระบบ / ปรับอัตโนมัติ</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 

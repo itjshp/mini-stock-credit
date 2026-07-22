@@ -775,6 +775,7 @@ function renderAll() {
   renderStockCount();
   renderAdjustments();
   renderLedger();
+  renderDebtAging();
   renderPayments();
   renderOutstandingBills();
   renderReports();
@@ -801,6 +802,7 @@ function renderSelects() {
   renderPaymentBillOptions();
   setOptions("reportCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
   setOptions("billSearchCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
+  setOptions("debtAgingCustomer", state.customers, "ลูกค้าทั้งหมด", c => c.name);
 }
 
 
@@ -2385,6 +2387,178 @@ window.deleteAdjustment = async (id) => {
   showToast("ลบรายการปรับสต็อก/ทุนและคำนวณใหม่แล้ว");
 };
 
+
+function daysBetween(dateA, dateB) {
+  const a = new Date(`${dateA}T00:00:00`);
+  const b = new Date(`${dateB}T00:00:00`);
+  return Math.round((b - a) / 86400000);
+}
+
+function customerCreditDays(customerId) {
+  const c = state.customers.find(x => x.id === customerId);
+  return Math.max(0, Number(c?.creditDays || 0));
+}
+
+function billDueDate(b) {
+  if (b.dueDate) return b.dueDate;
+  return addDays(b.date || today(), customerCreditDays(b.customerId));
+}
+
+function debtStatusInfo(b) {
+  const due = billDueDate(b);
+  const diff = daysBetween(today(), due);
+  if (diff < 0) return { key: "overdue", label: `เกินกำหนด ${Math.abs(diff)} วัน`, days: diff };
+  if (diff === 0) return { key: "dueToday", label: "ครบกำหนดวันนี้", days: diff };
+  if (diff <= 3) return { key: "dueSoon", label: `ใกล้ครบ ${diff} วัน`, days: diff };
+  return { key: "notDue", label: `ยังไม่ครบ ${diff} วัน`, days: diff };
+}
+
+function debtAgingRows() {
+  const q = ($("debtAgingSearch")?.value || "").toLowerCase().trim();
+  const customerId = $("debtAgingCustomer")?.value || "";
+  const status = $("debtAgingStatus")?.value || "";
+  const from = $("debtDueFrom")?.value || "";
+  const to = $("debtDueTo")?.value || "";
+
+  return activeBills()
+    .filter(b => (b.paymentType === "credit" || Number(b.creditAmount || 0) > 0) && Number(b.creditAmount || 0) > 0)
+    .map(b => ({ ...b, dueDate: billDueDate(b), debtInfo: debtStatusInfo(b) }))
+    .filter(b => !customerId || b.customerId === customerId)
+    .filter(b => !status || b.debtInfo.key === status)
+    .filter(b => !from || b.dueDate >= from)
+    .filter(b => !to || b.dueDate <= to)
+    .filter(b => {
+      if (!q) return true;
+      const hay = `${b.billNo || ""} ${customerName(b.customerId)} ${b.note || ""} ${b.dueDate || ""}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a, b) => `${a.dueDate || ""} ${a.date || ""}`.localeCompare(`${b.dueDate || ""} ${b.date || ""}`));
+}
+
+function debtAgingStats(rows = debtAgingRows()) {
+  return {
+    count: rows.length,
+    total: rows.reduce((s, b) => s + Number(b.creditAmount || 0), 0),
+    overdueCount: rows.filter(b => b.debtInfo.key === "overdue").length,
+    overdueTotal: rows.filter(b => b.debtInfo.key === "overdue").reduce((s, b) => s + Number(b.creditAmount || 0), 0),
+    dueSoonCount: rows.filter(b => b.debtInfo.key === "dueToday" || b.debtInfo.key === "dueSoon").length,
+    dueSoonTotal: rows.filter(b => b.debtInfo.key === "dueToday" || b.debtInfo.key === "dueSoon").reduce((s, b) => s + Number(b.creditAmount || 0), 0)
+  };
+}
+
+function renderDebtAging() {
+  const list = $("debtAgingResults");
+  if (!list) return;
+
+  const rows = debtAgingRows();
+  const s = debtAgingStats(rows);
+
+  $("debtAgingSummary").innerHTML = `
+    <div><span>บิลค้าง</span><strong>${s.count.toLocaleString("th-TH")}</strong></div>
+    <div><span>ยอดค้างรวม</span><strong>${money(s.total)}</strong></div>
+    <div><span>เกินกำหนด</span><strong>${s.overdueCount.toLocaleString("th-TH")}</strong></div>
+    <div><span>ยอดเกินกำหนด</span><strong>${money(s.overdueTotal)}</strong></div>
+    <div><span>ใกล้ครบ/วันนี้</span><strong>${money(s.dueSoonTotal)}</strong></div>
+  `;
+
+  $("debtAgingResultText").textContent = rows.length ? `พบ ${rows.length} บิลเครดิตค้าง` : "ไม่พบบิลเครดิตค้างตามเงื่อนไข";
+
+  list.innerHTML = rows.map(b => {
+    const c = state.customers.find(x => x.id === b.customerId);
+    return `
+      <div class="list-item debt-aging-row ${b.debtInfo.key}">
+        <div>
+          <strong><button class="bill-link" onclick="openBillDetail('${b.id}')">${b.billNo}</button> ${billBadge(b)} <span class="debt-status-chip ${b.debtInfo.key}">${b.debtInfo.label}</span></strong>
+          <div class="debt-meta">
+            <span>ลูกค้า: ${customerName(b.customerId)}</span>
+            <span>วันที่บิล: ${b.date}</span>
+            <span>ครบกำหนด: ${b.dueDate}</span>
+            <span>เครดิต ${customerCreditDays(b.customerId)} วัน</span>
+          </div>
+          <small>${billItemText(b.id) || "ไม่มีรายการสินค้า"} ${c?.phone ? "• โทร " + c.phone : ""}</small>
+        </div>
+        <div class="row-actions">
+          <div>
+            <div class="money negative">${money(b.creditAmount)}</div>
+            <small>ยอดบิล ${money(b.subtotal)} • รับแล้ว ${money(b.paidAmount)}</small>
+          </div>
+          <button class="small-btn" onclick="openBillDetail('${b.id}')">ดูบิล</button>
+          <button class="small-btn small-edit" onclick="openPaymentForDebtBill('${b.id}')">รับเงิน</button>
+          <button class="small-btn" onclick="copyDebtMessage('${b.id}')">คัดลอกแจ้งยอด</button>
+        </div>
+      </div>
+    `;
+  }).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">✅</div><strong>ไม่พบลูกหนี้ตามเงื่อนไข</strong><small>ลองล้างตัวกรองหรือเลือกสถานะอื่น</small></div></div>`;
+}
+
+window.openPaymentForDebtBill = (billId) => {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return alert("ไม่พบบิล");
+  $("paymentCustomer").value = b.customerId || "";
+  renderPaymentBillOptions();
+  if ($("paymentBill")) $("paymentBill").value = b.id;
+  if ($("paymentAmount")) $("paymentAmount").value = Number(b.creditAmount || 0);
+  renderOutstandingBills();
+  switchTab("payments");
+};
+
+function debtMessageText(billId) {
+  const b = state.bills.find(x => x.id === billId);
+  if (!b) return "";
+  const c = state.customers.find(x => x.id === b.customerId);
+  const due = billDueDate(b);
+  const info = debtStatusInfo(b);
+  return [
+    `สวัสดีครับ/ค่ะ คุณ${customerName(b.customerId)}`,
+    `แจ้งยอดค้างชำระบิล ${b.billNo}`,
+    `ยอดค้าง: ${money(b.creditAmount)} บาท`,
+    `วันที่บิล: ${b.date}`,
+    `วันครบกำหนด: ${due} (${info.label})`,
+    "",
+    "รบกวนชำระตามสะดวก หากชำระแล้วขออภัยด้วยครับ/ค่ะ",
+    c?.phone ? `เบอร์ติดต่อ: ${c.phone}` : ""
+  ].filter(Boolean).join("\n");
+}
+
+window.copyDebtMessage = async (billId) => {
+  const text = debtMessageText(billId);
+  if (!text) return alert("ไม่พบบิล");
+  await copyTextToClipboard(text, "คัดลอกข้อความแจ้งยอดแล้ว");
+};
+
+function copyDebtSummary() {
+  const rows = debtAgingRows();
+  const s = debtAgingStats(rows);
+  const lines = [
+    "สรุปลูกหนี้ครบกำหนด",
+    `วันที่: ${today()}`,
+    `จำนวนบิลค้าง: ${s.count}`,
+    `ยอดค้างรวม: ${money(s.total)} บาท`,
+    `ยอดเกินกำหนด: ${money(s.overdueTotal)} บาท`,
+    "",
+    "รายการ:",
+    ...rows.slice(0, 30).map((b, idx) => `${idx + 1}. ${customerName(b.customerId)} • ${b.billNo} • ค้าง ${money(b.creditAmount)} • ครบกำหนด ${b.dueDate} • ${b.debtInfo.label}`)
+  ];
+  copyTextToClipboard(lines.join("\n"), "คัดลอกสรุปลูกหนี้แล้ว");
+}
+
+function exportDebtAgingCsv() {
+  const rows = [["billNo", "billDate", "dueDate", "customer", "creditDays", "creditAmount", "status", "subtotal", "paidAmount"]];
+  debtAgingRows().forEach(b => rows.push([b.billNo, b.date, b.dueDate, customerName(b.customerId), customerCreditDays(b.customerId), b.creditAmount, b.debtInfo.label, b.subtotal, b.paidAmount]));
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",")).join("\n");
+  download(`khaikhong-debt-aging-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
+}
+
+function clearDebtAgingFilters() {
+  ["debtAgingSearch", "debtAgingCustomer", "debtAgingStatus", "debtDueFrom", "debtDueTo"].forEach(id => { if ($(id)) $(id).value = ""; });
+  renderDebtAging();
+}
+
+function setDebtAgingStatus(status) {
+  if ($("debtAgingStatus")) $("debtAgingStatus").value = status || "";
+  renderDebtAging();
+}
+
 function renderLedger() {
   const q = ($("ledgerSearch")?.value || "").toLowerCase().trim();
   const rows = state.customers
@@ -3462,6 +3636,9 @@ function switchTab(id) {
   if (id === "closePeriod") {
     try { renderClosePeriod(); } catch (err) { console.error("renderClosePeriod failed", err); }
   }
+  if (id === "debtAging") {
+    try { renderDebtAging(); } catch (err) { console.error("renderDebtAging failed", err); }
+  }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -3867,7 +4044,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.5", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.6", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -4537,13 +4714,34 @@ $("copyCustomerHistoryBtn")?.addEventListener("click", copyCustomerHistory);
 $("printCustomerHistoryBtn")?.addEventListener("click", printCustomerHistory);
 $("exportCustomerHistoryCsvBtn")?.addEventListener("click", exportCustomerHistoryCsv);
 
-$("moreSearchInput")?.addEventListener("input", () => {
-  const q = ($("moreSearchInput").value || "").toLowerCase().trim();
-  document.querySelectorAll("#moreGrid .more-card").forEach(card => {
+
+let activeMoreFilter = "all";
+
+function filterMoreMenu() {
+  const q = ($("moreSearchInput")?.value || "").toLowerCase().trim();
+  document.querySelectorAll("#moreMenuBlocks .more-card").forEach(card => {
     const text = card.textContent.toLowerCase();
-    card.classList.toggle("hidden-by-search", q && !text.includes(q));
+    const groups = (card.dataset.moreGroup || "").split(/\s+/);
+    const matchText = !q || text.includes(q);
+    const matchGroup = activeMoreFilter === "all" || groups.includes(activeMoreFilter);
+    card.classList.toggle("hidden-by-search", !(matchText && matchGroup));
+  });
+
+  document.querySelectorAll("#moreMenuBlocks .more-section-block").forEach(section => {
+    const visibleCards = [...section.querySelectorAll(".more-card")].some(card => !card.classList.contains("hidden-by-search"));
+    section.classList.toggle("hidden-by-search", !visibleCards);
+  });
+}
+
+$("moreSearchInput")?.addEventListener("input", filterMoreMenu);
+document.querySelectorAll(".more-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    activeMoreFilter = chip.dataset.moreFilter || "all";
+    document.querySelectorAll(".more-chip").forEach(x => x.classList.toggle("active", x === chip));
+    filterMoreMenu();
   });
 });
+
 
 
 function appVersion() {
@@ -4822,6 +5020,18 @@ $("closeTodayBtn")?.addEventListener("click", setClosePeriodToday);
 $("closeMonthBtn")?.addEventListener("click", setClosePeriodMonth);
 $("createClosePeriodBtn")?.addEventListener("click", createClosePeriod);
 $("refreshClosePeriodBtn")?.addEventListener("click", async () => { await loadState(); switchTab("closePeriod"); showToast("รีเฟรชสถานะปิดรอบแล้ว"); });
+
+
+["debtAgingSearch", "debtAgingCustomer", "debtAgingStatus", "debtDueFrom", "debtDueTo"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderDebtAging);
+  if ($(id)) $(id).addEventListener("change", renderDebtAging);
+});
+$("debtShowAllBtn")?.addEventListener("click", () => setDebtAgingStatus(""));
+$("debtOverdueBtn")?.addEventListener("click", () => setDebtAgingStatus("overdue"));
+$("debtDueSoonBtn")?.addEventListener("click", () => setDebtAgingStatus("dueSoon"));
+$("debtClearBtn")?.addEventListener("click", clearDebtAgingFilters);
+$("copyDebtSummaryBtn")?.addEventListener("click", copyDebtSummary);
+$("exportDebtAgingCsvBtn")?.addEventListener("click", exportDebtAgingCsv);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

@@ -3,41 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Khaikhong PIN Rescue</title>
+  <title>Khaikhong Hard Reset PIN</title>
   <style>
     body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh;margin:0;display:grid;place-items:center;background:linear-gradient(135deg,#e8f7f3,#fff7ed);color:#0f2530}
-    .card{width:min(620px,calc(100% - 32px));background:#fff;border-radius:28px;padding:28px;box-shadow:0 24px 70px rgba(15,23,42,.16);border:1px solid #d8ece8}
+    .card{width:min(680px,calc(100% - 32px));background:#fff;border-radius:28px;padding:28px;box-shadow:0 24px 70px rgba(15,23,42,.16);border:1px solid #d8ece8}
     h1{margin:0 0 8px;font-size:30px} p{line-height:1.7;color:#55706b;font-weight:700}
-    .status{background:#101827;color:#fff;border-radius:18px;padding:14px;white-space:pre-wrap;line-height:1.6;margin:16px 0;font-weight:800}
+    .status{background:#101827;color:#fff;border-radius:18px;padding:14px;white-space:pre-wrap;line-height:1.6;margin:16px 0;font-weight:800;max-height:360px;overflow:auto}
     button,a.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:12px 18px;font-weight:900;color:#fff;background:#008b7a;text-decoration:none;cursor:pointer;margin:4px}
     .soft{background:#e8f7f3!important;color:#006c5f!important}.danger{background:#b91c1c!important}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>🔐 Khaikhong PIN Rescue</h1>
-    <p>หน้านี้จะปิด PIN Lock ชั่วคราว ล้าง Cache และพากลับเข้าแอป โดยไม่ลบข้อมูลสินค้า/ลูกค้า/บิล</p>
+    <h1>🔓 Khaikhong Hard Reset PIN</h1>
+    <p>หน้านี้จะปิด PIN, ลบ Cache, ถอด Service Worker และกลับเข้าแอปแบบไม่ผ่าน Cache</p>
     <div id="status" class="status">กำลังเริ่มต้น...</div>
-    <button id="resetBtn">Reset PIN + ล้าง Cache อีกครั้ง</button>
-    <a class="btn soft" href="./index.html?pinOff=1">กลับเข้าแอป</a>
+    <button id="resetBtn">Reset อีกครั้ง</button>
+    <a class="btn soft" href="./no-sw.html">เข้าแอปแบบไม่ผ่าน Service Worker</a>
+    <a class="btn soft" href="./index.html?pinOff=1&noSW=1">กลับเข้าแอป</a>
   </div>
 
 <script>
-const DB_NAME = "khaikhong-v2-db";
+const POSSIBLE_DB_NAMES = ["khaikhong-v2-db", "khaikhong-v2", "khaikhong-db", "mini-stock-credit-db"];
+
 function log(message){document.getElementById("status").textContent += "\n" + message;}
-function openExistingDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);req.onblocked=()=>reject(new Error("IndexedDB ถูก block กรุณาปิดแท็บอื่นของแอปก่อน"));});}
-function putPinDisabled(db){return new Promise((resolve,reject)=>{if(!db.objectStoreNames.contains("settings")){resolve("ไม่พบ settings store");return;}const tx=db.transaction("settings","readwrite");const store=tx.objectStore("settings");store.put({id:"pin",enabled:false,autoLock:"off",pinHash:"",emergencyResetAt:new Date().toISOString(),emergencyResetBy:"reset-pin.html v2.3.12",updatedAt:new Date().toISOString()});tx.oncomplete=()=>resolve("ปิด PIN ใน IndexedDB แล้ว");tx.onerror=()=>reject(tx.error);});}
-async function rescue(){
-  document.getElementById("status").textContent = "เริ่ม Reset PIN และล้าง Cache...";
-  try{sessionStorage.setItem("khaikhongPinUnlocked","1");localStorage.setItem("khaikhongPinEmergencyResetAt",new Date().toISOString());localStorage.setItem("khaikhongPinEmergencyResetBy","reset-pin.html v2.3.12");log("ตั้งค่า session/local reset แล้ว");}catch(err){log("ตั้งค่า session/local ไม่สำเร็จ: "+err.message);}
-  try{const db=await openExistingDb();log("เปิด IndexedDB ได้");const msg=await putPinDisabled(db);log(msg);db.close();}catch(err){log("จัดการ IndexedDB ไม่สำเร็จ: "+(err.message||err));}
-  try{if("caches" in window){const keys=await caches.keys();await Promise.all(keys.map(k=>caches.delete(k)));log("ล้าง Cache Storage แล้ว: "+keys.length+" รายการ");}}catch(err){log("ล้าง Cache ไม่สำเร็จ: "+(err.message||err));}
-  try{if(navigator.serviceWorker?.getRegistrations){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister()));log("Unregister Service Worker แล้ว: "+regs.length+" ตัว");}}catch(err){log("Unregister Service Worker ไม่สำเร็จ: "+(err.message||err));}
-  log("เสร็จแล้ว ✅ กำลังกลับเข้าแอป...");
-  setTimeout(()=>{location.href="./index.html?pinOff=1&v=2312&t="+Date.now();},1500);
+
+function openDb(name){
+  return new Promise(resolve => {
+    const req = indexedDB.open(name);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+    req.onblocked = () => resolve(null);
+    req.onupgradeneeded = () => {
+      // Do not create stores in wrong DB names; close later
+    };
+  });
 }
-document.getElementById("resetBtn").addEventListener("click",rescue);
-window.addEventListener("load",rescue);
+
+function putPinDisabled(db){
+  return new Promise(resolve => {
+    try{
+      if(!db || !db.objectStoreNames.contains("settings")){ resolve("ไม่มี settings store"); return; }
+      const tx = db.transaction("settings","readwrite");
+      tx.objectStore("settings").put({
+        id:"pin", enabled:false, autoLock:"off", pinHash:"",
+        removedAt:new Date().toISOString(),
+        removedBy:"reset-pin.html v2.3.13"
+      });
+      tx.oncomplete = () => resolve("ปิด PIN ใน settings แล้ว");
+      tx.onerror = () => resolve("ปิด PIN ไม่สำเร็จ: " + tx.error);
+    }catch(err){ resolve("ผิดพลาด: " + (err.message || err)); }
+  });
+}
+
+async function rescue(){
+  const status = document.getElementById("status");
+  status.textContent = "เริ่ม Hard Reset PIN...";
+
+  try{
+    sessionStorage.setItem("khaikhongPinUnlocked","1");
+    localStorage.setItem("khaikhongPinEmergencyResetAt",new Date().toISOString());
+    localStorage.setItem("khaikhongPinEmergencyResetBy","reset-pin.html v2.3.13");
+    localStorage.setItem("khaikhongPinRemoved","1");
+    log("ตั้งค่า session/local ให้ปลดล็อกแล้ว");
+  }catch(err){log("session/local error: " + err.message);}
+
+  try{
+    const dbs = indexedDB.databases ? await indexedDB.databases() : [];
+    const names = [...new Set([...POSSIBLE_DB_NAMES, ...dbs.map(d => d.name).filter(Boolean)])];
+    log("พบ/ลองฐานข้อมูล: " + names.join(", "));
+    for(const name of names){
+      const db = await openDb(name);
+      if(!db){ log(name + ": เปิดไม่ได้"); continue; }
+      const msg = await putPinDisabled(db);
+      log(name + ": " + msg);
+      db.close();
+    }
+  }catch(err){log("IndexedDB error: " + (err.message || err));}
+
+  try{
+    if("caches" in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+      log("ล้าง Cache Storage แล้ว " + keys.length + " รายการ");
+    }
+  }catch(err){log("Cache error: " + (err.message || err));}
+
+  try{
+    if(navigator.serviceWorker?.getRegistrations){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      log("Unregister Service Worker แล้ว " + regs.length + " ตัว");
+    }
+  }catch(err){log("SW error: " + (err.message || err));}
+
+  log("เสร็จแล้ว ✅ กำลังเข้าแอปแบบ no-sw...");
+  setTimeout(()=>{ location.href = "./no-sw.html?pinOff=1&t=" + Date.now(); }, 1500);
+}
+
+document.getElementById("resetBtn").addEventListener("click", rescue);
+window.addEventListener("load", rescue);
 </script>
 </body>
 </html>

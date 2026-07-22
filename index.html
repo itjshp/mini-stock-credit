@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.12 • PIN Disabled • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.13 • PIN Removed • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -1016,21 +1016,6 @@
 </nav>
 
   <div id="numberPadOverlay" class="numpad-overlay hidden"><div class="numpad"><div class="numpad-head"><div><p>POS Number Pad</p><strong id="numpadTargetLabel">ใส่ตัวเลข</strong></div><button id="numpadClose" class="numpad-close">×</button></div><div id="numpadDisplay" class="numpad-display">0</div><div class="numpad-grid"><button data-num="7">7</button><button data-num="8">8</button><button data-num="9">9</button><button data-num="4">4</button><button data-num="5">5</button><button data-num="6">6</button><button data-num="1">1</button><button data-num="2">2</button><button data-num="3">3</button><button data-num="0">0</button><button data-num="00">00</button><button data-num=".">.</button><button id="numpadBack">⌫</button><button id="numpadClear">C</button><button id="numpadOk" class="ok">ตกลง</button></div></div></div>
-
-<div id="pinLockOverlay" class="pin-lock-overlay hidden-field">
-  <div class="pin-lock-card">
-    <div class="pin-lock-logo">🔐</div>
-    <h2>Khaikhong ถูกล็อก</h2>
-    <p>กรุณาใส่ PIN เพื่อเข้าใช้งาน</p>
-    <input id="pinUnlockInput" type="password" inputmode="numeric" maxlength="6" placeholder="PIN 4-6 หลัก">
-    <div id="pinUnlockError" class="pin-error"></div>
-    <div class="form-actions pin-actions">
-      <button id="unlockPinBtn" class="primary-btn" type="button">ปลดล็อก</button>
-      <button id="resetPinEmergencyBtn" class="soft-btn" type="button">ลืม PIN</button>
-    </div>
-    <small>ข้อมูลยังอยู่ในเครื่องนี้ หากลืม PIN สามารถ Reset เฉพาะ PIN ได้ แต่ควร Backup ข้อมูลเป็นประจำ<br><span class="pin-rescue-note">ถ้าติดล็อก ให้เปิด <a href="./reset-pin.html">reset-pin.html</a> เพื่อล้าง PIN และ Cache</span></small>
-  </div>
-</div>
 
 <div id="printArea" class="print-area"></div>
   <div id="toast" class="toast hidden"></div>

@@ -4085,7 +4085,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.12", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.13", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5384,8 +5384,48 @@ window.addEventListener("load", () => {
   }, 250);
 });
 
+
+/* v2.3.13 HARD PIN REMOVAL
+   ระบบ PIN Lock ถูกถอดออกจาก runtime เพื่อป้องกันการติดหน้าล็อกในช่วง Beta */
+const KHAIKHONG_PIN_REMOVED = true;
+
+function khaikhongRemovePinOverlay() {
+  try {
+    sessionStorage.setItem("khaikhongPinUnlocked", "1");
+    localStorage.setItem("khaikhongPinEmergencyResetAt", new Date().toISOString());
+    localStorage.setItem("khaikhongPinEmergencyResetReason", "v2.3.13 hard remove");
+    document.querySelectorAll("#pinLockOverlay,.pin-lock-overlay").forEach(el => el.remove());
+    document.body.classList.remove("pin-locked");
+  } catch (err) {
+    console.error("khaikhongRemovePinOverlay failed", err);
+  }
+}
+
+// Override PIN functions no matter what was defined earlier
+isPinEnabled = function() { return false; };
+showPinLock = function() { khaikhongRemovePinOverlay(); };
+hidePinLock = function() { khaikhongRemovePinOverlay(); };
+maybeAutoLockOnStart = async function() {
+  await forceResetPin("PIN Lock ถูกถอดออกชั่วคราวแล้ว");
+  khaikhongRemovePinOverlay();
+};
+unlockWithPin = async function() { khaikhongRemovePinOverlay(); };
+emergencyResetPin = async function() {
+  await forceResetPin("Reset PIN แล้ว");
+  khaikhongRemovePinOverlay();
+};
+window.forceResetKhaikhongPin = async function() {
+  await forceResetPin("Reset PIN ผ่าน Console แล้ว");
+  khaikhongRemovePinOverlay();
+};
+
+window.addEventListener("DOMContentLoaded", khaikhongRemovePinOverlay);
+window.addEventListener("load", () => setTimeout(khaikhongRemovePinOverlay, 50));
+setInterval(khaikhongRemovePinOverlay, 1000);
+
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(console.warn));
+  // v2.3.13: พักการ register service worker ชั่วคราวเพื่อแก้ cache lock
+  navigator.serviceWorker.getRegistrations?.().then(regs => regs.forEach(r => r.unregister())).catch(() => {});
 }
 
 (async function init() {

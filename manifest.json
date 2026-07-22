@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.12 disables PIN Lock during beta and adds Privacy Mode",
+  "description": "Khaikhong v2.3.13 hard removes PIN Lock and Service Worker cache lock",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

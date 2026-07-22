@@ -1,45 +1,34 @@
-# Khaikhong v2.3.12
+# Khaikhong v2.3.13
 
-เวอร์ชันนี้พักระบบ PIN Lock ชั่วคราว และเพิ่ม Privacy Mode แทน
+เวอร์ชันนี้ถอด PIN Lock ออกจาก runtime แบบ hard remove เพื่อแก้กรณีติดหน้าล็อก
 
-## เหตุผล
+## สิ่งที่ทำ
 
-ระบบ PIN Lock ทำให้มีความเสี่ยงติดหน้าล็อกในช่วง Beta จึงปิดการล็อกแอปทั้งหมดก่อน เพื่อให้กลับมาใช้งานระบบขาย/สต็อก/ลูกหนี้ได้เต็มรูปแบบ
+1. ลบ PIN Lock overlay ออกจาก index.html
+2. Override ฟังก์ชัน PIN ทั้งหมดไม่ให้ล็อกแอป
+3. พักการ register Service Worker ชั่วคราว
+4. sw.js ใหม่จะล้าง cache แล้ว unregister ตัวเอง
+5. reset-pin.html ตรวจหลายชื่อ IndexedDB และปิด PIN ใน settings
+6. เพิ่ม no-sw.html สำหรับเข้าแอปแบบไม่ผ่าน Service Worker
 
-## สิ่งที่แก้
+## วิธีแก้เครื่องที่ยังเด้งเข้า Lock
 
-1. ปิด PIN Lock แบบบังคับทั้งหมด
-   - แอปจะไม่เด้งเข้าหน้า Lock อีก
-   - แม้มีค่า PIN ค้าง ระบบจะพยายามปิด PIN ให้อัตโนมัติ
+หลังอัปโหลด v2.3.13 แล้ว ให้เปิดตามลำดับนี้:
 
-2. ปรับ reset-pin.html
-   - ปิด PIN ใน IndexedDB
-   - ล้าง Cache Storage
-   - Unregister Service Worker
-   - กลับเข้าแอปด้วย `pinOff=1`
+1. `https://itjshp.github.io/mini-stock-credit/reset-pin.html`
+2. รอให้เด้งไป `no-sw.html`
+3. รอให้เด้งเข้าแอป
+4. กด Ctrl+F5 อีกครั้ง
 
-3. เพิ่ม Privacy Mode
-   - อยู่ที่หน้า ความปลอดภัย
-   - ใช้ซ่อนยอดเงิน/กำไร/ลูกหนี้แบบเบลอ
-   - เหมาะกว่าการล็อกทั้งแอปในช่วง Beta
+ถ้ายังไม่หาย ให้เปิด:
+`https://itjshp.github.io/mini-stock-credit/no-sw.html`
 
-## วิธีแก้กรณีตอนนี้ติดหน้า PIN
+## ทางสุดท้ายใน Chrome
 
-หลังอัปโหลด v2.3.12 แล้ว เปิด:
+1. กด F12
+2. ไปแท็บ Application
+3. กด Storage
+4. กด Clear site data
+5. เปิดเว็บใหม่
 
-`https://itjshp.github.io/mini-stock-credit/reset-pin.html`
-
-รอให้ระบบพากลับเข้าแอปเอง
-
-ถ้ายังไม่หาย:
-1. เปิด `clear-cache.html`
-2. กด Ctrl+F5
-3. หรือเปิด DevTools > Application > Clear site data
-
-## วิธีอัปเดต
-
-1. แตก zip
-2. อัปโหลดไฟล์ทั้งหมดทับของเดิม รวมถึง reset-pin.html และ clear-cache.html
-3. Commit changes
-4. รอ Deploy 1-3 นาที
-5. เปิด reset-pin.html
+หมายเหตุ: Clear site data อาจลบข้อมูลในเครื่อง ถ้ายังไม่ได้ Backup ให้ใช้ reset-pin.html ก่อน

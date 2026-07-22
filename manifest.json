@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.13 hard removes PIN Lock and Service Worker cache lock",
+  "description": "Khaikhong v2.3.14 removes PIN startup toast and polishes beta UX",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

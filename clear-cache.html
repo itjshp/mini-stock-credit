@@ -48,7 +48,7 @@ function putPinDisabled(db){
       tx.objectStore("settings").put({
         id:"pin", enabled:false, autoLock:"off", pinHash:"",
         removedAt:new Date().toISOString(),
-        removedBy:"reset-pin.html v2.3.13"
+        removedBy:"reset-pin.html v2.3.14"
       });
       tx.oncomplete = () => resolve("ปิด PIN ใน settings แล้ว");
       tx.onerror = () => resolve("ปิด PIN ไม่สำเร็จ: " + tx.error);
@@ -63,7 +63,7 @@ async function rescue(){
   try{
     sessionStorage.setItem("khaikhongPinUnlocked","1");
     localStorage.setItem("khaikhongPinEmergencyResetAt",new Date().toISOString());
-    localStorage.setItem("khaikhongPinEmergencyResetBy","reset-pin.html v2.3.13");
+    localStorage.setItem("khaikhongPinEmergencyResetBy","reset-pin.html v2.3.14");
     localStorage.setItem("khaikhongPinRemoved","1");
     log("ตั้งค่า session/local ให้ปลดล็อกแล้ว");
   }catch(err){log("session/local error: " + err.message);}

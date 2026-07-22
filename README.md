@@ -1,34 +1,31 @@
-# Khaikhong v2.3.13
+# Khaikhong v2.3.14
 
-เวอร์ชันนี้ถอด PIN Lock ออกจาก runtime แบบ hard remove เพื่อแก้กรณีติดหน้าล็อก
+เวอร์ชันนี้เก็บ UI/UX หลังถอด PIN Lock ออก
 
-## สิ่งที่ทำ
+## สิ่งที่แก้
 
-1. ลบ PIN Lock overlay ออกจาก index.html
-2. Override ฟังก์ชัน PIN ทั้งหมดไม่ให้ล็อกแอป
-3. พักการ register Service Worker ชั่วคราว
-4. sw.js ใหม่จะล้าง cache แล้ว unregister ตัวเอง
-5. reset-pin.html ตรวจหลายชื่อ IndexedDB และปิด PIN ใน settings
-6. เพิ่ม no-sw.html สำหรับเข้าแอปแบบไม่ผ่าน Service Worker
+1. ไม่แสดง Toast ตอนเปิดแอปแล้ว
+   - ข้อความเดิม: `PIN Lock ถูกถอดออกชั่วคราวแล้ว`
+   - ข้อความนี้อาจทำให้ผู้ใช้ทั่วไปงง จึงเปลี่ยนให้ระบบทำงานเงียบ ๆ
 
-## วิธีแก้เครื่องที่ยังเด้งเข้า Lock
+2. ยังปิด PIN Lock ไว้เหมือนเดิม
+   - เพื่อไม่ให้เกิดปัญหาติดหน้าล็อกอีกในช่วง Beta
+   - ฟังก์ชันล็อกแอปจะไม่บล็อกผู้ใช้
 
-หลังอัปโหลด v2.3.13 แล้ว ให้เปิดตามลำดับนี้:
+3. ปรับข้อความหน้า ความปลอดภัย
+   - เปลี่ยนจากคำเทคนิคเรื่อง PIN Lock
+   - เป็นแนว Privacy Mode / โหมดซ่อนยอดเงิน
 
-1. `https://itjshp.github.io/mini-stock-credit/reset-pin.html`
-2. รอให้เด้งไป `no-sw.html`
-3. รอให้เด้งเข้าแอป
-4. กด Ctrl+F5 อีกครั้ง
+4. คง Privacy Mode ไว้
+   - ใช้เบลอยอดขาย กำไร ต้นทุน และลูกหนี้บนหน้าจอ
+   - เหมาะเวลามีคนอื่นอยู่ใกล้หน้าจอ
 
-ถ้ายังไม่หาย ให้เปิด:
-`https://itjshp.github.io/mini-stock-credit/no-sw.html`
+## วิธีอัปเดต
 
-## ทางสุดท้ายใน Chrome
+1. Export Backup JSON ก่อน
+2. อัปโหลดไฟล์ทั้งหมดทับของเดิม
+3. Commit changes
+4. รอ GitHub Pages Deploy
+5. เปิดแอปแล้วกด Ctrl+F5
 
-1. กด F12
-2. ไปแท็บ Application
-3. กด Storage
-4. กด Clear site data
-5. เปิดเว็บใหม่
-
-หมายเหตุ: Clear site data อาจลบข้อมูลในเครื่อง ถ้ายังไม่ได้ Backup ให้ใช้ reset-pin.html ก่อน
+หลังอัปเดต ไม่ควรเห็นข้อความ PIN Lock ตอนเปิดแอปแล้ว

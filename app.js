@@ -4085,7 +4085,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.13", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.14", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5066,7 +5066,7 @@ const moreMenuItems = [
 
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
-  { group: "system", icon: "🔐", title: "ความปลอดภัย", hint: "PIN Lock / ล็อกแอป", tab: "security", keywords: "pin lock ล็อก ความปลอดภัย รหัสผ่าน" },
+  { group: "system", icon: "🔐", title: "ความปลอดภัย", hint: "ซ่อนยอดเงิน / ความเป็นส่วนตัว", tab: "security", keywords: "privacy ซ่อนยอดเงิน ความปลอดภัย รหัสผ่าน" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
   { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
   { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
@@ -5353,8 +5353,7 @@ async function maybeAutoLockOnStart() {
     return;
   }
 
-  await forceResetPin("ปิด PIN Lock ชั่วคราวแล้ว");
-  hidePinLock();
+  await silentDisablePinForBeta();
 }
 
 window.addEventListener("beforeinstallprompt", (e) => {
@@ -5385,6 +5384,29 @@ window.addEventListener("load", () => {
 });
 
 
+
+async function silentDisablePinForBeta() {
+  try {
+    const p = typeof pinSettings === "function" ? pinSettings() : { id: "pin" };
+    if (typeof put === "function") {
+      await put("settings", {
+        ...p,
+        id: "pin",
+        enabled: false,
+        autoLock: "off",
+        pinHash: "",
+        disabledForBetaAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    sessionStorage.setItem("khaikhongPinUnlocked", "1");
+    localStorage.setItem("khaikhongPinRemoved", "1");
+  } catch (err) {
+    console.error("silentDisablePinForBeta failed", err);
+  }
+  try { khaikhongRemovePinOverlay(); } catch {}
+}
+
 /* v2.3.13 HARD PIN REMOVAL
    ระบบ PIN Lock ถูกถอดออกจาก runtime เพื่อป้องกันการติดหน้าล็อกในช่วง Beta */
 const KHAIKHONG_PIN_REMOVED = true;
@@ -5406,8 +5428,7 @@ isPinEnabled = function() { return false; };
 showPinLock = function() { khaikhongRemovePinOverlay(); };
 hidePinLock = function() { khaikhongRemovePinOverlay(); };
 maybeAutoLockOnStart = async function() {
-  await forceResetPin("PIN Lock ถูกถอดออกชั่วคราวแล้ว");
-  khaikhongRemovePinOverlay();
+  await silentDisablePinForBeta();
 };
 unlockWithPin = async function() { khaikhongRemovePinOverlay(); };
 emergencyResetPin = async function() {

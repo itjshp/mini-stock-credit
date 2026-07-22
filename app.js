@@ -4084,7 +4084,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.9", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.10", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5298,17 +5298,25 @@ async function forceResetPin(message = "Reset PIN แล้ว") {
 }
 
 async function emergencyResetPin() {
-  if (!confirm("ลืม PIN?\n\nระบบจะ Reset เฉพาะ PIN บนเครื่องนี้ ข้อมูลขาย/สินค้า/ลูกค้ายังอยู่เหมือนเดิม\n\nยืนยัน Reset PIN?")) return;
-  if (!confirm("ยืนยันอีกครั้ง: ปิด PIN Lock และกลับเข้าแอป?")) return;
+  const ok = confirm("ลืม PIN?\n\nระบบจะ Reset เฉพาะ PIN บนเครื่องนี้ ข้อมูลขาย/สินค้า/ลูกค้ายังอยู่เหมือนเดิม\n\nยืนยัน Reset PIN?");
+  if (!ok) return;
   await forceResetPin("Reset PIN แล้ว");
 }
+window.forceResetKhaikhongPin = () => forceResetPin('Reset PIN ผ่าน Console แล้ว');
 
 async function maybeAutoLockOnStart() {
   const url = new URL(location.href);
-  if (url.searchParams.get("resetPin") === "1") {
+  const resetRequested =
+    url.searchParams.get("resetPin") === "1" ||
+    url.searchParams.get("resetPin") === "true" ||
+    url.searchParams.get("resetpin") === "1" ||
+    location.hash.toLowerCase().includes("resetpin");
+
+  if (resetRequested) {
     await forceResetPin("Reset PIN ผ่านลิงก์ฉุกเฉินแล้ว");
     url.searchParams.delete("resetPin");
-    history.replaceState({}, "", url.toString());
+    url.searchParams.delete("resetpin");
+    history.replaceState({}, "", url.pathname + url.search);
     return;
   }
 
@@ -5326,7 +5334,6 @@ async function maybeAutoLockOnStart() {
   }
 }
 
-
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredPrompt = e;
@@ -5339,6 +5346,19 @@ $("installBtn").addEventListener("click", async () => {
   await deferredPrompt.userChoice;
   deferredPrompt = null;
   $("installBtn").classList.add("hidden");
+});
+
+
+window.addEventListener("load", () => {
+  setTimeout(async () => {
+    try {
+      if (typeof maybeAutoLockOnStart === "function") {
+        await maybeAutoLockOnStart();
+      }
+    } catch (err) {
+      console.error("khaikhongPinBootSafety failed", err);
+    }
+  }, 250);
 });
 
 if ("serviceWorker" in navigator) {
@@ -5354,4 +5374,5 @@ if ("serviceWorker" in navigator) {
   await recomputeInventory();
   await recalcBills();
   await loadState();
+  await maybeAutoLockOnStart();
 })();

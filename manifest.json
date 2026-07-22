@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.9 fixes PIN Lock false lock and emergency reset",
+  "description": "Khaikhong v2.3.10 fixes PIN reset boot and emergency reset",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

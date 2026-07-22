@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.3 fixes product detail button and stock history rendering",
+  "description": "Khaikhong v2.3.4 Close Period and lock historical transactions",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

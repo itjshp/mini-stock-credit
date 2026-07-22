@@ -1,9 +1,9 @@
 const DB_NAME = "khaikhong-v2-db";
-const DB_VERSION = 4;
-const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","settings"];
+const DB_VERSION = 5;
+const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","close_periods","settings"];
 
 let db;
-let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], stock_counts: [], stock_count_items: [], settings: [] };
+let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], stock_counts: [], stock_count_items: [], close_periods: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
 let selectedCustomerDetailId = "";
@@ -112,6 +112,7 @@ async function loadState() {
   state.return_items.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.stock_counts.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.stock_count_items.sort((a, b) => `${a.stockCountId || ""} ${a.productId || ""}`.localeCompare(`${b.stockCountId || ""} ${b.productId || ""}`));
+  state.close_periods.sort((a, b) => `${b.lockUntil || ""} ${b.createdAt || ""}`.localeCompare(`${a.lockUntil || ""} ${a.createdAt || ""}`));
   state.payments.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
   renderAll();
@@ -294,6 +295,62 @@ function billItems(billId) {
   return state.bill_items.filter(i => i.billId === billId);
 }
 
+
+
+function activeClosePeriods() {
+  return (state.close_periods || [])
+    .filter(p => p.status !== "reopened")
+    .sort((a, b) => `${b.lockUntil || ""} ${b.createdAt || ""}`.localeCompare(`${a.lockUntil || ""} ${a.createdAt || ""}`));
+}
+
+function currentLockPeriod() {
+  return activeClosePeriods()[0] || null;
+}
+
+function currentLockDate() {
+  return currentLockPeriod()?.lockUntil || "";
+}
+
+function isDateLocked(date) {
+  const lock = currentLockDate();
+  return !!(date && lock && String(date) <= String(lock));
+}
+
+function assertDateUnlocked(date, action = "ทำรายการ") {
+  if (!isDateLocked(date)) return true;
+  const p = currentLockPeriod();
+  alert(`${action}ไม่ได้\n\nวันที่ ${date} อยู่ในรอบที่ปิดแล้ว\nระบบล็อกข้อมูลถึงวันที่ ${currentLockDate()}${p?.closeNo ? ` (${p.closeNo})` : ""}\n\nหากจำเป็นต้องแก้ไข ให้ไปที่ เพิ่มเติม > ปิดรอบ / ล็อกย้อนหลัง แล้วปลดล็อกก่อน`);
+  return false;
+}
+
+function periodEndOfMonth(dateText = today()) {
+  const d = new Date(dateText);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+}
+
+function closePeriodStats(lockUntil) {
+  const bills = state.bills.filter(b => b.status !== "cancelled" && (!lockUntil || b.date <= lockUntil));
+  const payments = state.payments.filter(p => !lockUntil || p.date <= lockUntil);
+  const returns = (state.returns || []).filter(r => !lockUntil || r.date <= lockUntil);
+  const purchases = state.stock_movements.filter(m => m.type === "purchase" && (!lockUntil || m.date <= lockUntil));
+
+  return {
+    billCount: bills.length,
+    sales: bills.reduce((s, b) => s + Number(b.subtotal || 0), 0),
+    cost: bills.reduce((s, b) => s + Number(b.costTotal || 0), 0),
+    profit: bills.reduce((s, b) => s + Number(b.profitTotal || 0), 0),
+    credit: bills.reduce((s, b) => s + Number(b.creditAmount || 0), 0),
+    payments: payments.reduce((s, p) => s + Number(p.amount || 0), 0),
+    purchaseValue: purchases.reduce((s, m) => s + Number(m.qtyIn || 0) * Number(m.unitCost || 0), 0),
+    returnTotal: returns.reduce((s, r) => s + Number(r.totalRevenue || 0), 0)
+  };
+}
+
+function closePeriodTypeName(type) {
+  if (type === "daily") return "ปิดยอดรายวัน";
+  if (type === "monthly") return "ปิดยอดรายเดือน";
+  return "กำหนดเอง";
+}
 
 function returnsForBill(billId) {
   return (state.returns || []).filter(r => r.billId === billId);
@@ -880,6 +937,7 @@ async function saveBill() {
   const billId = uid();
   const billNo = nextBillNo();
   const date = $("billDate").value || today();
+  if (!assertDateUnlocked(date, "บันทึกขายย้อนหลัง")) return;
   refreshCartFifoCosts();
   const totals = cartTotals();
   const subtotal = totals.subtotal;
@@ -961,6 +1019,7 @@ async function saveBill() {
 async function cancelBill(id) {
   const b = state.bills.find(x => x.id === id);
   if (!b || b.status === "cancelled") return;
+  if (!assertDateUnlocked(b.date, "ยกเลิกบิล")) return;
 
   const reason = prompt(`เหตุผลการยกเลิกบิล ${b.billNo}\n\nตัวอย่าง: กรอกผิด / ลูกค้ายกเลิก / ทดสอบระบบ`, b.cancelReason || "");
   if (reason === null) return;
@@ -1756,6 +1815,7 @@ window.editPurchase = (id) => {
 window.deletePurchase = async (id) => {
   const m = state.stock_movements.find(x => x.id === id && x.type === "purchase");
   if (!m) return;
+  if (!assertDateUnlocked(m.date, "ลบรายการซื้อเข้า")) return;
 
   if (!confirm(`ลบรายการซื้อเข้า?\n\nสินค้า: ${productById(m.productId)?.name || "-"}\nวันที่: ${m.date}\nจำนวน: ${money(m.qtyIn)}\n\nระบบจะคำนวณสต็อกและ FIFO ใหม่`)) return;
 
@@ -1766,6 +1826,145 @@ window.deletePurchase = async (id) => {
 };
 
 
+
+
+function renderClosePeriod() {
+  if (!$("closePeriodHistory")) return;
+
+  if ($("closeLockUntil") && !$("closeLockUntil").value) $("closeLockUntil").value = today();
+
+  const lock = currentLockPeriod();
+  const lockDate = currentLockDate();
+
+  if ($("currentLockText")) $("currentLockText").textContent = lock ? `ล็อกข้อมูลถึงวันที่ ${lockDate}` : "ยังไม่มีการล็อกข้อมูลย้อนหลัง";
+  if ($("currentLockBadge")) {
+    $("currentLockBadge").textContent = lock ? `ล็อกถึง ${lockDate}` : "ยังไม่ล็อก";
+    $("currentLockBadge").classList.toggle("locked", !!lock);
+  }
+  if ($("currentLockAdvice")) {
+    $("currentLockAdvice").classList.toggle("locked", !!lock);
+    $("currentLockAdvice").textContent = lock
+      ? `ระบบจะไม่อนุญาตให้เพิ่ม/แก้/ลบ/ยกเลิก/คืนสินค้าในวันที่ ${lockDate} หรือก่อนหน้านั้น หากต้องแก้ไขต้องปลดล็อกก่อน`
+      : "ยังไม่มีการปิดรอบ สามารถทำรายการย้อนหลังได้ตามปกติ แต่ก่อนส่งร้านทดลองควรใช้ปิดรอบหลังตรวจยอดทุกวัน";
+  }
+
+  const lockUntil = $("closeLockUntil")?.value || today();
+  const s = closePeriodStats(lockUntil);
+  if ($("closePeriodSummary")) {
+    $("closePeriodSummary").innerHTML = `
+      <div><span>จำนวนบิล</span><strong>${s.billCount.toLocaleString("th-TH")}</strong></div>
+      <div><span>ยอดขาย</span><strong>${money(s.sales)}</strong></div>
+      <div><span>ต้นทุน</span><strong>${money(s.cost)}</strong></div>
+      <div><span>กำไร</span><strong>${money(s.profit)}</strong></div>
+      <div><span>ยอดค้าง</span><strong>${money(s.credit)}</strong></div>
+      <div><span>รับเงินลูกหนี้</span><strong>${money(s.payments)}</strong></div>
+      <div><span>ซื้อเข้า</span><strong>${money(s.purchaseValue)}</strong></div>
+      <div><span>คืนสินค้า</span><strong>${money(s.returnTotal)}</strong></div>
+    `;
+  }
+
+  const rows = state.close_periods || [];
+  $("closePeriodHistory").innerHTML = rows.map(p => `
+    <div class="list-item close-period-row ${p.status === "reopened" ? "reopened" : ""}">
+      <div>
+        <strong>${p.closeNo || "CLOSE"} • ${closePeriodTypeName(p.type)}</strong>
+        <small>ล็อกถึง ${p.lockUntil} • ${p.note || "-"} • สร้างเมื่อ ${p.createdAt ? new Date(p.createdAt).toLocaleString("th-TH") : "-"}</small>
+        <small>บิล ${p.billCount || 0} • ยอดขาย ${money(p.sales || 0)} • กำไร ${money(p.profit || 0)} • ยอดค้าง ${money(p.credit || 0)}</small>
+        ${p.status === "reopened" ? `<small class="locked-warning">ปลดล็อกแล้ว: ${p.reopenReason || "-"}</small>` : ""}
+      </div>
+      <div class="row-actions">
+        <span class="close-period-badge ${p.status === "reopened" ? "" : "locked"}">${p.status === "reopened" ? "ปลดล็อกแล้ว" : "ล็อกอยู่"}</span>
+        ${p.status !== "reopened" ? `<button class="small-btn small-danger" onclick="reopenClosePeriod('${p.id}')">ปลดล็อก</button>` : ""}
+      </div>
+    </div>
+  `).join("") || `<div class="list-item"><div><strong>ยังไม่มีประวัติการปิดรอบ</strong><small>เมื่อบันทึกปิดรอบ รายการจะแสดงที่นี่</small></div></div>`;
+}
+
+async function createClosePeriod() {
+  const lockUntil = $("closeLockUntil")?.value || today();
+  const type = $("closePeriodType")?.value || "daily";
+  const note = $("closePeriodNote")?.value.trim() || closePeriodTypeName(type);
+
+  if (!lockUntil) return alert("กรุณาเลือกวันที่ปิดรอบ");
+
+  const current = currentLockDate();
+  if (current && lockUntil <= current) {
+    return alert(`ไม่สามารถปิดรอบซ้ำหรือย้อนกลับได้\n\nตอนนี้ล็อกถึง ${current} แล้ว\nถ้าต้องการเปลี่ยน ให้ปลดล็อกก่อน`);
+  }
+
+  const s = closePeriodStats(lockUntil);
+  if (!confirm(`ยืนยันปิดรอบถึงวันที่ ${lockUntil}?\n\nหลังปิดรอบ ระบบจะไม่ให้แก้/ลบ/ยกเลิก/คืนสินค้าในวันที่นี้หรือก่อนหน้านั้น\n\nยอดขาย: ${money(s.sales)}\nกำไร: ${money(s.profit)}\nยอดค้าง: ${money(s.credit)}\n\nแนะนำให้ Backup ก่อนปิดรอบ`)) return;
+
+  const closeNo = `CP-${lockUntil.replaceAll("-", "")}-${String((state.close_periods || []).length + 1).padStart(4, "0")}`;
+  const now = new Date().toISOString();
+
+  await put("close_periods", {
+    id: uid(),
+    closeNo,
+    type,
+    lockUntil,
+    note,
+    status: "closed",
+    billCount: s.billCount,
+    sales: s.sales,
+    cost: s.cost,
+    profit: s.profit,
+    credit: s.credit,
+    payments: s.payments,
+    purchaseValue: s.purchaseValue,
+    returnTotal: s.returnTotal,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  if ($("closePeriodNote")) $("closePeriodNote").value = "";
+  await loadState();
+  switchTab("closePeriod");
+  showToast(`ปิดรอบ ${closeNo} แล้ว`);
+}
+
+window.reopenClosePeriod = async (id) => {
+  const p = state.close_periods.find(x => x.id === id);
+  if (!p) return alert("ไม่พบรายการปิดรอบ");
+  if (p.status === "reopened") return alert("รายการนี้ปลดล็อกแล้ว");
+
+  const typed = prompt(`ปลดล็อกการปิดรอบ?\n\nรอบ: ${p.closeNo}\nล็อกถึง: ${p.lockUntil}\n\nพิมพ์เลขรอบเพื่อยืนยัน:`);
+  if (typed !== p.closeNo) {
+    if (typed !== null) alert("เลขรอบไม่ตรง ยกเลิกการปลดล็อก");
+    return;
+  }
+
+  const reason = prompt("เหตุผลการปลดล็อก\n\nตัวอย่าง: แก้ข้อมูลย้อนหลัง / ตรวจพบรายการผิด", "");
+  if (reason === null) return;
+  const cleanReason = reason.trim();
+  if (!cleanReason) return alert("กรุณาใส่เหตุผลการปลดล็อก");
+
+  if (!confirm(`ยืนยันปลดล็อก ${p.closeNo}?`)) return;
+
+  await put("close_periods", {
+    ...p,
+    status: "reopened",
+    reopenReason: cleanReason,
+    reopenedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  await loadState();
+  switchTab("closePeriod");
+  showToast(`ปลดล็อก ${p.closeNo} แล้ว`);
+};
+
+function setClosePeriodToday() {
+  if ($("closeLockUntil")) $("closeLockUntil").value = today();
+  if ($("closePeriodType")) $("closePeriodType").value = "daily";
+  renderClosePeriod();
+}
+
+function setClosePeriodMonth() {
+  if ($("closeLockUntil")) $("closeLockUntil").value = periodEndOfMonth(today());
+  if ($("closePeriodType")) $("closePeriodType").value = "monthly";
+  renderClosePeriod();
+}
 
 function stockCountDomId(id) {
   return String(id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -2025,6 +2224,7 @@ async function applyStockCount() {
   if (!changed.length && !confirm("ยอดที่นับจริงตรงกับระบบทั้งหมด ต้องการบันทึกผลตรวจนับไว้หรือไม่?")) return;
 
   const date = $("stockCountDate")?.value || today();
+  if (!assertDateUnlocked(date, "บันทึกตรวจนับย้อนหลัง")) return;
   const note = $("stockCountNote")?.value.trim() || "ตรวจนับสต็อก";
   const countId = uid();
   const countNo = `SC-${date.replaceAll("-", "")}-${String((state.stock_counts || []).length + 1).padStart(4, "0")}`;
@@ -2092,6 +2292,7 @@ window.openStockCountDetail = (id) => {
 window.deleteStockCount = async (id) => {
   const c = state.stock_counts.find(x => x.id === id);
   if (!c) return alert("ไม่พบรายการตรวจนับ");
+  if (!assertDateUnlocked(c.date, "ลบ/ย้อนรายการตรวจนับ")) return;
 
   if (!confirm(`ลบ/ย้อนรายการตรวจนับ ${c.countNo}?\n\nระบบจะลบรายการปรับสต็อกที่เกิดจากการตรวจนับนี้ และคำนวณ FIFO ใหม่`)) return;
 
@@ -2169,6 +2370,7 @@ window.editAdjustment = (id) => {
 window.deleteAdjustment = async (id) => {
   const m = state.stock_movements.find(x => x.id === id && (x.type === "adjust_in" || x.type === "adjust_out" || x.type === "cost_adjust"));
   if (!m) return;
+  if (!assertDateUnlocked(m.date, "ลบรายการปรับสต็อก")) return;
 
   const p = productById(m.productId);
   const qty = Number(m.qtyIn || 0) > 0 ? m.qtyIn : m.qtyOut;
@@ -2341,6 +2543,7 @@ window.editPayment = (id) => {
 window.deletePayment = async (id) => {
   const p = state.payments.find(x => x.id === id);
   if (!p) return;
+  if (!assertDateUnlocked(p.date, "ลบรายการรับเงิน")) return;
 
   if (!confirm(`ลบรายการรับเงิน?\n\nลูกค้า: ${customerName(p.customerId)}\nวันที่: ${p.date}\nจำนวน: ${money(p.amount)} บาท\n\nยอดค้างจะถูกคำนวณใหม่`)) return;
 
@@ -2354,6 +2557,7 @@ window.deletePayment = async (id) => {
 async function deleteCancelledBill(id) {
   const b = state.bills.find(x => x.id === id);
   if (!b) return alert("ไม่พบบิล");
+  if (!assertDateUnlocked(b.date, "ลบถาวรบิลที่อยู่ในรอบปิดแล้ว")) return;
   if (b.status !== "cancelled") return alert("ลบถาวรได้เฉพาะบิลที่ยกเลิกแล้วเท่านั้น");
 
   const typed = prompt(`ลบบิลถาวร?\n\nบิล: ${b.billNo}\nการกระทำนี้จะลบบิล รายการสินค้าในบิล การเคลื่อนไหวสต็อก และรายการรับเงินที่ผูกกับบิลนี้\n\nพิมพ์เลขบิลเพื่อยืนยัน:`);
@@ -2986,6 +3190,7 @@ async function returnBillItem(billItemId) {
 
   const b = state.bills.find(x => x.id === item.billId);
   if (!b) return alert("ไม่พบบิล");
+  if (!assertDateUnlocked(b.date, "รับคืนสินค้าจากบิลที่ปิดรอบแล้ว")) return;
   if (b.status === "cancelled") return alert("บิลนี้ถูกยกเลิกแล้ว ไม่สามารถรับคืนเพิ่มได้");
 
   const remain = remainingReturnQty(item);
@@ -3257,7 +3462,7 @@ function switchTab(id) {
 document.querySelectorAll(".tab,[data-open-tab]").forEach(el => el.addEventListener("click", () => switchTab(el.dataset.tab || el.dataset.openTab)));
 
 function setDates() {
-  ["billDate", "purchaseDate", "paymentDate", "adjustDate", "stockCountDate"].forEach(id => { if ($(id)) $(id).value = today(); });
+  ["billDate", "purchaseDate", "paymentDate", "adjustDate", "stockCountDate", "closeLockUntil"].forEach(id => { if ($(id)) $(id).value = today(); });
 }
 
 $("paymentType").addEventListener("change", () => {
@@ -3351,6 +3556,9 @@ $("purchaseForm").addEventListener("submit", async (e) => {
   if (cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
 
   const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+  const purchaseDate = $("purchaseDate").value || today();
+  if (!assertDateUnlocked(purchaseDate, editId ? "อัปเดตซื้อเข้า" : "บันทึกซื้อเข้า")) return;
+  if (old && !assertDateUnlocked(old.date, "แก้ไขรายการซื้อเข้าที่อยู่ในรอบปิดแล้ว")) return;
 
   await put("stock_movements", {
     ...(old || {}),
@@ -3359,7 +3567,7 @@ $("purchaseForm").addEventListener("submit", async (e) => {
     type: "purchase",
     refType: "purchase",
     refId: "",
-    date: $("purchaseDate").value || today(),
+    date: purchaseDate,
     qtyIn: qty,
     qtyOut: 0,
     unitCost: cost,
@@ -3383,13 +3591,16 @@ $("paymentForm").addEventListener("submit", async (e) => {
   const billId = $("paymentBill") ? $("paymentBill").value : "";
   const amount = Number($("paymentAmount").value || 0);
   const editId = $("paymentId").value;
+  const paymentDate = $("paymentDate").value || today();
 
+  if (!assertDateUnlocked(paymentDate, editId ? "อัปเดตรับเงิน" : "บันทึกรับเงิน")) return;
   if (!customerId) return alert("กรุณาเลือกลูกค้า");
   if (!billId) return alert("กรุณาเลือกบิลที่รับเงิน");
   if (amount <= 0) return alert("กรุณาใส่จำนวนเงิน");
 
   const bill = state.bills.find(b => b.id === billId);
   const old = editId ? state.payments.find(p => p.id === editId) : null;
+  if (old && !assertDateUnlocked(old.date, "แก้ไขรายการรับเงินที่อยู่ในรอบปิดแล้ว")) return;
   const oldAmountSameBill = old && old.billId === billId ? Number(old.amount || 0) : 0;
   const maxPay = Number(bill?.creditAmount || 0) + oldAmountSameBill;
 
@@ -3402,7 +3613,7 @@ $("paymentForm").addEventListener("submit", async (e) => {
     id: editId || uid(),
     customerId,
     billId,
-    date: $("paymentDate").value || today(),
+    date: paymentDate,
     amount,
     method: $("paymentMethod").value,
     note: $("paymentNote").value.trim(),
@@ -3430,7 +3641,9 @@ if (adjustForm) {
     const cost = Number($("adjustCost").value || 0);
     const note = $("adjustNote").value.trim();
     const editId = $("adjustId").value;
+    const adjustDate = $("adjustDate").value || today();
 
+    if (!assertDateUnlocked(adjustDate, editId ? "อัปเดตปรับสต็อก" : "บันทึกปรับสต็อก")) return;
     if (!productId) return alert("กรุณาเลือกสินค้า");
     if (type !== "cost_adjust" && qty <= 0) return alert("กรุณาใส่จำนวน");
     if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
@@ -3446,6 +3659,7 @@ if (adjustForm) {
     if ((type === "adjust_in" || type === "cost_adjust") && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
 
     const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+    if (old && !assertDateUnlocked(old.date, "แก้ไขรายการปรับสต็อกที่อยู่ในรอบปิดแล้ว")) return;
     await put("stock_movements", {
       ...(old || {}),
       id: editId || uid(),
@@ -3453,7 +3667,7 @@ if (adjustForm) {
       type,
       refType: type === "cost_adjust" ? "cost" : "adjust",
       refId: "",
-      date: $("adjustDate").value || today(),
+      date: adjustDate,
       qtyIn: type === "adjust_in" ? qty : 0,
       qtyOut: type === "adjust_out" ? qty : 0,
       unitCost: (type === "adjust_in" || type === "cost_adjust") ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
@@ -3513,7 +3727,9 @@ if (adjustForm) {
     const cost = Number($("adjustCost").value || 0);
     const note = $("adjustNote").value.trim();
     const editId = $("adjustId").value;
+    const adjustDate = $("adjustDate").value || today();
 
+    if (!assertDateUnlocked(adjustDate, editId ? "อัปเดตปรับสต็อก" : "บันทึกปรับสต็อก")) return;
     if (!productId) return alert("กรุณาเลือกสินค้า");
     if (qty <= 0) return alert("กรุณาใส่จำนวน");
     if (!note && !confirm("ยังไม่ได้ใส่เหตุผล ต้องการบันทึกต่อไหม?")) return;
@@ -3529,6 +3745,7 @@ if (adjustForm) {
     if (type === "adjust_in" && cost <= 0 && !confirm("ทุนต่อหน่วยเป็น 0 ต้องการบันทึกต่อไหม?")) return;
 
     const old = editId ? state.stock_movements.find(m => m.id === editId) : null;
+    if (old && !assertDateUnlocked(old.date, "แก้ไขรายการปรับสต็อกที่อยู่ในรอบปิดแล้ว")) return;
     await put("stock_movements", {
       ...(old || {}),
       id: editId || uid(),
@@ -3536,7 +3753,7 @@ if (adjustForm) {
       type,
       refType: "adjust",
       refId: "",
-      date: $("adjustDate").value || today(),
+      date: adjustDate,
       qtyIn: type === "adjust_in" ? qty : 0,
       qtyOut: type === "adjust_out" ? qty : 0,
       unitCost: type === "adjust_in" ? cost : Number(old?.unitCost || productById(productId)?.avgCost || 0),
@@ -3644,7 +3861,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.3", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.4", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -3767,6 +3984,8 @@ $("importProductsCsvInput")?.addEventListener("change", async (e) => {
     e.target.value = "";
     return;
   }
+
+  if (!assertDateUnlocked(today(), "Import สินค้า/สต็อกเริ่มต้น")) { e.target.value = ""; return; }
 
   if (!confirm(`นำเข้าสินค้า ${valid.length} รายการ?\n\nระบบจะเพิ่ม/อัปเดตสินค้า และถ้ามีสต็อกเริ่มต้นจะสร้างรายการ opening stock`)) {
     e.target.value = "";
@@ -4352,6 +4571,8 @@ function betaCounts() {
     returnItems: (state.return_items || []).length,
     stockCounts: (state.stock_counts || []).length,
     stockCountItems: (state.stock_count_items || []).length,
+    closePeriods: (state.close_periods || []).length,
+    currentLockDate: currentLockDate() || "ยังไม่ล็อก",
     lowStock: lowStockProducts ? lowStockProducts().length : 0
   };
 }
@@ -4521,6 +4742,8 @@ function diagnosticText() {
     `Return items: ${d.returnItems}`,
     `Stock counts: ${d.stockCounts}`,
     `Stock count items: ${d.stockCountItems}`,
+    `Close periods: ${d.closePeriods}`,
+    `Current lock date: ${d.currentLockDate}`,
     `Last Backup: ${d.lastBackup}`,
     `Generated: ${d.generatedAt}`,
     `User Agent: ${d.userAgent}`
@@ -4583,6 +4806,15 @@ $("betaExportBackupBtn")?.addEventListener("click", () => $("exportBackupBtn")?.
 $("stockCountFillSystemBtn")?.addEventListener("click", fillStockCountWithSystem);
 $("stockCountClearBtn")?.addEventListener("click", clearStockCountDraft);
 $("stockCountApplyBtn")?.addEventListener("click", applyStockCount);
+
+
+["closeLockUntil", "closePeriodType"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderClosePeriod);
+  if ($(id)) $(id).addEventListener("change", renderClosePeriod);
+});
+$("closeTodayBtn")?.addEventListener("click", setClosePeriodToday);
+$("closeMonthBtn")?.addEventListener("click", setClosePeriodMonth);
+$("createClosePeriodBtn")?.addEventListener("click", createClosePeriod);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

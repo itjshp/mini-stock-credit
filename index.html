@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.3 • Product Detail Fix • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.4 • Close Period • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="closePeriod" class="tab secondary-tab">ปิดรอบ</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -310,6 +310,84 @@
 </section>
 
 
+
+
+<section id="closePeriod" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ปิดรอบ / ล็อกข้อมูลย้อนหลัง</h2>
+      <p>ปิดรอบหลังตรวจยอดแล้ว เพื่อป้องกันการแก้ไขบิล สต็อก ต้นทุน และลูกหนี้ย้อนหลัง</p>
+    </div>
+    <div class="form-actions">
+      <button id="closeTodayBtn" class="soft-btn" type="button">ปิดถึงวันนี้</button>
+      <button id="closeMonthBtn" class="soft-btn" type="button">ปิดถึงสิ้นเดือนนี้</button>
+      <button id="createClosePeriodBtn" class="primary-btn" type="button">บันทึกปิดรอบ</button>
+    </div>
+  </div>
+
+  <div class="panel close-period-current">
+    <div class="panel-head">
+      <div>
+        <h3>สถานะการล็อกปัจจุบัน</h3>
+        <span id="currentLockText" class="hint">กำลังตรวจสอบ...</span>
+      </div>
+      <span id="currentLockBadge" class="close-period-badge">ยังไม่ล็อก</span>
+    </div>
+    <div id="currentLockAdvice" class="close-period-advice">ยังไม่มีการปิดรอบย้อนหลัง</div>
+  </div>
+
+  <div class="panel close-period-form-panel">
+    <div class="panel-head">
+      <h3>ตั้งค่าการปิดรอบ</h3>
+      <span class="hint">แนะนำให้ Backup ก่อนปิดรอบทุกครั้ง</span>
+    </div>
+
+    <div class="close-period-grid">
+      <label>ปิดรอบถึงวันที่<input id="closeLockUntil" type="date"></label>
+      <label>ประเภทการปิดรอบ
+        <select id="closePeriodType">
+          <option value="daily">ปิดยอดรายวัน</option>
+          <option value="monthly">ปิดยอดรายเดือน</option>
+          <option value="custom">กำหนดเอง</option>
+        </select>
+      </label>
+      <label>หมายเหตุ<input id="closePeriodNote" placeholder="เช่น ปิดยอดสิ้นวัน / ตรวจแล้วตรง"></label>
+    </div>
+
+    <div id="closePeriodSummary" class="close-period-summary">
+      <div><span>จำนวนบิล</span><strong>0</strong></div>
+      <div><span>ยอดขาย</span><strong>0.00</strong></div>
+      <div><span>ต้นทุน</span><strong>0.00</strong></div>
+      <div><span>กำไร</span><strong>0.00</strong></div>
+      <div><span>ยอดค้าง</span><strong>0.00</strong></div>
+      <div><span>รับเงินลูกหนี้</span><strong>0.00</strong></div>
+      <div><span>ซื้อเข้า</span><strong>0.00</strong></div>
+      <div><span>คืนสินค้า</span><strong>0.00</strong></div>
+    </div>
+  </div>
+
+  <div class="panel close-period-info">
+    <div class="panel-head">
+      <h3>เมื่อปิดรอบแล้ว ระบบจะป้องกันอะไร</h3>
+    </div>
+    <div class="close-rules-grid">
+      <div>✅ ป้องกันการเพิ่มบิลย้อนหลัง</div>
+      <div>✅ ป้องกันการยกเลิก/ลบบิลที่อยู่ในรอบปิดแล้ว</div>
+      <div>✅ ป้องกันการคืนสินค้าจากบิลที่ล็อกแล้ว</div>
+      <div>✅ ป้องกันการแก้/ลบซื้อเข้าและปรับสต็อกย้อนหลัง</div>
+      <div>✅ ป้องกันการแก้/ลบรับเงินย้อนหลัง</div>
+      <div>✅ ป้องกันการตรวจนับย้อนหลังในวันที่ล็อกแล้ว</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>ประวัติการปิดรอบ</h3>
+      <span class="hint">ถ้าจำเป็น สามารถปลดล็อกได้ด้วยการยืนยันเลขรอบ</span>
+    </div>
+    <div id="closePeriodHistory" class="stack-list"></div>
+  </div>
+</section>
 
 <section id="stockCount" class="page">
   <div class="page-head">
@@ -743,7 +821,7 @@
     <input id="moreSearchInput" class="search-input" placeholder="ค้นหาเมนู เช่น ค้นหาบิล / รับเงิน / ปรับสต็อก">
   </div>
 
-  <div class="more-grid" id="moreGrid"><button class="more-card fifo-repair-card" id="repairFifoBtn" type="button"><span>📦</span><strong>ตรวจ/ซ่อม FIFO</strong><small>คำนวณล็อตต้นทุนใหม่</small></button><button class="more-card beta-ready-card" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card stock-count-card" data-open-tab="stockCount"><span>📋</span><strong>ตรวจนับสต็อก</strong><small>นับจริง / เทียบระบบ / ปรับอัตโนมัติ</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
+  <div class="more-grid" id="moreGrid"><button class="more-card fifo-repair-card" id="repairFifoBtn" type="button"><span>📦</span><strong>ตรวจ/ซ่อม FIFO</strong><small>คำนวณล็อตต้นทุนใหม่</small></button><button class="more-card beta-ready-card" data-open-tab="gettingStarted"><span>🚀</span><strong>เริ่มต้นใช้งาน</strong><small>Checklist / Feedback / Beta Ready</small></button><button class="more-card" data-open-tab="purchase"><span>📦</span><strong>ซื้อเข้า</strong><small>เพิ่มสต็อก / บันทึกต้นทุน</small></button><button class="more-card low-stock-card" data-open-tab="lowStock"><span>⚠️</span><strong>สินค้าใกล้หมด</strong><small>ดูรายการที่ควรซื้อเพิ่ม</small></button><button class="more-card" data-open-tab="payments"><span>💵</span><strong>รับเงิน</strong><small>รับชำระลูกหนี้</small></button><button class="more-card" data-open-tab="ledger"><span>📒</span><strong>ยอดค้าง</strong><small>สมุดบัญชีลูกค้า</small></button><button class="more-card" data-open-tab="reports"><span>📊</span><strong>รายงาน</strong><small>ยอดขาย / กำไร</small></button><button class="more-card bill-search-card" data-open-tab="billSearch"><span>🔎</span><strong>ค้นหาบิล</strong><small>วันที่ / ลูกค้า / เลขบิล / สินค้า</small></button><button class="more-card close-period-card" data-open-tab="closePeriod"><span>🔐</span><strong>ปิดรอบ / ล็อกย้อนหลัง</strong><small>ล็อกบิล สต็อก และยอดย้อนหลัง</small></button><button class="more-card stock-count-card" data-open-tab="stockCount"><span>📋</span><strong>ตรวจนับสต็อก</strong><small>นับจริง / เทียบระบบ / ปรับอัตโนมัติ</small></button><button class="more-card" data-open-tab="adjust"><span>🧮</span><strong>ปรับสต็อก</strong><small>ของเสีย / ของหาย / นับแล้วไม่ตรง</small></button><button class="more-card" data-open-tab="backup"><span>☁️</span><strong>Backup</strong><small>สำรอง/กู้คืนข้อมูล</small></button><button class="more-card" data-open-tab="guide"><span>📘</span><strong>คู่มือ</strong><small>วิธีใช้งานระบบ</small></button><button class="more-card" data-open-tab="settings"><span>⚙️</span><strong>ตั้งค่า</strong><small>ชื่อร้าน / เลขบิล / Number Pad</small></button><button class="more-card about-card" data-open-tab="about"><span>🛡️</span><strong>เกี่ยวกับแอป</strong><small>Privacy / Local-first / เวอร์ชัน</small></button><button class="more-card test-card" data-open-tab="testCenter"><span>🧪</span><strong>ทดสอบระบบ</strong><small>Auto Test / ตรวจสูตร / ล้างข้อมูล TEST</small></button></div>
 </section>
 </main>
 

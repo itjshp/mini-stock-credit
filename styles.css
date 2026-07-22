@@ -2733,3 +2733,101 @@ body[data-role="manager"]::before{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.18: Activity Log / Audit Trail */
+.activity-filter-panel{
+  border-top:5px solid #7c3aed;
+}
+.activity-filter-grid{
+  display:grid;
+  grid-template-columns:2fr 1fr 1fr 1fr 1fr;
+  gap:12px;
+}
+.activity-summary{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-top:14px;
+}
+.activity-summary div{
+  background:#101827;
+  color:#fff;
+  border-radius:20px;
+  padding:14px;
+}
+.activity-summary span{
+  display:block;
+  font-size:12px;
+  opacity:.85;
+  font-weight:950;
+}
+.activity-summary strong{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+.activity-log-results{
+  display:grid;
+  gap:10px;
+}
+.activity-row{
+  border-left:5px solid #7c3aed;
+}
+.activity-row.sale{
+  border-left-color:#0f766e;
+}
+.activity-row.money{
+  border-left-color:#16a34a;
+}
+.activity-row.stock{
+  border-left-color:#2563eb;
+}
+.activity-row.customer{
+  border-left-color:#f97316;
+}
+.activity-row.system{
+  border-left-color:#7c3aed;
+}
+.activity-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:6px;
+}
+.activity-meta span{
+  display:inline-flex;
+  border-radius:999px;
+  padding:4px 8px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:12px;
+  font-weight:900;
+}
+.activity-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:1000;
+  background:#f5f3ff;
+  color:#6d28d9;
+}
+.activity-detail{
+  color:var(--kk-muted,#66817c);
+  font-weight:850;
+  margin-top:5px;
+  display:block;
+}
+@media(max-width:1100px){
+  .activity-filter-grid,
+  .activity-summary{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:720px){
+  .activity-filter-grid,
+  .activity-summary{
+    grid-template-columns:1fr;
+  }
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "khaikhong-v2-3-17-no-cache";
+const CACHE_NAME = "khaikhong-v2-3-18-no-cache";
 
 self.addEventListener("install", event => {
   self.skipWaiting();

@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.17 • Permission Builder • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.18 • Activity Log • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -28,7 +28,7 @@
 
 <nav class="tabs">
   <button data-tab="sale" class="tab active"><span class="tab-icon">🛒</span>ขายของ</button><button data-tab="products" class="tab"><span class="tab-icon">📦</span>สินค้า</button><button data-tab="customers" class="tab"><span class="tab-icon">👥</span>ลูกค้า</button><button data-tab="summary" class="tab"><span class="tab-icon">📊</span>สรุป</button><button data-tab="lowStock" class="tab secondary-tab">สินค้าใกล้หมด</button><button data-tab="more" class="tab"><span class="tab-icon">☰</span>เพิ่มเติม</button>
-  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="debtAging" class="tab secondary-tab">ลูกหนี้ครบกำหนด</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="closePeriod" class="tab secondary-tab">ปิดรอบ</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="security" class="tab secondary-tab">ความปลอดภัย</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
+  <button data-tab="purchase" class="tab secondary-tab">ซื้อเข้า</button><button data-tab="ledger" class="tab secondary-tab">ยอดค้าง</button><button data-tab="debtAging" class="tab secondary-tab">ลูกหนี้ครบกำหนด</button><button data-tab="payments" class="tab secondary-tab">รับเงิน</button><button data-tab="reports" class="tab secondary-tab">รายงาน</button><button data-tab="billSearch" class="tab secondary-tab">ค้นหาบิล</button><button data-tab="closePeriod" class="tab secondary-tab">ปิดรอบ</button><button data-tab="stockCount" class="tab secondary-tab">ตรวจนับสต็อก</button><button data-tab="adjust" class="tab secondary-tab">ปรับสต็อก</button><button data-tab="productDetail" class="tab secondary-tab">รายละเอียดสินค้า</button><button data-tab="customerDetail" class="tab secondary-tab">รายละเอียดลูกค้า</button><button data-tab="backup" class="tab secondary-tab">Backup</button><button data-tab="gettingStarted" class="tab secondary-tab">เริ่มต้นใช้งาน</button><button data-tab="guide" class="tab secondary-tab">คู่มือ</button><button data-tab="settings" class="tab secondary-tab">ตั้งค่า</button><button data-tab="security" class="tab secondary-tab">ความปลอดภัย</button><button data-tab="activityLog" class="tab secondary-tab">ประวัติระบบ</button><button data-tab="about" class="tab secondary-tab">เกี่ยวกับ</button><button data-tab="testCenter" class="tab secondary-tab">ทดสอบระบบ</button>
     <button data-tab="billDetail" class="tab secondary-tab">รายละเอียดบิล</button>
 </nav>
 
@@ -532,6 +532,59 @@
       <span class="hint">แก้ไข/ลบได้ ระบบจะคำนวณสต็อกใหม่</span>
     </div>
     <div id="adjustList" class="stack-list"></div>
+  </div>
+</section>
+
+
+<section id="activityLog" class="page">
+  <div class="page-head">
+    <div>
+      <h2>ประวัติการทำรายการ</h2>
+      <p>ดูว่าใครทำอะไร เมื่อไร เช่น ขายบิล รับเงิน ยกเลิกบิล ปรับสต็อก ปิดรอบ และ Restore Backup</p>
+    </div>
+    <div class="form-actions">
+      <button id="copyActivitySummaryBtn" class="soft-btn" type="button">คัดลอกสรุป</button>
+      <button id="exportActivityLogCsvBtn" class="soft-btn" type="button">Export CSV</button>
+      <button id="clearTestActivityLogsBtn" class="soft-btn" type="button">ล้าง Log TEST</button>
+    </div>
+  </div>
+
+  <div class="panel activity-filter-panel">
+    <div class="panel-head">
+      <h3>ตัวกรองประวัติ</h3>
+      <div class="filter-actions">
+        <button id="activityTodayBtn" class="soft-btn" type="button">วันนี้</button>
+        <button id="activity7DaysBtn" class="soft-btn" type="button">7 วัน</button>
+        <button id="activityClearBtn" class="soft-btn" type="button">ล้าง</button>
+      </div>
+    </div>
+
+    <div class="activity-filter-grid">
+      <label>ค้นหา<input id="activitySearch" placeholder="เลขบิล / สินค้า / ลูกค้า / เหตุผล / ผู้ใช้"></label>
+      <label>ผู้ใช้งาน<select id="activityUserFilter"><option value="">ทุกผู้ใช้งาน</option></select></label>
+      <label>ประเภท
+        <select id="activityActionFilter">
+          <option value="">ทุกประเภท</option>
+          <option value="sale">ขาย / บิล</option>
+          <option value="money">รับเงิน / ลูกหนี้</option>
+          <option value="stock">สต็อก / FIFO</option>
+          <option value="customer">ลูกค้า</option>
+          <option value="system">ระบบ / Backup / ผู้ใช้</option>
+        </select>
+      </label>
+      <label>วันที่เริ่ม<input id="activityFrom" type="date"></label>
+      <label>วันที่สิ้นสุด<input id="activityTo" type="date"></label>
+    </div>
+
+    <div id="activitySummary" class="activity-summary"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>รายการประวัติ</h3>
+      <span id="activityResultText" class="hint">กำลังตรวจสอบ...</span>
+    </div>
+    <div id="activityLogResults" class="activity-log-results"></div>
   </div>
 </section>
 

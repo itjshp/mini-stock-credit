@@ -1,9 +1,9 @@
 const DB_NAME = "khaikhong-v2-db";
-const DB_VERSION = 5;
-const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","close_periods","settings"];
+const DB_VERSION = 6;
+const STORES = ["products","customers","bills","bill_items","payments","stock_movements","stock_lots","bill_item_lots","returns","return_items","stock_counts","stock_count_items","close_periods","activity_logs","settings"];
 
 let db;
-let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], stock_counts: [], stock_count_items: [], close_periods: [], settings: [] };
+let state = { products: [], customers: [], bills: [], bill_items: [], payments: [], stock_movements: [], stock_lots: [], bill_item_lots: [], returns: [], return_items: [], stock_counts: [], stock_count_items: [], close_periods: [], activity_logs: [], settings: [] };
 let cart = [];
 let selectedLedgerCustomerId = "";
 let selectedCustomerDetailId = "";
@@ -114,6 +114,7 @@ async function loadState() {
   state.stock_counts.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
   state.stock_count_items.sort((a, b) => `${a.stockCountId || ""} ${a.productId || ""}`.localeCompare(`${b.stockCountId || ""} ${b.productId || ""}`));
   state.close_periods.sort((a, b) => `${b.lockUntil || ""} ${b.createdAt || ""}`.localeCompare(`${a.lockUntil || ""} ${a.createdAt || ""}`));
+  state.activity_logs.sort((a, b) => `${b.createdAt || ""}`.localeCompare(`${a.createdAt || ""}`));
   state.payments.sort((a, b) => `${b.date || ""} ${b.createdAt || ""}`.localeCompare(`${a.date || ""} ${a.createdAt || ""}`));
 
   renderAll();
@@ -1016,6 +1017,7 @@ async function saveBill() {
   await incrementBillNo();
   await recomputeInventory();
   await loadState();
+  await logActivity("SALE_CREATE", `ขายบิล ${billNo}`, { refType: "bill", refId: billId, refNo: billNo, amount: subtotal, detail: `${paymentType === "credit" ? "ขายเครดิต" : "เงินสด/โอน"} • ${cart.length} รายการ • ลูกค้า ${customerName(customerId)}` });
   clearCart();
   showToast(`บันทึกขาย ${billNo} แล้ว`);
 }
@@ -1064,6 +1066,7 @@ async function cancelBill(id) {
   await recomputeInventory();
   selectedBillId = id;
   await loadState();
+  await logActivity("BILL_CANCEL", `ยกเลิกบิล ${b.billNo}`, { refType: "bill", refId: id, refNo: b.billNo, amount: b.subtotal || 0, detail: cleanReason });
   showToast(`ยกเลิกบิล ${b.billNo} แล้ว`);
 }
 
@@ -1131,6 +1134,7 @@ async function deleteProduct(id) {
     if (!ok) return;
     await put("products", { ...p, isArchived: true, updatedAt: new Date().toISOString() });
     await loadState();
+    await logActivity("PRODUCT_ARCHIVE", `ซ่อนสินค้า ${p.name}`, { refType: "product", refId: id, detail: "สินค้ามีประวัติ จึงซ่อนแทนลบ" });
     showToast("ซ่อนสินค้าแล้ว");
     return;
   }
@@ -1138,6 +1142,7 @@ async function deleteProduct(id) {
   if (confirm(`ลบสินค้า "${p.name}" ใช่ไหม?`)) {
     await del("products", id);
     await loadState();
+    await logActivity("PRODUCT_DELETE", `ลบสินค้า ${p.name}`, { refType: "product", refId: id });
     showToast("ลบสินค้าแล้ว");
   }
 }
@@ -1337,6 +1342,7 @@ async function deleteCustomer(id) {
   if (confirm("ลบลูกค้า?")) {
     await del("customers", id);
     await loadState();
+    await logActivity("CUSTOMER_DELETE", "ลบลูกค้า", { refType: "customer", refId: id });
   }
 }
 
@@ -1826,6 +1832,7 @@ window.deletePurchase = async (id) => {
   await del("stock_movements", id);
   await rebuildCostSnapshots();
   await loadState();
+  await logActivity("PURCHASE_DELETE", "ลบรายการซื้อเข้า", { refType: "stock_movement", refId: id, amount: Number(m.qtyIn || 0) * Number(m.unitCost || 0), detail: productById(m.productId)?.name || "-" });
   showToast("ลบรายการซื้อเข้าและคำนวณ FIFO ใหม่แล้ว");
 };
 
@@ -1925,6 +1932,7 @@ async function createClosePeriod() {
   await loadState();
   switchTab("closePeriod");
   renderClosePeriod();
+  await logActivity("CLOSE_PERIOD", `ปิดรอบ ${closeNo}`, { refType: "close_period", refNo: closeNo, amount: s.sales, detail: `ล็อกถึง ${lockUntil} • ${note}` });
   showToast(`ปิดรอบ ${closeNo} แล้ว`);
 }
 
@@ -1957,6 +1965,7 @@ window.reopenClosePeriod = async (id) => {
   await loadState();
   switchTab("closePeriod");
   renderClosePeriod();
+  await logActivity("REOPEN_PERIOD", `ปลดล็อก ${p.closeNo}`, { refType: "close_period", refId: id, refNo: p.closeNo, detail: cleanReason });
   showToast(`ปลดล็อก ${p.closeNo} แล้ว`);
 };
 
@@ -2286,6 +2295,7 @@ async function applyStockCount() {
   selectedStockCountId = countId;
   if ($("stockCountNote")) $("stockCountNote").value = "";
   await loadState();
+  await logActivity("STOCK_COUNT", `ตรวจนับสต็อก ${countNo}`, { refType: "stock_count", refId: countId, refNo: countNo, amount: diffValue, detail: `นับ ${rows.length} รายการ • ต่าง ${changed.length} รายการ` });
   switchTab("stockCount");
   showToast(`บันทึกตรวจนับ ${countNo} แล้ว`);
 }
@@ -2309,6 +2319,7 @@ window.deleteStockCount = async (id) => {
   if (selectedStockCountId === id) selectedStockCountId = "";
   await recomputeInventory();
   await loadState();
+  await logActivity("STOCK_COUNT_DELETE", `ลบ/ย้อนตรวจนับ ${c.countNo}`, { refType: "stock_count", refId: id, refNo: c.countNo, detail: "ลบ movement ที่เกี่ยวข้องและคำนวณ FIFO ใหม่" });
   showToast(`ลบ/ย้อนรายการตรวจนับ ${c.countNo} แล้ว`);
 };
 
@@ -2385,6 +2396,7 @@ window.deleteAdjustment = async (id) => {
   await del("stock_movements", id);
   await rebuildCostSnapshots();
   await loadState();
+  await logActivity("ADJUST_DELETE", "ลบรายการปรับสต็อก", { refType: "stock_movement", refId: id, detail: `${productById(m.productId)?.name || "-"} • ${m.type}` });
   showToast("ลบรายการปรับสต็อก/ทุนและคำนวณใหม่แล้ว");
 };
 
@@ -2560,6 +2572,265 @@ function setDebtAgingStatus(status) {
   renderDebtAging();
 }
 
+
+/* v2.3.18: Activity Log / Audit Trail */
+const ACTIVITY_GROUPS = {
+  SALE_CREATE: "sale",
+  BILL_CANCEL: "sale",
+  BILL_DELETE: "sale",
+  ITEM_RETURN: "sale",
+  PAYMENT_CREATE: "money",
+  PAYMENT_UPDATE: "money",
+  PAYMENT_DELETE: "money",
+  PRODUCT_SAVE: "stock",
+  PRODUCT_DELETE: "stock",
+  PRODUCT_ARCHIVE: "stock",
+  PURCHASE_SAVE: "stock",
+  PURCHASE_DELETE: "stock",
+  ADJUST_SAVE: "stock",
+  ADJUST_DELETE: "stock",
+  STOCK_COUNT: "stock",
+  STOCK_COUNT_DELETE: "stock",
+  FIFO_REPAIR: "stock",
+  CUSTOMER_SAVE: "customer",
+  CUSTOMER_DELETE: "customer",
+  CLOSE_PERIOD: "system",
+  REOPEN_PERIOD: "system",
+  BACKUP_EXPORT: "system",
+  BACKUP_IMPORT: "system",
+  CLEAR_ALL: "system",
+  USER_SAVE: "system",
+  USER_DELETE: "system",
+  USER_SWITCH: "system",
+  USER_RESET: "system"
+};
+
+const ACTIVITY_LABELS = {
+  SALE_CREATE: "ขายบิล",
+  BILL_CANCEL: "ยกเลิกบิล",
+  BILL_DELETE: "ลบบิลถาวร",
+  ITEM_RETURN: "คืนสินค้า",
+  PAYMENT_CREATE: "รับเงิน",
+  PAYMENT_UPDATE: "แก้ไขรับเงิน",
+  PAYMENT_DELETE: "ลบรับเงิน",
+  PRODUCT_SAVE: "บันทึกสินค้า",
+  PRODUCT_DELETE: "ลบสินค้า",
+  PRODUCT_ARCHIVE: "ซ่อนสินค้า",
+  PURCHASE_SAVE: "ซื้อเข้า",
+  PURCHASE_DELETE: "ลบซื้อเข้า",
+  ADJUST_SAVE: "ปรับสต็อก",
+  ADJUST_DELETE: "ลบปรับสต็อก",
+  STOCK_COUNT: "ตรวจนับสต็อก",
+  STOCK_COUNT_DELETE: "ลบ/ย้อนตรวจนับ",
+  FIFO_REPAIR: "ตรวจ/ซ่อม FIFO",
+  CUSTOMER_SAVE: "บันทึกลูกค้า",
+  CUSTOMER_DELETE: "ลบลูกค้า",
+  CLOSE_PERIOD: "ปิดรอบ",
+  REOPEN_PERIOD: "ปลดล็อกปิดรอบ",
+  BACKUP_EXPORT: "Export Backup",
+  BACKUP_IMPORT: "Restore Backup",
+  CLEAR_ALL: "ล้างข้อมูลทั้งหมด",
+  USER_SAVE: "บันทึกผู้ใช้",
+  USER_DELETE: "ลบผู้ใช้",
+  USER_SWITCH: "สลับผู้ใช้",
+  USER_RESET: "รีเซ็ตผู้ใช้"
+};
+
+function activityGroup(action) {
+  return ACTIVITY_GROUPS[action] || "system";
+}
+
+function activityLabel(action) {
+  return ACTIVITY_LABELS[action] || action || "-";
+}
+
+function safeText(v) {
+  return String(v ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+}
+
+function activityActor() {
+  try {
+    if (typeof activeUser === "function") {
+      const u = activeUser();
+      return {
+        userId: u?.id || "unknown",
+        userName: u?.name || "ไม่ระบุ",
+        userRole: typeof roleName === "function" ? roleName(u?.role || "owner") : (u?.role || "owner")
+      };
+    }
+  } catch {}
+  return { userId: "owner", userName: "เจ้าของร้าน", userRole: "เจ้าของร้าน" };
+}
+
+async function logActivity(action, title, meta = {}) {
+  try {
+    if (!db || !STORES.includes("activity_logs")) return null;
+    const actor = activityActor();
+    const now = new Date();
+    const log = {
+      id: uid(),
+      action,
+      group: activityGroup(action),
+      label: activityLabel(action),
+      title: title || activityLabel(action),
+      detail: meta.detail || "",
+      refType: meta.refType || "",
+      refId: meta.refId || "",
+      refNo: meta.refNo || "",
+      amount: Number(meta.amount || 0),
+      userId: actor.userId,
+      userName: actor.userName,
+      userRole: actor.userRole,
+      date: now.toISOString().slice(0, 10),
+      time: now.toLocaleTimeString("th-TH"),
+      createdAt: now.toISOString(),
+      meta
+    };
+
+    await put("activity_logs", log);
+    if (Array.isArray(state.activity_logs)) {
+      state.activity_logs.unshift(log);
+      state.activity_logs = state.activity_logs.slice(0, 1500);
+    }
+    return log;
+  } catch (err) {
+    console.error("logActivity failed", err);
+    return null;
+  }
+}
+
+function activityUsers() {
+  return [...new Map((state.activity_logs || []).map(l => [l.userId || l.userName, l])).values()]
+    .sort((a, b) => (a.userName || "").localeCompare(b.userName || "", "th"));
+}
+
+function renderActivityUserOptions() {
+  const el = $("activityUserFilter");
+  if (!el) return;
+  const cur = el.value;
+  el.innerHTML = `<option value="">ทุกผู้ใช้งาน</option>` + activityUsers().map(u => `<option value="${safeText(u.userId || u.userName)}">${safeText(u.userName || "-")} • ${safeText(u.userRole || "-")}</option>`).join("");
+  if ([...el.options].some(o => o.value === cur)) el.value = cur;
+}
+
+function activityLogRows() {
+  const q = ($("activitySearch")?.value || "").toLowerCase().trim();
+  const user = $("activityUserFilter")?.value || "";
+  const group = $("activityActionFilter")?.value || "";
+  const from = $("activityFrom")?.value || "";
+  const to = $("activityTo")?.value || "";
+
+  return (state.activity_logs || [])
+    .filter(l => !from || l.date >= from)
+    .filter(l => !to || l.date <= to)
+    .filter(l => !user || (l.userId || l.userName) === user)
+    .filter(l => !group || l.group === group)
+    .filter(l => {
+      if (!q) return true;
+      const hay = `${l.action || ""} ${l.label || ""} ${l.title || ""} ${l.detail || ""} ${l.refNo || ""} ${l.userName || ""} ${JSON.stringify(l.meta || {})}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a, b) => `${b.createdAt || ""}`.localeCompare(`${a.createdAt || ""}`));
+}
+
+function activityStats(rows = activityLogRows()) {
+  return {
+    total: rows.length,
+    sale: rows.filter(r => r.group === "sale").length,
+    money: rows.filter(r => r.group === "money").length,
+    stock: rows.filter(r => r.group === "stock").length,
+    system: rows.filter(r => r.group === "system").length
+  };
+}
+
+function renderActivityLog() {
+  const list = $("activityLogResults");
+  if (!list) return;
+
+  renderActivityUserOptions();
+  const rows = activityLogRows();
+  const s = activityStats(rows);
+
+  $("activitySummary").innerHTML = `
+    <div><span>ทั้งหมด</span><strong>${s.total.toLocaleString("th-TH")}</strong></div>
+    <div><span>ขาย/บิล</span><strong>${s.sale.toLocaleString("th-TH")}</strong></div>
+    <div><span>รับเงิน</span><strong>${s.money.toLocaleString("th-TH")}</strong></div>
+    <div><span>สต็อก</span><strong>${s.stock.toLocaleString("th-TH")}</strong></div>
+    <div><span>ระบบ</span><strong>${s.system.toLocaleString("th-TH")}</strong></div>
+  `;
+
+  $("activityResultText").textContent = rows.length ? `พบ ${rows.length} รายการ` : "ยังไม่มีประวัติตามเงื่อนไข";
+
+  list.innerHTML = rows.slice(0, 300).map(l => `
+    <div class="list-item activity-row ${safeText(l.group)}">
+      <div>
+        <strong>${safeText(l.title || l.label)} <span class="activity-chip">${safeText(l.label)}</span></strong>
+        <div class="activity-meta">
+          <span>${safeText(l.date)} ${safeText(l.time)}</span>
+          <span>ผู้ใช้: ${safeText(l.userName || "-")}</span>
+          <span>${safeText(l.userRole || "-")}</span>
+          ${l.refNo ? `<span>อ้างอิง: ${safeText(l.refNo)}</span>` : ""}
+          ${Number(l.amount || 0) ? `<span>ยอด: ${money(l.amount)}</span>` : ""}
+        </div>
+        ${l.detail ? `<small class="activity-detail">${safeText(l.detail)}</small>` : ""}
+      </div>
+      <div class="row-actions">
+        ${l.refType === "bill" && l.refId ? `<button class="small-btn" onclick="openBillDetail('${safeText(l.refId)}')">ดูบิล</button>` : ""}
+      </div>
+    </div>
+  `).join("") || `<div class="list-item empty-card"><div><div class="empty-emoji">🧾</div><strong>ยังไม่มีประวัติ</strong><small>เมื่อมีการขาย รับเงิน หรือแก้ไขข้อมูล ระบบจะบันทึกที่นี่</small></div></div>`;
+}
+
+function setActivityRange(kind) {
+  if (kind === "today") {
+    $("activityFrom").value = today();
+    $("activityTo").value = today();
+  } else if (kind === "7days") {
+    $("activityFrom").value = addDays(new Date(), -6);
+    $("activityTo").value = today();
+  }
+  renderActivityLog();
+}
+
+function clearActivityFilters() {
+  ["activitySearch", "activityUserFilter", "activityActionFilter", "activityFrom", "activityTo"].forEach(id => { if ($(id)) $(id).value = ""; });
+  renderActivityLog();
+}
+
+function exportActivityLogCsv() {
+  const rows = [["date","time","user","role","group","action","title","refNo","amount","detail"]];
+  activityLogRows().forEach(l => rows.push([l.date, l.time, l.userName, l.userRole, l.group, l.label, l.title, l.refNo, l.amount || 0, l.detail || ""]));
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
+  download(`khaikhong-activity-log-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
+  logActivity("BACKUP_EXPORT", "Export Activity Log", { detail: `Export ${rows.length - 1} รายการ`, amount: rows.length - 1 });
+}
+
+function copyActivitySummary() {
+  const rows = activityLogRows();
+  const s = activityStats(rows);
+  const lines = [
+    "สรุปประวัติการทำรายการ",
+    `วันที่: ${today()}`,
+    `ทั้งหมด: ${s.total}`,
+    `ขาย/บิล: ${s.sale}`,
+    `รับเงิน: ${s.money}`,
+    `สต็อก: ${s.stock}`,
+    `ระบบ: ${s.system}`,
+    "",
+    "ล่าสุด:",
+    ...rows.slice(0, 20).map((l, i) => `${i + 1}. ${l.date} ${l.time} • ${l.userName} • ${l.label} • ${l.title}`)
+  ];
+  copyTextToClipboard(lines.join("\n"), "คัดลอกสรุปประวัติแล้ว");
+}
+
+async function clearTestActivityLogs() {
+  const testRows = (state.activity_logs || []).filter(l => `${l.title || ""} ${l.detail || ""} ${l.refNo || ""}`.toUpperCase().includes("TEST"));
+  if (!testRows.length) return alert("ไม่พบ Log TEST");
+  if (!confirm(`ล้าง Log TEST ${testRows.length} รายการ?`)) return;
+  for (const l of testRows) await del("activity_logs", l.id);
+  await loadState();
+  showToast("ล้าง Log TEST แล้ว");
+}
+
 function renderLedger() {
   const q = ($("ledgerSearch")?.value || "").toLowerCase().trim();
   const rows = state.customers
@@ -2728,6 +2999,7 @@ window.deletePayment = async (id) => {
   await del("payments", id);
   await recalcBills();
   await loadState();
+  await logActivity("PAYMENT_DELETE", "ลบรายการรับเงิน", { refType: "payment", refId: id, amount: p.amount || 0, detail: `${customerName(p.customerId)} • ${p.method || "-"}` });
   showToast("ลบรายการรับเงินแล้ว");
 };
 
@@ -2759,6 +3031,7 @@ async function deleteCancelledBill(id) {
   selectedBillId = "";
   await rebuildCostSnapshots();
   await loadState();
+  await logActivity("BILL_DELETE", `ลบบิลถาวร ${b.billNo}`, { refType: "bill", refId: id, refNo: b.billNo, amount: b.subtotal || 0, detail: "ลบบิลที่ยกเลิกแล้ว" });
   showToast(`ลบถาวร ${b.billNo} แล้ว`);
 }
 window.deleteCancelledBill = deleteCancelledBill;
@@ -3446,6 +3719,7 @@ async function returnBillItem(billItemId) {
   await recomputeInventory();
   selectedBillId = b.id;
   await loadState();
+  await logActivity("ITEM_RETURN", `คืนสินค้า ${productName}`, { refType: "bill", refId: b.id, refNo: b.billNo, amount: returnRevenue, detail: `จำนวน ${money(qty)} • เหตุผล ${cleanReason}` });
   showToast(`รับคืน ${productName} แล้ว`);
 }
 
@@ -3641,6 +3915,9 @@ function switchTab(id) {
   if (id === "debtAging") {
     try { renderDebtAging(); } catch (err) { console.error("renderDebtAging failed", err); }
   }
+  if (id === "activityLog") {
+    try { renderActivityLog(); } catch (err) { console.error("renderActivityLog failed", err); }
+  }
   if (id === "more") {
     try { resetMoreMenu(); } catch (err) { console.error("resetMoreMenu failed", err); }
   }
@@ -3700,6 +3977,7 @@ $("productForm").addEventListener("submit", async (e) => {
 
   resetProductForm();
   await loadState();
+  await logActivity("PRODUCT_SAVE", `${old.id ? "แก้ไข" : "เพิ่ม"}สินค้า ${name}`, { refType: "product", refId: id, detail: `หมวด ${$("productCategory")?.value || "-"} • ราคา ${money($("productPrice").value || 0)}` });
   showToast("บันทึกสินค้าแล้ว");
 });
 
@@ -3729,6 +4007,7 @@ $("customerForm").addEventListener("submit", async (e) => {
 
   resetCustomerForm();
   await loadState();
+  await logActivity("CUSTOMER_SAVE", `${old.id ? "แก้ไข" : "เพิ่ม"}ลูกค้า ${name}`, { refType: "customer", refId: id, detail: `${$("customerType").value} • เครดิต ${$("customerDays").value || 0} วัน` });
   showToast("บันทึกลูกค้าแล้ว");
 });
 
@@ -3770,6 +4049,7 @@ $("purchaseForm").addEventListener("submit", async (e) => {
   resetPurchaseForm();
   await rebuildCostSnapshots();
   await loadState();
+  await logActivity("PURCHASE_SAVE", `${editId ? "อัปเดต" : "บันทึก"}ซื้อเข้า`, { refType: "stock_movement", refId: editId || "", amount: qty * cost, detail: `${productById(productId)?.name || "-"} • จำนวน ${money(qty)} • ทุน ${money(cost)}` });
   showToast(editId ? "อัปเดตซื้อเข้าและคำนวณ FIFO ใหม่แล้ว" : "บันทึกซื้อเข้าแล้ว");
 });
 
@@ -3815,6 +4095,7 @@ $("paymentForm").addEventListener("submit", async (e) => {
   await recalcBills();
   resetPaymentForm();
   await loadState();
+  await logActivity(editId ? "PAYMENT_UPDATE" : "PAYMENT_CREATE", `${editId ? "อัปเดต" : "รับ"}เงินลูกหนี้`, { refType: "bill", refId: billId, refNo: bill?.billNo || "", amount, detail: `${customerName(customerId)} • ${$("paymentMethod").value}` });
   showToast(editId ? "อัปเดตรับเงินแล้ว" : "บันทึกรับเงินแล้ว");
 });
 
@@ -3870,6 +4151,7 @@ if (adjustForm) {
     resetAdjustForm();
     await rebuildCostSnapshots();
     await loadState();
+    await logActivity("ADJUST_SAVE", `${editId ? "อัปเดต" : "บันทึก"}ปรับสต็อก`, { refType: "stock_movement", refId: editId || "", amount: qty * cost, detail: `${productById(productId)?.name || "-"} • ${type} • จำนวน ${money(qty)} • ${note || "-"}` });
     showToast(editId ? "อัปเดตปรับสต็อก/ทุนแล้ว" : "บันทึกปรับสต็อก/ทุนแล้ว");
   });
 
@@ -4086,10 +4368,11 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.17", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.18", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
+  logActivity("BACKUP_EXPORT", "Export Backup", { detail: `สินค้า ${state.products.length} • ลูกค้า ${state.customers.length} • บิล ${state.bills.length}` });
   showToast("สร้าง Backup แล้ว");
 });
 
@@ -4108,6 +4391,7 @@ $("importBackupInput").addEventListener("change", async (e) => {
   await recomputeInventory();
   await recalcBills();
   await loadState();
+  await logActivity("BACKUP_IMPORT", "Restore Backup", { detail: `นำเข้าไฟล์ ${file.name || "backup"}` });
   showToast("นำเข้า Backup แล้ว");
 });
 
@@ -4117,6 +4401,7 @@ $("clearAllBtn").addEventListener("click", async () => {
   for (const s of STORES) await clearStore(s);
   cart = [];
   await loadState();
+  await logActivity("CLEAR_ALL", "ล้างข้อมูลทั้งหมด", { detail: "ล้างข้อมูลในเครื่องนี้ทั้งหมด" });
   showToast("ล้างข้อมูลแล้ว");
 });
 
@@ -4349,6 +4634,7 @@ async function repairAllCosts() {
   if (!confirm("ตรวจ/ซ่อม FIFO ทั้งระบบ?\\n\\nระบบจะสร้างล็อตต้นทุนใหม่จากประวัติซื้อเข้า/สต็อกเริ่มต้น และคำนวณต้นทุนขาย/กำไรของบิลทั้งหมดใหม่")) return;
   await recomputeInventory();
   await loadState();
+  await logActivity("FIFO_REPAIR", "ตรวจ/ซ่อม FIFO", { detail: "คำนวณล็อตต้นทุนและกำไรใหม่ทั้งระบบ" });
   showToast("ตรวจ/ซ่อม FIFO เรียบร้อยแล้ว");
   if ($("testResults")) {
     showTestResults([{ status: "info", title: "ตรวจ/ซ่อม FIFO เรียบร้อย", detail: "ระบบสร้างล็อตต้นทุน คำนวณต้นทุนขาย กำไรบิล สต็อก และทุน FIFO คงเหลือใหม่แล้ว" }, ...runSystemChecks()]);
@@ -4792,6 +5078,7 @@ function betaCounts() {
     stockCounts: (state.stock_counts || []).length,
     stockCountItems: (state.stock_count_items || []).length,
     closePeriods: (state.close_periods || []).length,
+    activityLogs: (state.activity_logs || []).length,
     currentLockDate: currentLockDate() || "ยังไม่ล็อก",
     pinEnabled: isPinEnabled() ? "เปิด" : "ปิด",
     lowStock: lowStockProducts ? lowStockProducts().length : 0
@@ -4964,6 +5251,7 @@ function diagnosticText() {
     `Stock counts: ${d.stockCounts}`,
     `Stock count items: ${d.stockCountItems}`,
     `Close periods: ${d.closePeriods}`,
+    `Activity logs: ${d.activityLogs}`,
     `Current lock date: ${d.currentLockDate}`,
     `PIN Lock: ${d.pinEnabled}`,
     `Last Backup: ${d.lastBackup}`,
@@ -5068,6 +5356,7 @@ const moreMenuItems = [
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
   { group: "system", icon: "👥", title: "ผู้ใช้งาน / สิทธิ์", hint: "บทบาท / จำกัดเมนู / ซ่อนกำไร", tab: "security", keywords: "user role permission สิทธิ์ ผู้ใช้งาน แคชเชียร์" },
+  { group: "system report", icon: "🧾", title: "ประวัติการทำรายการ", hint: "ใครทำอะไร / Audit Trail", tab: "activityLog", keywords: "activity log audit ประวัติ ระบบ ใครทำอะไร" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
   { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
   { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
@@ -5555,6 +5844,7 @@ const TAB_PERMISSION_MAP = {
   guide: "system",
   about: "system",
   security: "always",
+  activityLog: "system",
   more: "always",
   productDetail: "stock",
   customerDetail: "customers",
@@ -5640,6 +5930,7 @@ function setActiveUser(id) {
   const u = users.find(x => x.id === id && x.enabled !== false);
   if (!u) return alert("ผู้ใช้นี้ถูกปิดใช้งานหรือไม่พบข้อมูล");
   localStorage.setItem("khaikhongActiveUserId", id);
+  logActivity("USER_SWITCH", `สลับผู้ใช้เป็น ${u.name}`, { refType: "user", refId: id, detail: roleName(u.role) });
   applyRolePermissions();
   renderRoleSettings();
   showToast(`เปลี่ยนผู้ใช้งานเป็น ${u.name}`);
@@ -5717,6 +6008,7 @@ function saveLocalUserFromForm() {
 
   const next = old ? users.map(u => u.id === id ? user : u) : [...users, user];
   saveLocalUsers(next);
+  logActivity("USER_SAVE", `${old ? "แก้ไข" : "สร้าง"}ผู้ใช้ ${name}`, { refType: "user", refId: id, detail: `${roleName(role)} • สิทธิ์ ${Object.keys(permissions).filter(k => permissions[k]).join(", ")}` });
   renderRoleSettings();
   resetLocalUserForm();
   showToast("บันทึกผู้ใช้งานแล้ว");
@@ -5731,6 +6023,7 @@ function deleteLocalUserFromForm() {
   if (!u) return;
   if (!confirm(`ลบผู้ใช้งาน ${u.name}?`)) return;
   saveLocalUsers(users.filter(x => x.id !== id));
+  logActivity("USER_DELETE", `ลบผู้ใช้ ${u.name}`, { refType: "user", refId: id, detail: roleName(u.role) });
   if (localStorage.getItem("khaikhongActiveUserId") === id) localStorage.setItem("khaikhongActiveUserId", "owner");
   resetLocalUserForm();
   renderRoleSettings();
@@ -5741,6 +6034,7 @@ function deleteLocalUserFromForm() {
 function resetAllLocalUsers() {
   if (!confirm("รีเซ็ตผู้ใช้งานทั้งหมดกลับเป็นเจ้าของร้านคนเดียว?")) return;
   saveLocalUsers(defaultLocalUsers());
+  logActivity("USER_RESET", "รีเซ็ตผู้ใช้งาน", { detail: "กลับเป็นเจ้าของร้านคนเดียว" });
   localStorage.setItem("khaikhongActiveUserId", "owner");
   localStorage.removeItem("khaikhongCurrentRole");
   resetLocalUserForm();
@@ -5840,6 +6134,18 @@ $("saveLocalUserBtn")?.addEventListener("click", saveLocalUserFromForm);
 $("deleteLocalUserBtn")?.addEventListener("click", deleteLocalUserFromForm);
 $("applyRoleTemplateBtn")?.addEventListener("click", applyRoleTemplateToForm);
 $("localUserRole")?.addEventListener("change", applyRoleTemplateToForm);
+
+
+["activitySearch", "activityUserFilter", "activityActionFilter", "activityFrom", "activityTo"].forEach(id => {
+  if ($(id)) $(id).addEventListener("input", renderActivityLog);
+  if ($(id)) $(id).addEventListener("change", renderActivityLog);
+});
+$("activityTodayBtn")?.addEventListener("click", () => setActivityRange("today"));
+$("activity7DaysBtn")?.addEventListener("click", () => setActivityRange("7days"));
+$("activityClearBtn")?.addEventListener("click", clearActivityFilters);
+$("exportActivityLogCsvBtn")?.addEventListener("click", exportActivityLogCsv);
+$("copyActivitySummaryBtn")?.addEventListener("click", copyActivitySummary);
+$("clearTestActivityLogsBtn")?.addEventListener("click", clearTestActivityLogs);
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();

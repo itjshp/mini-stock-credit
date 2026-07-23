@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.20 • Excel Import UX • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.21 • Real Excel Import • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -619,7 +619,7 @@
     
       <div class="import-card legacy-excel-card">
         <h3>Excel เดิม / Legacy Import</h3>
-        <p>รองรับไฟล์ .xlsx แบบที่ร้านเคยใช้งานจริง เช่น ชื่อสินค้า, จำนวน, ราคา/หน่วย, ทุน, ยอดขายส่ง/ลูกค้า และเงินสด</p>
+        <p>รองรับไฟล์ .xlsx ใช้งานจริงหลาย Sheet เช่น Sheet เก็บยอดรายลูกค้า และ Sheet สต็อก+ยอดขาย</p>
         <div class="form-actions">
           <label class="file-btn">เลือกไฟล์ Excel เดิม<input id="legacyExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
           <button id="confirmLegacyExcelImportBtn" class="primary-btn" type="button">ยืนยัน Import Excel</button>
@@ -636,17 +636,17 @@
     <div class="panel-head">
       <div>
         <h3>คำแนะนำ Excel เดิมก่อน Import</h3>
-        <span class="hint">ระบบอ่านไฟล์เดิมได้ แต่การสร้างบิลต้องมีจำนวนขายในคอลัมน์ลูกค้า/เงินสด</span>
+        <span class="hint">ระบบอ่านไฟล์จริงได้หลาย Sheet: เก็บยอดรายลูกค้า = สร้างบิลเครดิต, สต็อก+ยอดขาย = สร้างสินค้า/FIFO</span>
       </div>
     </div>
     <div class="legacy-help-grid">
       <div>
         <strong>นำเข้าได้ทันที</strong>
-        <small>ชื่อสินค้า, จำนวน, ทุน, คงเหลือ, ลูกค้าจากหัวคอลัมน์</small>
+        <small>ชื่อสินค้า, จำนวน, ทุน, คงเหลือ, ลูกค้าจากหัวคอลัมน์ และรายการเก็บยอด</small>
       </div>
       <div>
         <strong>จะสร้างบิลเมื่อ</strong>
-        <small>มีจำนวนขาย + ราคา/ยอดเงิน ในคอลัมน์ ยอดขายส่ง/ลูกค้า หรือ เงินสด</small>
+        <small>Sheet เก็บยอดมี ชื่อ/รายการ/จำนวน/ราคา/รวม หรือ Sheet สต็อกมีจำนวนขายในลูกค้า/เงินสด</small>
       </div>
       <div>
         <strong>วันที่ที่แนะนำ</strong>
@@ -666,6 +666,7 @@
     <div id="legacyExcelPreviewSummary" class="legacy-preview-summary"></div>
     <div id="legacyExcelModeNotice" class="legacy-mode-notice"></div>
     <div id="legacyExcelDetectedGroups" class="legacy-detected-groups"></div>
+    <div id="legacyExcelSheetSummary" class="legacy-sheet-summary"></div>
     <div id="legacyExcelWarnings" class="legacy-warning-list"></div>
     <div id="legacyExcelPreviewRows" class="stack-list"></div>
   </div>

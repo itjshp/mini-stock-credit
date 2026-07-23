@@ -1,7 +1,7 @@
 {
   "name": "Khaikhong v2",
   "short_name": "Khaikhong",
-  "description": "Khaikhong v2.3.20 improves Excel Legacy Import preview, warnings, and import mode UX",
+  "description": "Khaikhong v2.3.21 imports real multi-sheet legacy Excel files such as เก็บยอด.xlsx",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",

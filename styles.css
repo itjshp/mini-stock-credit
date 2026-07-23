@@ -2968,3 +2968,35 @@ body[data-role="manager"]::before{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.21: Real Excel Multi-Sheet Import */
+.legacy-sheet-summary{
+  display:grid;
+  gap:8px;
+  margin:12px 0;
+}
+.legacy-sheet-row{
+  border:1px solid var(--kk-line,#d8ece8);
+  background:#fff;
+  border-radius:16px;
+  padding:12px;
+  font-weight:900;
+}
+.legacy-sheet-row strong{
+  display:block;
+  margin-bottom:4px;
+}
+.legacy-sheet-row small{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+}
+.legacy-sheet-row.stock{
+  border-left:5px solid #16a34a;
+}
+.legacy-sheet-row.ledger{
+  border-left:5px solid #2563eb;
+}
+.legacy-sheet-row.skip{
+  border-left:5px solid #f97316;
+}

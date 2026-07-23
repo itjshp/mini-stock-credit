@@ -4412,13 +4412,63 @@ function parseXlsxSheet(xmlText, sharedStrings) {
   return rows;
 }
 
-async function readXlsxFirstSheet(file) {
+function normalizeXlsxTarget(target) {
+  let t = String(target || "").replace(/^\/+/, "");
+  if (t.startsWith("xl/")) return t;
+  return "xl/" + t.replace(/^\.?\//, "");
+}
+
+function parseWorkbookSheets(entries) {
+  const workbookXml = xmlString(entries, "xl/workbook.xml");
+  const relsXml = xmlString(entries, "xl/_rels/workbook.xml.rels");
+  const out = [];
+
+  if (workbookXml && relsXml) {
+    const wbXml = new DOMParser().parseFromString(workbookXml, "application/xml");
+    const relXml = new DOMParser().parseFromString(relsXml, "application/xml");
+    const relMap = new Map([...relXml.getElementsByTagName("Relationship")].map(r => [r.getAttribute("Id"), normalizeXlsxTarget(r.getAttribute("Target"))]));
+
+    for (const s of [...wbXml.getElementsByTagName("sheet")]) {
+      const name = s.getAttribute("name") || `Sheet ${out.length + 1}`;
+      const rid = s.getAttribute("r:id") || s.getAttribute("id");
+      const path = relMap.get(rid);
+      if (path) out.push({ name, path });
+    }
+  }
+
+  if (!out.length) {
+    Object.keys(entries)
+      .filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
+      .sort()
+      .forEach((path, idx) => out.push({ name: `Sheet${idx + 1}`, path }));
+  }
+
+  return out;
+}
+
+async function readXlsxWorkbook(file) {
   const entries = await unzipXlsx(await file.arrayBuffer());
   const shared = parseSharedStrings(xmlString(entries, "xl/sharedStrings.xml"));
-  const sheetName = Object.keys(entries).find(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)) || "xl/worksheets/sheet1.xml";
-  const sheetXml = xmlString(entries, sheetName);
-  if (!sheetXml) throw new Error("ไม่พบ worksheet ในไฟล์ Excel");
-  return parseXlsxSheet(sheetXml, shared);
+  const sheetInfos = parseWorkbookSheets(entries);
+  const sheets = [];
+
+  for (const info of sheetInfos) {
+    const sheetXml = xmlString(entries, info.path);
+    if (!sheetXml) continue;
+    sheets.push({
+      name: info.name,
+      path: info.path,
+      rows: parseXlsxSheet(sheetXml, shared)
+    });
+  }
+
+  if (!sheets.length) throw new Error("ไม่พบ worksheet ในไฟล์ Excel");
+  return sheets;
+}
+
+async function readXlsxFirstSheet(file) {
+  const sheets = await readXlsxWorkbook(file);
+  return sheets[0]?.rows || [];
 }
 
 function legacyGroupName(value) {
@@ -4427,6 +4477,230 @@ function legacyGroupName(value) {
   const parts = s.split("/");
   return normalizeCellText(parts.length > 1 ? parts.slice(1).join("/") : s);
 }
+
+
+function legacyMonthFromSheetName(sheetName) {
+  const s = normalizeCellText(sheetName);
+  const monthMap = {
+    "ม.ค": 1, "ก.พ": 2, "มี.ค": 3, "เม.ย": 4, "พ.ค": 5, "มิ.ย": 6,
+    "ก.ค": 7, "ส.ค": 8, "ก.ย": 9, "ต.ค": 10, "พ.ย": 11, "ธ.ค": 12
+  };
+  for (const [k, m] of Object.entries(monthMap)) {
+    if (s.includes(k)) {
+      const yearMatch = s.match(/(\d{2,4})/);
+      let y = new Date().getFullYear();
+      if (yearMatch) {
+        y = Number(yearMatch[1]);
+        if (y < 100) y += 2500;
+        if (y > 2400) y -= 543;
+      }
+      return `${y}-${String(m).padStart(2, "0")}-01`;
+    }
+  }
+  return today();
+}
+
+function detectSheetType(rows) {
+  for (let i = 0; i < Math.min(rows.length, 12); i++) {
+    const rowText = (rows[i] || []).map(normalizeCellText).join("|");
+    if (rowText.includes("ชื่อสินค้า") && rowText.includes("ยอดขายปลีก")) return { type: "stock_wide", headerIndex: i };
+    if (rowText.includes("ชื่อ") && rowText.includes("รายการ") && rowText.includes("ราคา/ชิ้น") && rowText.includes("รวม")) return { type: "sales_ledger", headerIndex: i };
+  }
+  return { type: "skip", headerIndex: -1 };
+}
+
+function findHeaderIndex(headers, patterns) {
+  return headers.findIndex(h => patterns.some(p => h.includes(p)));
+}
+
+function normalizeProductKey(name) {
+  return normalizeCellText(name).replace(/\s+/g, "").toLowerCase();
+}
+
+function analyzeSalesLedgerSheet(rows, fileName, sheetName, headerIndex) {
+  const headers = (rows[headerIndex] || []).map(normalizeCellText);
+  const nameCol = findHeaderIndex(headers, ["ชื่อ"]);
+  const deptCol = findHeaderIndex(headers, ["แผนก", "ที่จัดส่ง"]);
+  const itemCol = findHeaderIndex(headers, ["รายการ"]);
+  const qtyCol = findHeaderIndex(headers, ["จำนวน"]);
+  const priceCol = findHeaderIndex(headers, ["ราคา/ชิ้น", "ราคา"]);
+  const amountCol = findHeaderIndex(headers, ["รวม"]);
+
+  const customers = new Map();
+  const products = new Map();
+  const bills = new Map();
+  const warnings = [];
+  const date = legacyMonthFromSheetName(sheetName);
+
+  if (nameCol < 0 || itemCol < 0 || qtyCol < 0 || priceCol < 0 || amountCol < 0) {
+    warnings.push(`Sheet ${sheetName}: หัวคอลัมน์ไม่ครบสำหรับเก็บยอดรายลูกค้า`);
+    return { products: [], customers: [], bills: [], warnings, sheetInfo: { name: sheetName, type: "skip", rows: 0, note: "หัวคอลัมน์ไม่ครบ" } };
+  }
+
+  for (let r = headerIndex + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const customerName = normalizeCellText(row[nameCol]);
+    const itemName = normalizeCellText(row[itemCol]);
+    const qty = legacyNumber(row[qtyCol], 0);
+    const unitPrice = legacyNumber(row[priceCol], 0);
+    const amount = legacyNumber(row[amountCol], qty * unitPrice);
+    const department = deptCol >= 0 ? normalizeCellText(row[deptCol]) : "";
+
+    if (!customerName && !itemName) continue;
+    if (customerName.includes("รวม") || itemName.includes("รวม")) continue;
+    if (!customerName || !itemName || qty <= 0) continue;
+
+    customers.set(customerName, {
+      name: customerName,
+      type: "ทั่วไป",
+      creditDays: 0,
+      creditLimit: 0,
+      phone: "",
+      note: `นำเข้าจาก Sheet เก็บยอด ${sheetName}${department ? " • " + department : ""}`
+    });
+
+    const pKey = normalizeProductKey(itemName);
+    if (!products.has(pKey)) {
+      products.set(pKey, {
+        rowNumber: r + 1,
+        name: itemName,
+        unit: "ชิ้น",
+        category: "Legacy Ledger",
+        openingQty: 0,
+        remaining: 0,
+        unitCost: 0,
+        totalCost: 0,
+        date,
+        note: `นำเข้าจาก Sheet เก็บยอด ${sheetName} แถว ${r + 1}`,
+        price: unitPrice,
+        wholesalePrice: unitPrice,
+        ledgerOnly: true
+      });
+    }
+
+    const billKey = `ledger|${sheetName}|${customerName}`;
+    const bill = bills.get(billKey) || {
+      key: billKey,
+      date,
+      groupName: `${sheetName} / ${customerName}`,
+      customerName,
+      paymentType: "credit",
+      type: "legacy_ledger",
+      skipStock: true,
+      sheetName,
+      items: []
+    };
+
+    bill.items.push({
+      productName: itemName,
+      rowNumber: r + 1,
+      qty,
+      unitPrice: unitPrice || (qty ? amount / qty : 0),
+      unitCost: 0,
+      revenue: amount || qty * unitPrice,
+      cost: 0,
+      detail: department
+    });
+    bills.set(billKey, bill);
+  }
+
+  warnings.push(`Sheet ${sheetName}: เป็นข้อมูลเก็บยอดรายลูกค้า ระบบจะสร้างบิลเครดิตแบบไม่กระทบสต็อก เพราะไฟล์ไม่มีต้นทุน/FIFO รายบิล`);
+
+  return {
+    products: [...products.values()],
+    customers: [...customers.values()],
+    bills: [...bills.values()],
+    warnings,
+    sheetInfo: {
+      name: sheetName,
+      type: "ledger",
+      rows: [...bills.values()].reduce((s, b) => s + b.items.length, 0),
+      products: products.size,
+      customers: customers.size,
+      bills: bills.size,
+      note: "เก็บยอดรายลูกค้า / สร้างบิลเครดิตไม่กระทบสต็อก"
+    }
+  };
+}
+
+function mergeLegacyData(parts, fileName) {
+  const productMap = new Map();
+  const customerMap = new Map();
+  const bills = [];
+  const warnings = [];
+  const groups = [];
+  const sheetInfos = [];
+
+  for (const part of parts) {
+    for (const p of part.products || []) {
+      const key = normalizeProductKey(p.name);
+      const old = productMap.get(key);
+      if (!old || (!old.openingQty && p.openingQty) || old.ledgerOnly) {
+        productMap.set(key, p);
+      }
+    }
+    for (const c of part.customers || []) {
+      const key = normalizeCellText(c.name).toLowerCase();
+      if (!customerMap.has(key)) customerMap.set(key, c);
+    }
+    bills.push(...(part.bills || []));
+    warnings.push(...(part.warnings || []));
+    groups.push(...(part.groups || []));
+    if (part.sheetInfo) sheetInfos.push(part.sheetInfo);
+  }
+
+  const products = [...productMap.values()];
+  const customers = [...customerMap.values()];
+
+  if (!bills.length) warnings.unshift("ไม่พบบิลที่จะสร้างจากทุก Sheet ระบบจะนำเข้าเฉพาะสินค้า ลูกค้า และสต็อกเริ่มต้น");
+  if (sheetInfos.some(s => s.type === "ledger")) warnings.unshift("พบ Sheet เก็บยอดรายลูกค้า ระบบจะสร้างเป็นบิลเครดิตย้อนหลังแบบไม่กระทบสต็อก");
+
+  return {
+    fileName,
+    headerRow: 0,
+    groups,
+    products,
+    customers,
+    bills,
+    warnings,
+    sheets: sheetInfos,
+    importMode: bills.length ? "full" : "opening_only"
+  };
+}
+
+function analyzeLegacyWorkbook(sheets, fileName) {
+  const parts = [];
+
+  for (const sheet of sheets) {
+    const detected = detectSheetType(sheet.rows);
+    if (detected.type === "stock_wide") {
+      const part = analyzeLegacyExcelRows(sheet.rows, `${fileName} / ${sheet.name}`);
+      part.sheetInfo = {
+        name: sheet.name,
+        type: "stock",
+        rows: part.products.length,
+        products: part.products.length,
+        customers: part.customers.length,
+        bills: part.bills.length,
+        note: "สต็อก + ยอดขายแบบตารางกว้าง"
+      };
+      parts.push(part);
+    } else if (detected.type === "sales_ledger") {
+      parts.push(analyzeSalesLedgerSheet(sheet.rows, fileName, sheet.name, detected.headerIndex));
+    } else {
+      parts.push({
+        products: [],
+        customers: [],
+        bills: [],
+        warnings: [`Sheet ${sheet.name}: ข้าม เพราะไม่พบรูปแบบที่รองรับ`],
+        sheetInfo: { name: sheet.name, type: "skip", rows: 0, note: "ไม่พบรูปแบบที่รองรับ" }
+      });
+    }
+  }
+
+  return mergeLegacyData(parts, fileName);
+}
+
 
 function analyzeLegacyExcelRows(rows, fileName) {
   const headerIndex = rows.findIndex(r => normalizeCellText(r?.[0]).includes("ชื่อสินค้า"));
@@ -4587,7 +4861,7 @@ function renderLegacyExcelPreview(data) {
   const importMode = data.bills.length ? "นำเข้าพร้อมบิล" : "ตั้งต้นสินค้า/ลูกค้า";
   const importModeHint = data.bills.length
     ? "ระบบพบข้อมูลขายใน Excel และจะสร้างบิลตามลูกค้า/เงินสดที่ตรวจพบ"
-    : "ระบบไม่พบจำนวนขายในช่องลูกค้า/เงินสด จึงจะนำเข้าเฉพาะสินค้า ลูกค้า และสต็อกเริ่มต้น";
+    : "ระบบไม่พบจำนวนขายในช่องลูกค้า/เงินสดหรือ Sheet เก็บยอดที่สร้างบิลได้ จึงจะนำเข้าเฉพาะสินค้า ลูกค้า และสต็อกเริ่มต้น";
 
   $("legacyExcelPreviewSummary").innerHTML = `
     <div><span>โหมด Import</span><strong>${importMode}</strong></div>
@@ -4603,16 +4877,26 @@ function renderLegacyExcelPreview(data) {
     $("legacyExcelModeNotice").innerHTML = `
       <strong>${data.bills.length ? "พบข้อมูลขายและสามารถสร้างบิลได้" : "รอบนี้ยังไม่สร้างบิล"}</strong><br>
       ${importModeHint}<br>
-      ${!data.bills.length ? "ถ้าต้องการให้สร้างบิล ให้กรอกจำนวนขายและราคา/ยอดเงินในคอลัมน์ ยอดขายส่ง/ลูกค้า หรือ เงินสด ใน Excel ก่อนนำเข้า" : ""}
+      ${!data.bills.length ? "ถ้าต้องการให้สร้างบิล ให้ใช้ Sheet เก็บยอดรูปแบบ ชื่อ/รายการ/จำนวน/ราคา/รวม หรือกรอกจำนวนขายในคอลัมน์ ยอดขายส่ง/ลูกค้า หรือ เงินสด" : ""}
     `;
   }
 
   if ($("legacyExcelDetectedGroups")) {
-    $("legacyExcelDetectedGroups").innerHTML = data.groups.map(g => `
+    const groupChips = data.groups.map(g => `
       <span class="legacy-group-chip ${g.paymentType === "cash" ? "cash" : ""}">
         ${g.paymentType === "cash" ? "เงินสด" : "เครดิต"}: ${safeText(g.name)}
       </span>
-    `).join("") || `<span class="legacy-group-chip cash">ไม่พบกลุ่มยอดขาย</span>`;
+    `).join("");
+    $("legacyExcelDetectedGroups").innerHTML = groupChips || `<span class="legacy-group-chip cash">ใช้ข้อมูลจาก Sheet เก็บยอด / ไม่พบกลุ่มยอดขายแบบตารางกว้าง</span>`;
+  }
+
+  if ($("legacyExcelSheetSummary")) {
+    $("legacyExcelSheetSummary").innerHTML = (data.sheets || []).map(s => `
+      <div class="legacy-sheet-row ${safeText(s.type)}">
+        <strong>${safeText(s.name)} • ${s.type === "stock" ? "สต็อก+ยอดขาย" : s.type === "ledger" ? "เก็บยอดรายลูกค้า" : "ข้าม"}</strong>
+        <small>${safeText(s.note || "")} ${s.products !== undefined ? `• สินค้า ${s.products || 0}` : ""} ${s.customers !== undefined ? `• ลูกค้า ${s.customers || 0}` : ""} ${s.bills !== undefined ? `• บิล ${s.bills || 0}` : ""}</small>
+      </div>
+    `).join("");
   }
 
   const warningHtml = data.warnings.slice(0, 20).map(w => `<div class="legacy-warning">⚠️ ${safeText(w)}</div>`).join("");
@@ -4657,8 +4941,8 @@ async function previewLegacyExcelFile(file) {
   if (!file) return;
   try {
     showToast("กำลังอ่านไฟล์ Excel...");
-    const rows = await readXlsxFirstSheet(file);
-    const data = analyzeLegacyExcelRows(rows, file.name);
+    const sheets = await readXlsxWorkbook(file);
+    const data = analyzeLegacyWorkbook(sheets, file.name);
     renderLegacyExcelPreview(data);
     showToast("อ่านไฟล์ Excel สำเร็จ");
   } catch (err) {
@@ -4768,7 +5052,7 @@ async function importLegacyExcelData() {
   // Bills
   let movementCounter = 0;
   for (const billData of data.bills) {
-    const sourceNote = `LEGACY-EXCEL-BILL:${data.fileName}:${billData.date}:${billData.groupName}`;
+    const sourceNote = `LEGACY-EXCEL-BILL:${data.fileName}:${billData.key || billData.date + ":" + billData.groupName}`;
     if (state.bills.some(b => (b.note || "").includes(sourceNote))) {
       skippedBills += 1;
       continue;
@@ -4800,7 +5084,7 @@ async function importLegacyExcelData() {
       initialPaidAmount: paidAmount,
       creditAmount,
       status: creditAmount > 0 ? "credit" : "paid",
-      note: `${sourceNote} • Import Excel เดิม`,
+      note: `${sourceNote} • Import Excel เดิม${billData.skipStock ? " • ไม่กระทบสต็อก" : ""}`,
       createdAt: new Date(nowBase + 3000 + createdBills).toISOString()
     });
 
@@ -4824,19 +5108,21 @@ async function importLegacyExcelData() {
         profit: item.revenue - item.cost
       });
 
-      await put("stock_movements", {
-        id: uid(),
-        productId,
-        type: "sale",
-        refType: "bill",
-        refId: billId,
-        date: billData.date || today(),
-        qtyIn: 0,
-        qtyOut: item.qty,
-        unitCost: item.unitCost,
-        note: `ขายบิล ${billNo} • ${sourceNote}`,
-        createdAt: new Date(nowBase + 4000 + movementCounter++).toISOString()
-      });
+      if (!billData.skipStock) {
+        await put("stock_movements", {
+          id: uid(),
+          productId,
+          type: "sale",
+          refType: "bill",
+          refId: billId,
+          date: billData.date || today(),
+          qtyIn: 0,
+          qtyOut: item.qty,
+          unitCost: item.unitCost,
+          note: `ขายบิล ${billNo} • ${sourceNote}`,
+          createdAt: new Date(nowBase + 4000 + movementCounter++).toISOString()
+        });
+      }
     }
 
     await incrementBillNo();
@@ -4852,7 +5138,7 @@ async function importLegacyExcelData() {
     refType: "legacy_excel",
     refId: importId,
     amount: createdBills,
-    detail: `สินค้าใหม่ ${createdProducts} • อัปเดตสินค้า ${updatedProducts} • ลูกค้าใหม่ ${createdCustomers} • บิลใหม่ ${createdBills} • ข้ามบิลซ้ำ ${skippedBills}`
+    detail: `สินค้าใหม่ ${createdProducts} • อัปเดตสินค้า ${updatedProducts} • ลูกค้าใหม่ ${createdCustomers} • บิลใหม่ ${createdBills} • ข้ามบิลซ้ำ ${skippedBills} • Sheets ${(data.sheets || []).length}`
   });
 
   legacyExcelPreviewData = null;
@@ -4967,7 +5253,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.20", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.21", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

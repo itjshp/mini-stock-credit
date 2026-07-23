@@ -2893,3 +2893,78 @@ body[data-role="manager"]::before{
     grid-template-columns:1fr;
   }
 }
+
+
+/* v2.3.20: Excel Import UX Fix */
+.legacy-excel-help-panel{
+  border-top:5px solid #0f766e;
+}
+.legacy-help-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.legacy-help-grid div{
+  border:1px solid var(--kk-line,#d8ece8);
+  border-radius:18px;
+  background:#fff;
+  padding:14px;
+}
+.legacy-help-grid strong{
+  display:block;
+  margin-bottom:6px;
+}
+.legacy-help-grid small{
+  color:var(--kk-muted,#66817c);
+  font-weight:900;
+  line-height:1.55;
+}
+.legacy-mode-notice{
+  margin-top:14px;
+  border-radius:18px;
+  padding:14px;
+  font-weight:950;
+  line-height:1.55;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+.legacy-mode-notice.warn{
+  border-color:#fed7aa;
+  background:#fff7ed;
+  color:#9a3412;
+}
+.legacy-detected-groups{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0;
+}
+.legacy-group-chip{
+  display:inline-flex;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:1000;
+  background:#e8f7f3;
+  color:#0f766e;
+}
+.legacy-group-chip.cash{
+  background:#eff6ff;
+  color:#1d4ed8;
+}
+.legacy-warning.info{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+}
+.legacy-warning.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+@media(max-width:900px){
+  .legacy-help-grid{
+    grid-template-columns:1fr;
+  }
+}

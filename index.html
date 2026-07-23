@@ -14,7 +14,7 @@
     <div class="brand-area">
       <div class="mascot-logo" aria-hidden="true">🛍️</div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.19 • Excel Import • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.20 • Excel Import UX • Local-first</p>
         <h1 id="appTitleText">Khaikhong</h1>
         <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
       </div>
@@ -631,6 +631,30 @@
   </div>
 
   
+  
+  <div class="panel legacy-excel-help-panel">
+    <div class="panel-head">
+      <div>
+        <h3>คำแนะนำ Excel เดิมก่อน Import</h3>
+        <span class="hint">ระบบอ่านไฟล์เดิมได้ แต่การสร้างบิลต้องมีจำนวนขายในคอลัมน์ลูกค้า/เงินสด</span>
+      </div>
+    </div>
+    <div class="legacy-help-grid">
+      <div>
+        <strong>นำเข้าได้ทันที</strong>
+        <small>ชื่อสินค้า, จำนวน, ทุน, คงเหลือ, ลูกค้าจากหัวคอลัมน์</small>
+      </div>
+      <div>
+        <strong>จะสร้างบิลเมื่อ</strong>
+        <small>มีจำนวนขาย + ราคา/ยอดเงิน ในคอลัมน์ ยอดขายส่ง/ลูกค้า หรือ เงินสด</small>
+      </div>
+      <div>
+        <strong>วันที่ที่แนะนำ</strong>
+        <small>ใช้รูปแบบ 2026-07-22 หรือ 22/07/2026 เพื่อให้บิลและสต็อกลงวันที่ถูกต้อง</small>
+      </div>
+    </div>
+  </div>
+
   <div class="panel legacy-excel-preview-panel hidden-field" id="legacyExcelPreviewPanel">
     <div class="panel-head">
       <div>
@@ -640,6 +664,8 @@
       <span id="legacyExcelFileName" class="activity-chip">ยังไม่ได้เลือกไฟล์</span>
     </div>
     <div id="legacyExcelPreviewSummary" class="legacy-preview-summary"></div>
+    <div id="legacyExcelModeNotice" class="legacy-mode-notice"></div>
+    <div id="legacyExcelDetectedGroups" class="legacy-detected-groups"></div>
     <div id="legacyExcelWarnings" class="legacy-warning-list"></div>
     <div id="legacyExcelPreviewRows" class="stack-list"></div>
   </div>

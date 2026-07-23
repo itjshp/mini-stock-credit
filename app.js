@@ -4471,6 +4471,11 @@ function analyzeLegacyExcelRows(rows, fileName) {
     const unitCost = unitCostFromCol || (openingQty ? totalCost / openingQty : 0);
     const remaining = legacyNumber(row[20], openingQty);
     const date = legacyDate(row[1]);
+    const rawDateValue = row[1];
+    const rawDateText = normalizeCellText(rawDateValue);
+    if (rawDateText && typeof rawDateValue === "number" && !(rawDateValue > 30000 && rawDateValue < 70000)) {
+      warnings.push(`แถว ${r + 1}: ${name} วันที่ใน Excel เป็น ${rawDateText} ซึ่งไม่ใช่วันที่มาตรฐาน ระบบจะใช้วันที่ปัจจุบันแทน`);
+    }
 
     if (openingQty <= 0 && totalCost <= 0) {
       warnings.push(`แถว ${r + 1}: ${name} ไม่มีจำนวน/ทุน ระบบจะข้ามสต็อกเริ่มต้น`);
@@ -4548,14 +4553,27 @@ function analyzeLegacyExcelRows(rows, fileName) {
   }
 
   const bills = [...billMap.values()].filter(b => b.items.length);
+  const customersOut = [...customers.values()];
+
+  if (!bills.length) {
+    warnings.unshift("ไม่พบบิลที่จะสร้าง เพราะไม่พบจำนวนขายในคอลัมน์ยอดขายปลีก/ยอดขายส่ง/เงินสด ระบบจะนำเข้าเฉพาะสินค้า ลูกค้า และสต็อกเริ่มต้น");
+  }
+  if (customersOut.length && !bills.length) {
+    warnings.unshift(`พบลูกค้า ${customersOut.length} คนจากหัวคอลัมน์ แต่ยังไม่มีบิล เพราะยังไม่มีจำนวนขายในช่องของลูกค้า`);
+  }
+  if (!groups.length) {
+    warnings.unshift("ไม่พบกลุ่มยอดขาย เช่น ยอดขายส่ง / ชื่อลูกค้า หรือ เงินสด ระบบจะนำเข้าได้เฉพาะสินค้า/สต็อก");
+  }
+
   return {
     fileName,
     headerRow: headerIndex + 1,
     groups,
     products,
-    customers: [...customers.values()],
+    customers: customersOut,
     bills,
-    warnings
+    warnings,
+    importMode: bills.length ? "full" : "opening_only"
   };
 }
 
@@ -4566,8 +4584,13 @@ function renderLegacyExcelPreview(data) {
 
   const openingValue = data.products.reduce((s, p) => s + Number(p.openingQty || 0) * Number(p.unitCost || 0), 0);
   const saleValue = data.bills.reduce((s, b) => s + b.items.reduce((x, i) => x + Number(i.revenue || 0), 0), 0);
+  const importMode = data.bills.length ? "นำเข้าพร้อมบิล" : "ตั้งต้นสินค้า/ลูกค้า";
+  const importModeHint = data.bills.length
+    ? "ระบบพบข้อมูลขายใน Excel และจะสร้างบิลตามลูกค้า/เงินสดที่ตรวจพบ"
+    : "ระบบไม่พบจำนวนขายในช่องลูกค้า/เงินสด จึงจะนำเข้าเฉพาะสินค้า ลูกค้า และสต็อกเริ่มต้น";
 
   $("legacyExcelPreviewSummary").innerHTML = `
+    <div><span>โหมด Import</span><strong>${importMode}</strong></div>
     <div><span>สินค้า</span><strong>${data.products.length.toLocaleString("th-TH")}</strong></div>
     <div><span>ลูกค้า</span><strong>${data.customers.length.toLocaleString("th-TH")}</strong></div>
     <div><span>บิลที่จะสร้าง</span><strong>${data.bills.length.toLocaleString("th-TH")}</strong></div>
@@ -4575,27 +4598,59 @@ function renderLegacyExcelPreview(data) {
     <div><span>ยอดขายจากไฟล์</span><strong>${money(saleValue)}</strong></div>
   `;
 
-  $("legacyExcelWarnings").innerHTML = data.warnings.slice(0, 20).map(w => `<div class="legacy-warning">⚠️ ${safeText(w)}</div>`).join("");
+  if ($("legacyExcelModeNotice")) {
+    $("legacyExcelModeNotice").className = `legacy-mode-notice ${data.bills.length ? "" : "warn"}`;
+    $("legacyExcelModeNotice").innerHTML = `
+      <strong>${data.bills.length ? "พบข้อมูลขายและสามารถสร้างบิลได้" : "รอบนี้ยังไม่สร้างบิล"}</strong><br>
+      ${importModeHint}<br>
+      ${!data.bills.length ? "ถ้าต้องการให้สร้างบิล ให้กรอกจำนวนขายและราคา/ยอดเงินในคอลัมน์ ยอดขายส่ง/ลูกค้า หรือ เงินสด ใน Excel ก่อนนำเข้า" : ""}
+    `;
+  }
+
+  if ($("legacyExcelDetectedGroups")) {
+    $("legacyExcelDetectedGroups").innerHTML = data.groups.map(g => `
+      <span class="legacy-group-chip ${g.paymentType === "cash" ? "cash" : ""}">
+        ${g.paymentType === "cash" ? "เงินสด" : "เครดิต"}: ${safeText(g.name)}
+      </span>
+    `).join("") || `<span class="legacy-group-chip cash">ไม่พบกลุ่มยอดขาย</span>`;
+  }
+
+  const warningHtml = data.warnings.slice(0, 20).map(w => `<div class="legacy-warning">⚠️ ${safeText(w)}</div>`).join("");
+  const infoHtml = !data.bills.length
+    ? `<div class="legacy-warning info">ℹ️ ตัวอย่างที่จะสร้างบิลได้: ช่อง “ยอดขายส่ง / แนน” ต้องมีจำนวนขาย เช่น 2 และราคาหรือยอดเงิน เช่น 80/160</div>`
+    : `<div class="legacy-warning good">✅ พบ ${data.bills.length} บิลที่จะสร้างจาก Excel กรุณาตรวจ Preview ก่อนยืนยัน</div>`;
+
+  $("legacyExcelWarnings").innerHTML = infoHtml + warningHtml;
 
   const previewRows = [
-    ...data.products.slice(0, 5).map(p => ({
+    ...data.products.slice(0, 8).map(p => ({
+      kind: "สินค้า",
       title: p.name,
+      warn: false,
       detail: `สินค้า • แถว ${p.rowNumber} • จำนวนเริ่มต้น ${money(p.openingQty)} • คงเหลือใน Excel ${money(p.remaining)} • ทุน/หน่วย ${money(p.unitCost)}`
     })),
-    ...data.bills.slice(0, 5).map(b => ({
+    ...data.customers.slice(0, 6).map(c => ({
+      kind: "ลูกค้า",
+      title: c.name,
+      warn: false,
+      detail: `ลูกค้าขายส่ง • เครดิต ${c.creditDays || 0} วัน • สร้างจากหัวคอลัมน์ยอดขายส่ง`
+    })),
+    ...data.bills.slice(0, 8).map(b => ({
+      kind: "บิล",
       title: `${b.paymentType === "credit" ? "บิลเครดิต" : "บิลเงินสด"} ${b.customerName || b.groupName}`,
+      warn: false,
       detail: `${b.date} • ${b.items.length} รายการ • ยอด ${money(b.items.reduce((s, i) => s + i.revenue, 0))}`
     }))
   ];
 
   $("legacyExcelPreviewRows").innerHTML = previewRows.map(r => `
-    <div class="list-item legacy-preview-row">
+    <div class="list-item legacy-preview-row ${r.warn ? "warn" : ""}">
       <div>
-        <strong>${safeText(r.title)}</strong>
+        <strong>${safeText(r.title)} <span class="activity-chip">${safeText(r.kind)}</span></strong>
         <small>${safeText(r.detail)}</small>
       </div>
     </div>
-  `).join("") || `<div class="list-item empty-card"><div><strong>ไม่พบข้อมูลที่นำเข้าได้</strong></div></div>`;
+  `).join("") || `<div class="list-item empty-card"><div><strong>ไม่พบข้อมูลที่นำเข้าได้</strong><small>ตรวจหัวคอลัมน์และรูปแบบไฟล์ Excel อีกครั้ง</small></div></div>`;
 }
 
 async function previewLegacyExcelFile(file) {
@@ -4619,7 +4674,10 @@ async function importLegacyExcelData() {
 
   if (!assertDateUnlocked(today(), "Import Excel เดิม")) return;
 
-  const confirmText = `ยืนยัน Import Excel เดิม?\n\nสินค้า ${data.products.length} รายการ\nลูกค้า ${data.customers.length} คน\nบิล ${data.bills.length} บิล\n\nระบบจะสร้างสินค้า, ลูกค้า, opening stock และบิลจากไฟล์ Excel\nแนะนำให้ Backup ก่อน Import`;
+  const billMessage = data.bills.length
+    ? `บิลที่จะสร้าง ${data.bills.length} บิล`
+    : "ยังไม่สร้างบิล เพราะไม่พบจำนวนขายในช่องลูกค้า/เงินสด";
+  const confirmText = `ยืนยัน Import Excel เดิม?\n\nสินค้า ${data.products.length} รายการ\nลูกค้า ${data.customers.length} คน\n${billMessage}\n\nระบบจะสร้างสินค้า, ลูกค้า และ opening stock/FIFO จากไฟล์ Excel${data.bills.length ? "\nรวมถึงสร้างบิลจากยอดขายที่ตรวจพบ" : ""}\n\nแนะนำให้ Backup ก่อน Import`;
   if (!confirm(confirmText)) return;
 
   const importId = `LEGACY-${Date.now()}`;
@@ -4800,7 +4858,7 @@ async function importLegacyExcelData() {
   legacyExcelPreviewData = null;
   if ($("legacyExcelInput")) $("legacyExcelInput").value = "";
   $("legacyExcelPreviewPanel")?.classList.add("hidden-field");
-  showToast(`Import Excel สำเร็จ: สินค้า ${createdProducts + updatedProducts}, ลูกค้าใหม่ ${createdCustomers}, บิลใหม่ ${createdBills}`);
+  showToast(`Import Excel สำเร็จ: สินค้า ${createdProducts + updatedProducts}, ลูกค้าใหม่ ${createdCustomers}, บิลใหม่ ${createdBills}${createdBills ? "" : " (นำเข้าเฉพาะตั้งต้น)"}`);
 }
 
 function parseCsvLine(line) {
@@ -4909,7 +4967,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.19", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.20", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();

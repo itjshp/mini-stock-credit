@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0f766e">
-  <title>Khaikhong v2</title>
+  <meta name="theme-color" content="#34c19a">
+  <title>Khaikhong • Cute Shop App</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,15 +12,15 @@
 <header class="hero cute-hero">
   <div class="hero-inner">
     <div class="brand-area">
-      <div class="mascot-logo" aria-hidden="true">🛍️</div>
+      <div class="mascot-logo" aria-hidden="true"><img src="assets/ui/mascot-bag.svg" alt=""></div>
       <div>
-        <p class="eyebrow">Khaikhong v2.3.21 • Real Excel Import • Local-first</p>
+        <p class="eyebrow">Khaikhong v2.3.22 • Cute UI Full Refresh • ข้อมูลในเครื่อง</p>
         <h1 id="appTitleText">Khaikhong</h1>
-        <p class="subtitle" id="appSubtitleText">ขายง่าย • รู้กำไร • ไม่ลืมลูกหนี้ • คุมสต็อก</p>
+        <p class="subtitle" id="appSubtitleText">ขายง่าย • ดูสต็อกชัด • ลูกหนี้ไม่หลุด • ร้านเล็กก็จัดการได้</p>
       </div>
     </div>
     <div class="hero-right">
-      <div class="hero-bubble">💗 แอปจัดการร้านค้า<br><span>ครบ จบ ในแอปเดียว</span></div>
+      <div class="hero-bubble">💗 แอปจัดการร้านค้า<br><span>ใช้ง่าย น่ารัก ครบในที่เดียว</span></div>
       <div class="hero-actions"><button data-open-tab="sale" class="hero-btn">ขายของ</button><button id="installBtn" class="hero-btn secondary hidden">ติดตั้งแอป</button></div>
     </div>
   </div>
@@ -618,7 +618,7 @@
       </div>
     
       <div class="import-card legacy-excel-card">
-        <h3>Excel เดิม / Legacy Import</h3>
+        <h3>นำเข้า Excel เดิม</h3>
         <p>รองรับไฟล์ .xlsx ใช้งานจริงหลาย Sheet เช่น Sheet เก็บยอดรายลูกค้า และ Sheet สต็อก+ยอดขาย</p>
         <div class="form-actions">
           <label class="file-btn">เลือกไฟล์ Excel เดิม<input id="legacyExcelInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
@@ -658,7 +658,7 @@
   <div class="panel legacy-excel-preview-panel hidden-field" id="legacyExcelPreviewPanel">
     <div class="panel-head">
       <div>
-        <h3>Preview Excel เดิมก่อน Import</h3>
+        <h3>ตรวจไฟล์ Excel ก่อนนำเข้า</h3>
         <span class="hint">ตรวจจำนวนสินค้า ลูกค้า บิล และคำเตือนก่อนนำเข้าจริง</span>
       </div>
       <span id="legacyExcelFileName" class="activity-chip">ยังไม่ได้เลือกไฟล์</span>
@@ -695,7 +695,7 @@
 
   <div class="test-actions-grid">
     <button id="runAutoTestBtn" class="primary-btn test-action" type="button">สร้างข้อมูลทดสอบ + ตรวจระบบ</button>
-    <button id="runCheckOnlyBtn" class="soft-btn test-action" type="button">ตรวจข้อมูลปัจจุบัน</button><button id="repairCostsBtn" class="soft-btn test-action" type="button">ตรวจ/ซ่อม FIFO</button>
+    <button id="runCheckOnlyBtn" class="soft-btn test-action" type="button">ตรวจข้อมูลปัจจุบัน</button><button id="repairCostsBtn" class="soft-btn test-action" type="button">ตรวจต้นทุนสินค้า</button>
     <button id="clearTestDataBtn" class="danger-btn test-action" type="button">ล้างข้อมูล TEST</button>
   </div>
 
@@ -751,7 +751,7 @@
     </div>
 
     <div class="role-notice">
-      ตอนนี้เป็นระบบผู้ใช้งานแบบ Local-first สำหรับช่วง Beta ยังไม่ใช่ Login Cloud จริง ใช้เพื่อแยกเมนู ลดการเห็นต้นทุน/กำไร และทดสอบ workflow กับร้านจริง
+      ตอนนี้เป็นระบบผู้ใช้งานแบบ ข้อมูลในเครื่อง สำหรับช่วง Beta ยังไม่ใช่ Login Cloud จริง ใช้เพื่อแยกเมนู ลดการเห็นต้นทุน/กำไร และทดสอบ workflow กับร้านจริง
     </div>
 
     <div class="user-switch-grid">
@@ -926,7 +926,7 @@
       <span class="beta-pill">BETA</span>
     </div>
     <div class="beta-notice">
-      ข้อมูลของคุณเก็บอยู่ในเครื่องนี้แบบ Local-first ควร Backup ก่อนและหลังใช้งานจริงทุกครั้ง หากเปลี่ยนเครื่องหรือล้าง Browser โดยไม่ Backup ข้อมูลอาจหายได้
+      ข้อมูลของคุณเก็บอยู่ในเครื่องนี้แบบ ข้อมูลในเครื่อง ควร Backup ก่อนและหลังใช้งานจริงทุกครั้ง หากเปลี่ยนเครื่องหรือล้าง Browser โดยไม่ Backup ข้อมูลอาจหายได้
     </div>
   </div>
 
@@ -1026,7 +1026,7 @@
   <div class="page-head">
     <div>
       <h2>เกี่ยวกับ Khaikhong</h2>
-      <p>ข้อมูลแอป ความเป็นส่วนตัว และแนวทางการใช้งานแบบ Local-first</p>
+      <p>ข้อมูลแอป ความเป็นส่วนตัว และแนวทางการใช้งานแบบ ข้อมูลในเครื่อง</p>
     </div>
   </div>
 
@@ -1044,7 +1044,7 @@
       <div class="panel-head"><h3>ความเป็นส่วนตัว</h3></div>
       <div class="stack-list">
         <div class="list-item"><div><strong>ข้อมูลอยู่ในเครื่องคุณ</strong><small>ข้อมูลสินค้า ลูกค้า บิล ยอดขาย และลูกหนี้ เก็บใน Browser/อุปกรณ์ที่ใช้งาน</small></div></div>
-        <div class="list-item"><div><strong>ผู้พัฒนาไม่ได้เห็นข้อมูล</strong><small>แอปนี้เป็น Local-first และไม่ได้ส่งข้อมูลไปยัง Server ของผู้พัฒนา</small></div></div>
+        <div class="list-item"><div><strong>ผู้พัฒนาไม่ได้เห็นข้อมูล</strong><small>แอปนี้เป็น ข้อมูลในเครื่อง และไม่ได้ส่งข้อมูลไปยัง Server ของผู้พัฒนา</small></div></div>
         <div class="list-item"><div><strong>Backup สำคัญมาก</strong><small>ถ้าล้าง Browser หรือเปลี่ยนเครื่องโดยไม่ Backup ข้อมูลอาจหายได้</small></div></div>
       </div>
     </div>

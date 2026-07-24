@@ -1276,7 +1276,7 @@ window.openProductDetail = (id) => {
     if (wrap) {
       wrap.innerHTML = `<div class="panel"><div class="list-item"><div><strong>เปิดรายละเอียดสินค้าไม่ได้</strong><small>${String(err?.message || err)}</small></div></div></div>`;
     }
-    alert("เปิดรายละเอียดสินค้าไม่ได้ กรุณากดตรวจ/ซ่อม FIFO หรือส่ง Feedback ให้ผู้พัฒนา");
+    alert("เปิดรายละเอียดสินค้าไม่ได้ กรุณากดตรวจต้นทุนสินค้า หรือส่ง Feedback ให้ผู้พัฒนา");
   }
 };
 
@@ -2573,7 +2573,7 @@ function setDebtAgingStatus(status) {
 }
 
 
-/* v2.3.18: Activity Log / Audit Trail */
+/* v2.3.18: ประวัติการใช้งาน / ประวัติการใช้งาน */
 const ACTIVITY_GROUPS = {
   SALE_CREATE: "sale",
   BILL_CANCEL: "sale",
@@ -2622,7 +2622,7 @@ const ACTIVITY_LABELS = {
   ADJUST_DELETE: "ลบปรับสต็อก",
   STOCK_COUNT: "ตรวจนับสต็อก",
   STOCK_COUNT_DELETE: "ลบ/ย้อนตรวจนับ",
-  FIFO_REPAIR: "ตรวจ/ซ่อม FIFO",
+  FIFO_REPAIR: "ตรวจต้นทุนสินค้า",
   CUSTOMER_SAVE: "บันทึกลูกค้า",
   CUSTOMER_DELETE: "ลบลูกค้า",
   CLOSE_PERIOD: "ปิดรอบ",
@@ -2801,7 +2801,7 @@ function exportActivityLogCsv() {
   activityLogRows().forEach(l => rows.push([l.date, l.time, l.userName, l.userRole, l.group, l.label, l.title, l.refNo, l.amount || 0, l.detail || ""]));
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
   download(`khaikhong-activity-log-${today()}.csv`, "\ufeff" + csv, "text/csv;charset=utf-8");
-  logActivity("BACKUP_EXPORT", "Export Activity Log", { detail: `Export ${rows.length - 1} รายการ`, amount: rows.length - 1 });
+  logActivity("BACKUP_EXPORT", "Export ประวัติการใช้งาน", { detail: `Export ${rows.length - 1} รายการ`, amount: rows.length - 1 });
 }
 
 function copyActivitySummary() {
@@ -5253,7 +5253,7 @@ $("exportCsvBtn").addEventListener("click", () => {
 });
 
 $("exportBackupBtn").addEventListener("click", () => {
-  const data = { app: "Khaikhong", version: "2.3.21", exportedAt: new Date().toISOString(), ...state };
+  const data = { app: "Khaikhong", version: "2.3.22", exportedAt: new Date().toISOString(), ...state };
   localStorage.setItem("khaikhongV2LastBackup", new Date().toISOString());
   download(`khaikhong-v2-backup-${today()}.json`, JSON.stringify(data, null, 2), "application/json");
   renderBackupStatus();
@@ -5516,13 +5516,13 @@ if ($("resetSettingsBtn")) $("resetSettingsBtn").addEventListener("click", rende
 
 
 async function repairAllCosts() {
-  if (!confirm("ตรวจ/ซ่อม FIFO ทั้งระบบ?\\n\\nระบบจะสร้างล็อตต้นทุนใหม่จากประวัติซื้อเข้า/สต็อกเริ่มต้น และคำนวณต้นทุนขาย/กำไรของบิลทั้งหมดใหม่")) return;
+  if (!confirm("ตรวจต้นทุนสินค้า ทั้งระบบ?\\n\\nระบบจะสร้างล็อตต้นทุนใหม่จากประวัติซื้อเข้า/สต็อกเริ่มต้น และคำนวณต้นทุนขาย/กำไรของบิลทั้งหมดใหม่")) return;
   await recomputeInventory();
   await loadState();
-  await logActivity("FIFO_REPAIR", "ตรวจ/ซ่อม FIFO", { detail: "คำนวณล็อตต้นทุนและกำไรใหม่ทั้งระบบ" });
-  showToast("ตรวจ/ซ่อม FIFO เรียบร้อยแล้ว");
+  await logActivity("FIFO_REPAIR", "ตรวจต้นทุนสินค้า", { detail: "คำนวณล็อตต้นทุนและกำไรใหม่ทั้งระบบ" });
+  showToast("ตรวจต้นทุนสินค้า เรียบร้อยแล้ว");
   if ($("testResults")) {
-    showTestResults([{ status: "info", title: "ตรวจ/ซ่อม FIFO เรียบร้อย", detail: "ระบบสร้างล็อตต้นทุน คำนวณต้นทุนขาย กำไรบิล สต็อก และทุน FIFO คงเหลือใหม่แล้ว" }, ...runSystemChecks()]);
+    showTestResults([{ status: "info", title: "ตรวจต้นทุนสินค้า เรียบร้อย", detail: "ระบบสร้างล็อตต้นทุน คำนวณต้นทุนขาย กำไรบิล สต็อก และทุน FIFO คงเหลือใหม่แล้ว" }, ...runSystemChecks()]);
   }
 }
 
@@ -6236,17 +6236,17 @@ const moreMenuItems = [
   { group: "stock", icon: "⚠️", title: "สินค้าใกล้หมด", hint: "ดูรายการที่ควรซื้อเพิ่ม", tab: "lowStock", keywords: "ใกล้หมด สต็อกขั้นต่ำ ซื้อเพิ่ม" },
   { group: "stock", icon: "📋", title: "ตรวจนับสต็อก", hint: "นับจริง / เทียบระบบ", tab: "stockCount", keywords: "ตรวจนับ สต็อก นับจริง ปรับอัตโนมัติ" },
   { group: "stock", icon: "🧮", title: "ปรับสต็อก", hint: "ของเสีย / ของหาย / นับแล้วไม่ตรง", tab: "adjust", keywords: "ปรับสต็อก ของเสีย ของหาย ปรับเพิ่ม ปรับลด" },
-  { group: "stock system", icon: "📦", title: "ตรวจ/ซ่อม FIFO", hint: "คำนวณล็อตต้นทุนใหม่", action: "repairFifo", keywords: "fifo ต้นทุน lot ล็อต ซ่อมทุน" },
+  { group: "stock system", icon: "📦", title: "ตรวจต้นทุนสินค้า", hint: "ตรวจต้นทุนและสต็อกใหม่", action: "repairFifo", keywords: "fifo ต้นทุน lot ล็อต ซ่อมทุน" },
 
   { group: "system", icon: "🔐", title: "ปิดรอบ / ล็อกย้อนหลัง", hint: "ล็อกบิล สต็อก และยอดย้อนหลัง", tab: "closePeriod", keywords: "ปิดรอบ ล็อกย้อนหลัง ปลดล็อก" },
   { group: "system", icon: "☁️", title: "Backup", hint: "สำรอง/กู้คืนข้อมูล", tab: "backup", keywords: "backup สำรอง restore กู้คืน import export" },
   { group: "system stock", icon: "📥", title: "Import Excel เดิม", hint: "นำเข้าข้อมูลจากไฟล์ .xlsx", tab: "backup", keywords: "excel xlsx import legacy นำเข้า ไฟล์เดิม" },
   { group: "system", icon: "👥", title: "ผู้ใช้งาน / สิทธิ์", hint: "บทบาท / จำกัดเมนู / ซ่อนกำไร", tab: "security", keywords: "user role permission สิทธิ์ ผู้ใช้งาน แคชเชียร์" },
-  { group: "system report", icon: "🧾", title: "ประวัติการทำรายการ", hint: "ใครทำอะไร / Audit Trail", tab: "activityLog", keywords: "activity log audit ประวัติ ระบบ ใครทำอะไร" },
+  { group: "system report", icon: "🧾", title: "ประวัติการทำรายการ", hint: "ใครทำอะไร / ประวัติการใช้งาน", tab: "activityLog", keywords: "activity log audit ประวัติ ระบบ ใครทำอะไร" },
   { group: "system", icon: "🚀", title: "เริ่มต้นใช้งาน", hint: "Checklist / Feedback / Beta Ready", tab: "gettingStarted", keywords: "เริ่มต้น checklist feedback beta" },
   { group: "system", icon: "⚙️", title: "ตั้งค่า", hint: "ชื่อร้าน / เลขบิล / Number Pad", tab: "settings", keywords: "ตั้งค่า ชื่อร้าน เลขบิล number pad" },
   { group: "system", icon: "📘", title: "คู่มือ", hint: "วิธีใช้งานระบบ", tab: "guide", keywords: "คู่มือ วิธีใช้ help" },
-  { group: "system", icon: "🛡️", title: "เกี่ยวกับแอป", hint: "Privacy / Local-first / เวอร์ชัน", tab: "about", keywords: "เกี่ยวกับ privacy local first version" },
+  { group: "system", icon: "🛡️", title: "เกี่ยวกับแอป", hint: "Privacy / ข้อมูลในเครื่อง / เวอร์ชัน", tab: "about", keywords: "เกี่ยวกับ privacy local first version" },
   { group: "system", icon: "🧪", title: "ทดสอบระบบ", hint: "Auto Test / ตรวจสูตร / ล้างข้อมูล TEST", tab: "testCenter", keywords: "ทดสอบ test auto ล้างข้อมูล" }
 ];
 
